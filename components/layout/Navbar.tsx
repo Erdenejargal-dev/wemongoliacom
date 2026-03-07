@@ -1,169 +1,148 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { Menu, X, ChevronDown, Mountain, ArrowRight, User, LogOut } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useSession, signOut } from 'next-auth/react';
-import Link from 'next/link';
+import { useState } from 'react'
+import { Menu, X, Search, Heart, Bell, CalendarCheck, ArrowRight } from 'lucide-react'
+import Link from 'next/link'
+import { useSession } from 'next-auth/react'
+import { Button } from '@/components/ui/button'
+import { AuthModal } from '@/components/AuthModal'
+import { MegaMenu } from './navbar/MegaMenu'
+import { SearchBar } from './navbar/SearchBar'
+import { UserMenu } from './navbar/UserMenu'
+import { MobileMenu } from './navbar/MobileMenu'
+import { navItems } from './navbar/mega-menu-data'
+import { cn } from '@/lib/utils'
 
 export default function Navbar() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { data: session, status } = useSession();
-  const isLoading = status === 'loading';
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const { data: session, status } = useSession()
+  const isLoading = status === 'loading'
 
   return (
-    <nav className="bg-white sticky top-0 z-50 shadow-sm">
+    <nav className="bg-white sticky top-0 z-50 border-b border-gray-100 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Left - Nav Links */}
-          <div className="hidden md:flex items-center gap-6">
-            <a href="#destinations" className="flex items-center gap-1 text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors">
-              Destinations
-              <ChevronDown className="w-3.5 h-3.5" />
-            </a>
-            <a href="#travel" className="text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors">
-              Tours
-            </a>
-            <a href="#about" className="text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors">
-              About Us
-            </a>
-            <Link href="/dashboard/business" className="text-blue-600 hover:text-blue-700 text-sm font-semibold transition-colors">
-              For Business
-            </Link>
-          </div>
+        <div className="flex items-center justify-between h-16 gap-4">
 
-          {/* Center - Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <img 
-              src="/wemongolia.svg" 
-              alt="We Mongolia Logo" 
-              className="h-10 w-auto"
-            />
+          {/* ── LEFT: Logo ────────────────────────────── */}
+          <Link href="/" className="flex items-center gap-2.5 shrink-0">
+            <img src="/wemongolia.svg" alt="We Mongolia" className="h-9 w-auto" />
           </Link>
 
-          {/* Right - Actions */}
-          <div className="flex items-center gap-3">
+          {/* ── CENTER: Main Nav (desktop) ─────────────── */}
+          <div className="hidden lg:flex items-center gap-1 flex-1 justify-center">
+            {navItems.map(item => {
+              const hasMenu = 'menu' in item
+
+              if (!hasMenu) return (
+                <Link key={item.key} href={'href' in item ? item.href : '#'}
+                  className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
+                  {item.label}
+                </Link>
+              )
+
+              return (
+                <div key={item.key} className="relative group">
+                  <button className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors group-hover:text-gray-900 group-hover:bg-gray-50">
+                    {item.label}
+                    <svg className="w-3.5 h-3.5 text-gray-400 transition-transform group-hover:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {'menu' in item && (
+                    <MegaMenu sections={item.menu.sections as Parameters<typeof MegaMenu>[0]['sections']} />
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* ── RIGHT: Actions (desktop) ──────────────── */}
+          <div className="flex items-center gap-1 shrink-0">
+            {/* Search */}
+            <button
+              onClick={() => setSearchOpen(v => !v)}
+              className={cn(
+                'p-2 rounded-lg transition-colors text-gray-500',
+                searchOpen ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50 hover:text-gray-700'
+              )}
+              title="Search"
+            >
+              <Search className="w-5 h-5" />
+            </button>
+
             {isLoading ? (
-              <div className="h-9 w-20 bg-gray-200 animate-pulse rounded-lg"></div>
+              <div className="h-9 w-20 bg-gray-100 animate-pulse rounded-xl" />
             ) : session ? (
-              <div className="flex items-center gap-3">
-                <Link 
-                  href="/dashboard" 
-                  className="hidden sm:flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors"
-                >
-                  <User className="w-4 h-4" />
-                  <span>{session.user?.name}</span>
-                </Link>
-                <button
-                  onClick={() => signOut()}
-                  className="hidden sm:flex items-center gap-1 text-gray-600 hover:text-red-600 text-sm font-medium transition-colors"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Sign out
-                </button>
-              </div>
-            ) : (
               <>
-                <Link href="/auth/login" className="hidden sm:block text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors">
-                  Sign in
+                {/* My Trips */}
+                <Link href="/dashboard/business/bookings" title="My Trips"
+                  className="hidden sm:flex p-2 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors">
+                  <CalendarCheck className="w-5 h-5" />
                 </Link>
-                <Link href="/auth/register">
-                  <Button className="bg-orange-500 hover:bg-orange-600 text-white rounded-lg px-4 py-2 text-sm font-medium flex items-center gap-2">
-                    Get Started
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </Link>
+                {/* Wishlist */}
+                <button title="Saved Trips"
+                  className="hidden sm:flex p-2 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors">
+                  <Heart className="w-5 h-5" />
+                </button>
+                {/* Notifications */}
+                <button title="Notifications"
+                  className="relative hidden sm:flex p-2 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors">
+                  <Bell className="w-5 h-5" />
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+                </button>
+                {/* User Avatar */}
+                <div className="ml-1">
+                  <UserMenu name={session.user?.name} email={session.user?.email} />
+                </div>
               </>
+            ) : (
+              <div className="hidden sm:flex items-center gap-2 ml-1">
+                <AuthModal defaultTab="login" trigger={
+                  <button className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
+                    Sign in
+                  </button>
+                } />
+                <AuthModal defaultTab="register" trigger={
+                  <Button className="bg-green-500 hover:bg-green-600 text-white rounded-xl px-4 py-1.5 text-sm font-medium flex items-center gap-1.5 h-auto">
+                    Get Started
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Button>
+                } />
+              </div>
             )}
 
-            {/* Mobile menu button */}
+            {/* Become a Host (guest only, desktop) */}
+            {!session && !isLoading && (
+              <Link href="/dashboard/business"
+                className="hidden md:block text-xs font-medium text-gray-500 hover:text-gray-700 ml-2 border-l border-gray-200 pl-3 transition-colors whitespace-nowrap">
+                Become a Host
+              </Link>
+            )}
+
+            {/* Mobile hamburger */}
             <button
-              className="md:hidden p-2 rounded-lg hover:bg-gray-100"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              className="lg:hidden ml-1 p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-600"
+              onClick={() => setMobileOpen(v => !v)}
+              aria-label="Toggle menu"
             >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
-
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden pb-4">
-            <div className="flex flex-col gap-1">
-              <a 
-                href="#destinations" 
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-gray-600 hover:text-gray-900 text-sm font-medium p-3 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Destinations
-              </a>
-              <a 
-                href="#travel" 
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-gray-600 hover:text-gray-900 text-sm font-medium p-3 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Tours
-              </a>
-              <a 
-                href="#about" 
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-gray-600 hover:text-gray-900 text-sm font-medium p-3 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                About Us
-              </a>
-              <Link
-                href="/dashboard/business"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-blue-600 hover:text-blue-700 text-sm font-semibold p-3 rounded-lg hover:bg-blue-50 transition-colors"
-              >
-                For Business
-              </Link>
-              <div className="border-t border-gray-200 mt-2 pt-2">
-                {session ? (
-                  <>
-                    <Link
-                      href="/dashboard"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm font-medium p-3 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <User className="w-4 h-4" />
-                      {session.user?.name}
-                    </Link>
-                    <button
-                      onClick={() => {
-                        signOut();
-                        setMobileMenuOpen(false);
-                      }}
-                      className="w-full flex items-center gap-2 text-gray-600 hover:text-red-600 text-sm font-medium p-3 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      Sign out
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      href="/auth/login"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block text-gray-600 hover:text-gray-900 text-sm font-medium p-3 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      Sign in
-                    </Link>
-                    <Link
-                      href="/auth/register"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block text-orange-500 hover:text-orange-600 text-sm font-medium p-3 rounded-lg hover:bg-orange-50 transition-colors"
-                    >
-                      Get Started
-                    </Link>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* ── Search Bar (expanded) ─────────────────────── */}
+      {searchOpen && (
+        <div className="relative border-t border-gray-100">
+          <SearchBar onClose={() => setSearchOpen(false)} />
+        </div>
+      )}
+
+      {/* ── Mobile Menu ────────────────────────────────── */}
+      {mobileOpen && (
+        <MobileMenu session={session} onClose={() => setMobileOpen(false)} />
+      )}
     </nav>
-  );
+  )
 }

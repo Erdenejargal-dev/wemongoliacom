@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -49,14 +50,29 @@ const tabButtons = {
 };
 
 export default function HeroInteractive() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"destinations" | "tours" | "hotels">("tours");
   const [activeButton, setActiveButton] = useState("extreme");
   const [searchTab, setSearchTab] = useState("tours");
+
+  // Controlled search state
+  const [destination, setDestination] = useState("");
+  const [region, setRegion] = useState("");
+  const [experienceType, setExperienceType] = useState("");
 
   // Update active button when tab changes
   const handleTabChange = (tab: "destinations" | "tours" | "hotels") => {
     setActiveTab(tab);
     setActiveButton(tabButtons[tab][0].id);
+  };
+
+  // Build URL params and navigate to /tours
+  const handleSearch = () => {
+    const params = new URLSearchParams();
+    if (destination.trim()) params.set("destination", destination.trim());
+    if (region) params.set("region", region);
+    if (experienceType) params.set("type", experienceType);
+    router.push(`/tours?${params.toString()}`);
   };
 
   const currentButtons = tabButtons[activeTab];
@@ -194,14 +210,20 @@ export default function HeroInteractive() {
           {/* Search Form */}
           <div className="bg-white/95 backdrop-blur-lg rounded-b-2xl border border-white/20 p-6 sm:p-8 shadow-2xl">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Destination */}
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <Input
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                   placeholder="Where in Mongolia?"
                   className="pl-11 h-14 border-gray-300 focus:border-green-500 focus:ring-green-500 text-base"
                 />
               </div>
-              <Select>
+
+              {/* Region */}
+              <Select value={region} onValueChange={setRegion}>
                 <SelectTrigger className="h-14 border-gray-300 focus:border-green-500 focus:ring-green-500 text-base">
                   <SelectValue placeholder="Select Region" />
                 </SelectTrigger>
@@ -214,7 +236,9 @@ export default function HeroInteractive() {
                   <SelectItem value="steppe">Central Steppes</SelectItem>
                 </SelectContent>
               </Select>
-              <Select>
+
+              {/* Experience Type */}
+              <Select value={experienceType} onValueChange={setExperienceType}>
                 <SelectTrigger className="h-14 border-gray-300 focus:border-green-500 focus:ring-green-500 text-base">
                   <SelectValue placeholder="Experience Type" />
                 </SelectTrigger>
@@ -227,7 +251,12 @@ export default function HeroInteractive() {
                   <SelectItem value="luxury">Luxury Experience</SelectItem>
                 </SelectContent>
               </Select>
-              <Button className="h-14 bg-green-600 hover:bg-green-700 text-white font-bold text-base shadow-lg">
+
+              {/* Search Button */}
+              <Button
+                onClick={handleSearch}
+                className="h-14 bg-green-600 hover:bg-green-700 text-white font-bold text-base shadow-lg active:scale-[0.98] transition-transform"
+              >
                 <Search className="w-5 h-5 mr-2" />
                 Search Tours
               </Button>

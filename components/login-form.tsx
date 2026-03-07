@@ -132,7 +132,7 @@ export function LoginForm({
           </div>
         </CardContent>
       </Card>
-      <FieldDescruiption className="px-6 text-center">
+      <FieldDescription className="px-6 text-center">
         By clicking continue, you agree to our{" "}
         <a href="#" className="hover:underline">Terms of Service</a>{" "}
         and{" "}
