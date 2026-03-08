@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface MenuItem {
   label: string
@@ -22,9 +23,12 @@ interface MegaMenuProps {
 
 export function MegaMenu({ sections }: MegaMenuProps) {
   return (
-    <div className="absolute left-1/2 -translate-x-1/2 top-full pt-3 z-50 pointer-events-none opacity-0 translate-y-1
-      group-hover:pointer-events-auto group-hover:opacity-100 group-hover:translate-y-0
-      transition-all duration-200 ease-out">
+    <div className={cn(
+      'absolute left-1/2 -translate-x-1/2 top-full pt-3 z-50',
+      'pointer-events-none opacity-0 translate-y-1',
+      'group-hover:pointer-events-auto group-hover:opacity-100 group-hover:translate-y-0',
+      'transition-all duration-200 ease-out'
+    )}>
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
         style={{ minWidth: `${sections.length * 220}px`, maxWidth: '780px' }}>
         {/* Top accent bar */}

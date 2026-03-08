@@ -3,6 +3,9 @@ import type { Tour } from '../search/types'
 export const mockTours: Tour[] = [
   {
     id: 't1',
+    slug: 'gobi-desert-camel-trek',
+    destinationSlug: 'gobi-desert',
+    hostSlug: 'gobi-adventure-tours',
     title: 'Gobi Desert Camel Trek',
     location: 'Gobi Desert',
     region: 'Gobi Region',
@@ -24,6 +27,9 @@ export const mockTours: Tour[] = [
   },
   {
     id: 't2',
+    slug: 'lake-khovsgol-horseback-expedition',
+    destinationSlug: 'lake-khovsgol',
+    hostSlug: 'northern-trails',
     title: 'Lake Khövsgöl Horseback Expedition',
     location: 'Lake Khövsgöl',
     region: 'Northern Mongolia',
@@ -45,6 +51,9 @@ export const mockTours: Tour[] = [
   },
   {
     id: 't3',
+    slug: 'ulaanbaatar-city-culture-day',
+    destinationSlug: 'ulaanbaatar',
+    hostSlug: 'ub-culture-tours',
     title: 'Ulaanbaatar City & Culture Day',
     location: 'Ulaanbaatar',
     region: 'Central Mongolia',
@@ -66,6 +75,9 @@ export const mockTours: Tour[] = [
   },
   {
     id: 't4',
+    slug: 'orkhon-valley-nomadic-life',
+    destinationSlug: 'orkhon-valley',
+    hostSlug: 'steppe-riders',
     title: 'Orkhon Valley Nomadic Life',
     location: 'Orkhon Valley',
     region: 'Central Mongolia',
@@ -87,6 +99,9 @@ export const mockTours: Tour[] = [
   },
   {
     id: 't5',
+    slug: 'terelj-weekend-escape',
+    destinationSlug: 'terelj',
+    hostSlug: 'steppe-riders',
     title: 'Terelj Weekend Escape',
     location: 'Terelj National Park',
     region: 'Central Mongolia',
@@ -108,6 +123,9 @@ export const mockTours: Tour[] = [
   },
   {
     id: 't6',
+    slug: 'altai-eagle-hunter-expedition',
+    destinationSlug: 'altai-mountains',
+    hostSlug: 'altai-expeditions',
     title: 'Altai Eagle Hunter Expedition',
     location: 'Altai Mountains',
     region: 'Western Mongolia',
@@ -129,6 +147,9 @@ export const mockTours: Tour[] = [
   },
   {
     id: 't7',
+    slug: 'luxury-mongolia-grand-tour',
+    destinationSlug: 'gobi-desert',
+    hostSlug: 'gobi-adventure-tours',
     title: 'Luxury Mongolia Grand Tour',
     location: 'Gobi Desert',
     region: 'Gobi Region',
@@ -150,6 +171,9 @@ export const mockTours: Tour[] = [
   },
   {
     id: 't8',
+    slug: 'budget-gobi-discovery',
+    destinationSlug: 'gobi-desert',
+    hostSlug: 'gobi-adventure-tours',
     title: 'Budget Gobi Discovery',
     location: 'Gobi Desert',
     region: 'Gobi Region',
@@ -171,6 +195,9 @@ export const mockTours: Tour[] = [
   },
   {
     id: 't9',
+    slug: 'naadam-festival-special',
+    destinationSlug: 'ulaanbaatar',
+    hostSlug: 'ub-culture-tours',
     title: 'Naadam Festival Special',
     location: 'Ulaanbaatar',
     region: 'Central Mongolia',
@@ -192,6 +219,9 @@ export const mockTours: Tour[] = [
   },
   {
     id: 't10',
+    slug: 'khentii-wolf-wildlife-safari',
+    destinationSlug: 'eastern-mongolia',
+    hostSlug: 'steppe-riders',
     title: 'Khentii Wolf & Wildlife Safari',
     location: 'Khentii Province',
     region: 'Eastern Mongolia',

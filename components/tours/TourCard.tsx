@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { Star, Clock, Users, MapPin, Heart } from 'lucide-react'
 import { useState } from 'react'
 import type { Tour } from '@/lib/search/types'
@@ -21,7 +22,7 @@ export function TourCard({ tour }: TourCardProps) {
   const [saved, setSaved] = useState(false)
 
   return (
-    <div className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden cursor-pointer">
+    <Link href={`/tours/${tour.slug}`} className="group block bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden">
       {/* Image */}
       <div className="relative h-52 overflow-hidden bg-gray-100">
         <img
@@ -35,7 +36,7 @@ export function TourCard({ tour }: TourCardProps) {
 
         {/* Save button */}
         <button
-          onClick={e => { e.stopPropagation(); setSaved(v => !v) }}
+          onClick={e => { e.preventDefault(); e.stopPropagation(); setSaved(v => !v) }}
           className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-sm transition-colors"
         >
           <Heart className={`w-4 h-4 transition-colors ${saved ? 'fill-red-500 text-red-500' : 'text-gray-500'}`} />
@@ -88,6 +89,6 @@ export function TourCard({ tour }: TourCardProps) {
           </div>
         </div>
       </div>
-    </div>
+    </Link>
   )
 }

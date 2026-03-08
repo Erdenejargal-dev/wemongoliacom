@@ -43,7 +43,7 @@ const TourCard = ({ tour }: { tour: Tour }) => {
 
   return (
     <Link href={`/tours/${tour._id}`} className="group block h-full">
-      <div className="bg-white shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden h-full flex flex-col border-2 border-gray-200 hover:border-blue-500">
+      <div className="bg-white shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden h-full flex flex-col border-2 border-gray-200 hover:border-orange-500">
         {/* Image Container */}
         <div className="relative h-48 overflow-hidden bg-gray-200">
           <img
@@ -58,7 +58,7 @@ const TourCard = ({ tour }: { tour: Tour }) => {
           
           {/* Category Badge */}
           <div className="absolute top-0 left-0">
-            <span className="bg-blue-600 text-white px-4 py-2 text-xs font-bold uppercase tracking-wide">
+            <span className="bg-orange-600 text-white px-4 py-2 text-xs font-bold uppercase tracking-wide">
               {tour.category}
             </span>
           </div>
@@ -75,7 +75,7 @@ const TourCard = ({ tour }: { tour: Tour }) => {
 
           {/* Rating Badge */}
           {tour.rating && tour.rating > 0 && (
-            <div className="absolute bottom-0 right-0 bg-blue-600 text-white px-4 py-2">
+            <div className="absolute bottom-0 right-0 bg-orange-600 text-white px-4 py-2">
               <div className="flex items-center gap-2">
                 <Star className="w-4 h-4 fill-white" />
                 <span className="font-bold text-lg">{tour.rating.toFixed(1)}</span>
@@ -87,13 +87,13 @@ const TourCard = ({ tour }: { tour: Tour }) => {
         {/* Content */}
         <div className="p-3 flex-1 flex flex-col">
           {/* Title */}
-          <h3 className="text-base font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors leading-tight">
+          <h3 className="text-base font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-orange-600 transition-colors leading-tight">
             {tour.name}
           </h3>
 
           {/* Location */}
           <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-gray-200">
-            <MapPin className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+            <MapPin className="w-3.5 h-3.5 text-orange-600 flex-shrink-0" />
             <span className="text-xs text-gray-600 line-clamp-1">
               {tour.destination.join(', ')}
             </span>
@@ -149,13 +149,13 @@ const TourCard = ({ tour }: { tour: Tour }) => {
             <div>
               <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-0.5">From</p>
               <div className="flex items-baseline gap-0.5">
-                <span className="text-xl font-bold text-blue-600">
+                <span className="text-xl font-bold text-orange-600">
                   ${tour.pricing.adult.toLocaleString()}
                 </span>
                 <span className="text-[10px] text-gray-500">/person</span>
               </div>
             </div>
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 font-bold text-xs transition-colors uppercase tracking-wide">
+            <button className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 font-bold text-xs transition-colors uppercase tracking-wide">
               Book Now
             </button>
           </div>
@@ -232,7 +232,7 @@ const CampandResorts = () => {
           <h2 className="text-4xl font-bold text-gray-900 mb-4 uppercase tracking-tight">
             Recommended Tours
           </h2>
-          <div className="w-24 h-1 bg-blue-600 mx-auto mb-6"></div>
+          <div className="w-24 h-1 bg-orange-600 mx-auto mb-6"></div>
          
         </div>
 
@@ -281,13 +281,13 @@ const CampandResorts = () => {
 
           {/* Custom Navigation Buttons */}
           <button
-            className="swiper-button-prev-custom absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white hover:bg-blue-600 text-gray-800 hover:text-white p-3 shadow-lg transition-all duration-200 border-2 border-gray-300 hover:border-blue-600"
+            className="swiper-button-prev-custom absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white hover:bg-orange-600 text-gray-800 hover:text-white p-3 shadow-lg transition-all duration-200 border-2 border-gray-300 hover:border-orange-600"
             aria-label="Previous slide"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
           <button
-            className="swiper-button-next-custom absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white hover:bg-blue-600 text-gray-800 hover:text-white p-3 shadow-lg transition-all duration-200 border-2 border-gray-300 hover:border-blue-600"
+            className="swiper-button-next-custom absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white hover:bg-orange-600 text-gray-800 hover:text-white p-3 shadow-lg transition-all duration-200 border-2 border-gray-300 hover:border-orange-600"
             aria-label="Next slide"
           >
             <ChevronRight className="w-6 h-6" />
@@ -298,7 +298,7 @@ const CampandResorts = () => {
         <div className="text-center mt-12">
           <Link
             href="/tours"
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 font-bold text-sm transition-colors shadow-lg uppercase tracking-wide"
+            className="inline-flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-8 py-4 font-bold text-sm transition-colors shadow-lg uppercase tracking-wide"
           >
             View All Tours
             <Calendar className="w-5 h-5" />

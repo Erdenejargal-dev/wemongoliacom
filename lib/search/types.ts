@@ -1,5 +1,8 @@
 export interface Tour {
   id: string
+  slug: string              // URL-friendly identifier
+  destinationSlug: string   // matches destination page slugs
+  hostSlug: string          // matches host profile page slugs
   title: string
   location: string
   region: string
