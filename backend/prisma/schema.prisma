@@ -1,0 +1,820 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum UserRole {
+  traveler
+  provider_owner
+  admin
+}
+
+enum ProviderType {
+  tour_operator
+  car_rental
+  accommodation
+}
+
+enum OnboardingStatus {
+  draft
+  submitted
+  approved
+}
+
+enum ListingStatus {
+  draft
+  active
+  paused
+  archived
+}
+
+enum VehicleStatus {
+  draft
+  active
+  paused
+  maintenance
+  archived
+}
+
+enum DepartureStatus {
+  scheduled
+  sold_out
+  cancelled
+}
+
+enum BlockStatus {
+  available
+  booked
+  blocked
+  maintenance
+}
+
+enum RoomAvailabilityStatus {
+  available
+  sold_out
+  blocked
+}
+
+enum ListingType {
+  tour
+  vehicle
+  accommodation
+}
+
+enum BookingStatus {
+  pending
+  confirmed
+  cancelled
+  completed
+}
+
+enum PaymentStatus {
+  unpaid
+  authorized
+  paid
+  refunded
+  failed
+}
+
+enum PayoutStatus {
+  pending
+  scheduled
+  paid
+  failed
+}
+
+enum SenderRole {
+  traveler
+  provider
+}
+
+enum PriceType {
+  per_person
+  private_group
+  fixed
+}
+
+enum Difficulty {
+  Easy
+  Moderate
+  Challenging
+}
+
+enum VehicleType {
+  SUV
+  Van
+  Minibus
+  Sedan
+  FourByFour
+}
+
+enum Transmission {
+  Manual
+  Automatic
+}
+
+enum AccommodationType {
+  ger_camp
+  hotel
+  lodge
+  guesthouse
+  resort
+}
+
+// ─────────────────────────────────────────────
+// MODEL: User
+// ─────────────────────────────────────────────
+
+model User {
+  id            String   @id @default(cuid())
+  firstName     String
+  lastName      String
+  email         String   @unique
+  passwordHash  String
+  phone         String?
+  country       String?
+  avatarUrl     String?
+  bio           String?
+  role          UserRole @default(traveler)
+  isVerified    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  provider            Provider?
+  providerOnboarding  ProviderOnboarding?
+  bookings            Booking[]
+  conversations       Conversation[]
+  messages            Message[]
+  reviews             Review[]
+  wishlistItems       WishlistItem[]
+  notifications       Notification[]
+
+  @@index([email])
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: ProviderOnboarding
+// ─────────────────────────────────────────────
+
+model ProviderOnboarding {
+  id            String           @id @default(cuid())
+  ownerUserId   String           @unique
+  businessName  String?
+  description   String?
+  location      String?
+  phone         String?
+  email         String?
+  website       String?
+  languages     String[]
+  providerTypes ProviderType[]
+  logoUrl       String?
+  coverImageUrl String?
+  stepCompleted Int              @default(0)
+  status        OnboardingStatus @default(draft)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  owner User @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+
+  @@index([ownerUserId])
+  @@map("provider_onboardings")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: Provider
+// ─────────────────────────────────────────────
+
+model Provider {
+  id                String         @id @default(cuid())
+  ownerUserId       String         @unique
+  name              String
+  slug              String         @unique
+  description       String?
+  logoUrl           String?
+  coverImageUrl     String?
+  email             String?
+  phone             String?
+  website           String?
+  city              String?
+  region            String?
+  country           String         @default("Mongolia")
+  address           String?
+  languages         String[]
+  providerTypes     ProviderType[]
+  ratingAverage     Float          @default(0)
+  reviewsCount      Int            @default(0)
+  totalGuestsHosted Int            @default(0)
+  isVerified        Boolean        @default(false)
+  status            ListingStatus  @default(draft)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  owner          User            @relation(fields: [ownerUserId], references: [id], onDelete: Restrict)
+  tours          Tour[]
+  vehicles       Vehicle[]
+  accommodations Accommodation[]
+  bookings       Booking[]
+  conversations  Conversation[]
+  payouts        Payout[]
+
+  @@index([slug])
+  @@index([providerTypes])
+  @@map("providers")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: Destination
+// ─────────────────────────────────────────────
+
+model Destination {
+  id               String   @id @default(cuid())
+  name             String
+  slug             String   @unique
+  country          String   @default("Mongolia")
+  region           String?
+  shortDescription String?
+  description      String?
+  heroImageUrl     String?
+  gallery          String[]
+  highlights       String[]
+  activities       String[]
+  tips             String[]
+  bestTimeToVisit  String?
+  weatherInfo      String?
+  featured         Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tours          Tour[]
+  vehicles       Vehicle[]
+  accommodations Accommodation[]
+
+  @@index([slug])
+  @@index([featured])
+  @@map("destinations")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: Tour
+// ─────────────────────────────────────────────
+
+model Tour {
+  id                 String        @id @default(cuid())
+  providerId         String
+  destinationId      String?
+  slug               String        @unique
+  title              String
+  shortDescription   String?
+  description        String?
+  category           String?
+  experienceType     String?
+  durationDays       Int?
+  durationNights     Int?
+  difficulty         Difficulty?
+  meetingPoint       String?
+  pickupIncluded     Boolean       @default(false)
+  cancellationPolicy String?
+  languages          String[]
+  maxGuests          Int           @default(12)
+  minGuests          Int           @default(1)
+  ageRestrictions    String?
+  priceType          PriceType     @default(per_person)
+  basePrice          Float
+  currency           String        @default("USD")
+  ratingAverage      Float         @default(0)
+  reviewsCount       Int           @default(0)
+  status             ListingStatus @default(draft)
+  featured           Boolean       @default(false)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  provider    Provider     @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  destination Destination? @relation(fields: [destinationId], references: [id], onDelete: SetNull)
+
+  images        TourImage[]
+  itinerary     TourItineraryDay[]
+  includedItems TourIncludedItem[]
+  excludedItems TourExcludedItem[]
+  departures    TourDeparture[]
+
+  @@index([providerId])
+  @@index([destinationId])
+  @@index([status])
+  @@index([featured])
+  @@index([basePrice])
+  @@index([ratingAverage])
+  @@map("tours")
+}
+
+model TourImage {
+  id        String  @id @default(cuid())
+  tourId    String
+  imageUrl  String
+  altText   String?
+  sortOrder Int     @default(0)
+
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@index([tourId])
+  @@map("tour_images")
+}
+
+model TourItineraryDay {
+  id                String  @id @default(cuid())
+  tourId            String
+  dayNumber         Int
+  title             String
+  description       String?
+  overnightLocation String?
+
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@index([tourId])
+  @@map("tour_itinerary_days")
+}
+
+model TourIncludedItem {
+  id     String @id @default(cuid())
+  tourId String
+  label  String
+
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@index([tourId])
+  @@map("tour_included_items")
+}
+
+model TourExcludedItem {
+  id     String @id @default(cuid())
+  tourId String
+  label  String
+
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@index([tourId])
+  @@map("tour_excluded_items")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: TourDeparture
+// ─────────────────────────────────────────────
+
+model TourDeparture {
+  id             String          @id @default(cuid())
+  tourId         String
+  startDate      DateTime
+  endDate        DateTime
+  availableSeats Int
+  bookedSeats    Int             @default(0)
+  priceOverride  Float?
+  currency       String          @default("USD")
+  status         DepartureStatus @default(scheduled)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  tour     Tour      @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@index([tourId])
+  @@index([startDate])
+  @@index([status])
+  @@map("tour_departures")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: Vehicle
+// ─────────────────────────────────────────────
+
+model Vehicle {
+  id                 String        @id @default(cuid())
+  providerId         String
+  destinationId      String?
+  slug               String        @unique
+  title              String
+  description        String?
+  vehicleType        VehicleType?
+  make               String?
+  model              String?
+  year               Int?
+  transmission       Transmission?
+  seats              Int           @default(4)
+  luggageCapacity    Int?
+  withDriver         Boolean       @default(false)
+  fuelPolicy         String?
+  cancellationPolicy String?
+  features           String[]
+  pricePerDay        Float
+  currency           String        @default("USD")
+  ratingAverage      Float         @default(0)
+  reviewsCount       Int           @default(0)
+  status             VehicleStatus @default(draft)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  provider    Provider     @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  destination Destination? @relation(fields: [destinationId], references: [id], onDelete: SetNull)
+
+  images       VehicleImage[]
+  availability VehicleAvailability[]
+
+  @@index([providerId])
+  @@index([destinationId])
+  @@index([status])
+  @@map("vehicles")
+}
+
+model VehicleImage {
+  id        String @id @default(cuid())
+  vehicleId String
+  imageUrl  String
+  sortOrder Int    @default(0)
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("vehicle_images")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: VehicleAvailability
+// ─────────────────────────────────────────────
+
+model VehicleAvailability {
+  id            String      @id @default(cuid())
+  vehicleId     String
+  startDate     DateTime
+  endDate       DateTime
+  status        BlockStatus @default(available)
+  priceOverride Float?
+  note          String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  vehicle  Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@index([vehicleId])
+  @@index([startDate, endDate])
+  @@map("vehicle_availability")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: Accommodation
+// ─────────────────────────────────────────────
+
+model Accommodation {
+  id                 String            @id @default(cuid())
+  providerId         String
+  destinationId      String?
+  slug               String            @unique
+  name               String
+  description        String?
+  accommodationType  AccommodationType @default(ger_camp)
+  checkInTime        String?
+  checkOutTime       String?
+  amenities          String[]
+  cancellationPolicy String?
+  starRating         Int?
+  ratingAverage      Float             @default(0)
+  reviewsCount       Int               @default(0)
+  status             ListingStatus     @default(draft)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  provider    Provider     @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  destination Destination? @relation(fields: [destinationId], references: [id], onDelete: SetNull)
+
+  images    AccommodationImage[]
+  roomTypes RoomType[]
+
+  @@index([providerId])
+  @@index([destinationId])
+  @@index([status])
+  @@map("accommodations")
+}
+
+model AccommodationImage {
+  id              String @id @default(cuid())
+  accommodationId String
+  imageUrl        String
+  sortOrder       Int    @default(0)
+
+  accommodation Accommodation @relation(fields: [accommodationId], references: [id], onDelete: Cascade)
+
+  @@index([accommodationId])
+  @@map("accommodation_images")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: RoomType
+// ─────────────────────────────────────────────
+
+model RoomType {
+  id                String   @id @default(cuid())
+  accommodationId   String
+  name              String
+  description       String?
+  maxGuests         Int      @default(2)
+  bedType           String?
+  quantity          Int      @default(1)
+  basePricePerNight Float
+  currency          String   @default("USD")
+  amenities         String[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  accommodation Accommodation     @relation(fields: [accommodationId], references: [id], onDelete: Cascade)
+  availability  RoomAvailability[]
+  bookings      Booking[]
+
+  @@index([accommodationId])
+  @@map("room_types")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: RoomAvailability
+// ─────────────────────────────────────────────
+
+model RoomAvailability {
+  id             String                 @id @default(cuid())
+  roomTypeId     String
+  date           DateTime               @db.Date
+  availableUnits Int
+  bookedUnits    Int                    @default(0)
+  priceOverride  Float?
+  status         RoomAvailabilityStatus @default(available)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  roomType RoomType  @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@unique([roomTypeId, date])
+  @@index([roomTypeId])
+  @@index([date])
+  @@map("room_availability")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: Booking
+// listingType + listingId are plain strings; polymorphic
+// lookups are handled in application code.
+// ─────────────────────────────────────────────
+
+model Booking {
+  id          String @id @default(cuid())
+  bookingCode String @unique
+  userId      String
+  providerId  String
+
+  // Polymorphic listing (resolved in app code, no FK)
+  listingType ListingType
+  listingId   String
+
+  // Inventory references
+  tourDepartureId       String?
+  vehicleAvailabilityId String?
+  roomTypeId            String?
+
+  // Dates
+  startDate DateTime
+  endDate   DateTime?
+  nights    Int?
+  guests    Int       @default(1)
+  adults    Int       @default(1)
+  children  Int       @default(0)
+  quantity  Int       @default(1)
+
+  // Pricing
+  subtotal       Float
+  serviceFee     Float
+  taxes          Float  @default(0)
+  discountAmount Float  @default(0)
+  totalAmount    Float
+  currency       String @default("USD")
+
+  // Statuses
+  bookingStatus BookingStatus @default(pending)
+  paymentStatus PaymentStatus @default(unpaid)
+
+  // Cancellation
+  cancelledAt  DateTime?
+  cancelReason String?
+  completedAt  DateTime?
+
+  // Traveler snapshot
+  travelerFullName String?
+  travelerEmail    String?
+  travelerPhone    String?
+  travelerCountry  String?
+  specialRequests  String?
+
+  listingSnapshot Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
+  provider            Provider             @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  tourDeparture       TourDeparture?       @relation(fields: [tourDepartureId], references: [id], onDelete: SetNull)
+  vehicleAvailability VehicleAvailability? @relation(fields: [vehicleAvailabilityId], references: [id], onDelete: SetNull)
+  roomType            RoomType?            @relation(fields: [roomTypeId], references: [id], onDelete: SetNull)
+  roomAvailability    RoomAvailability?    @relation(fields: [roomAvailabilityId], references: [id], onDelete: SetNull)
+
+  roomAvailabilityId String?
+
+  payment      Payment?
+  review       Review?
+  conversation Conversation?
+
+  @@index([userId])
+  @@index([providerId])
+  @@index([listingType, listingId])
+  @@index([bookingStatus])
+  @@index([startDate])
+  @@map("bookings")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: Payment
+// ─────────────────────────────────────────────
+
+model Payment {
+  id               String        @id @default(cuid())
+  bookingId        String        @unique
+  providerId       String
+  userId           String
+  paymentGateway   String        @default("mock")
+  paymentReference String?
+  amount           Float
+  currency         String        @default("USD")
+  status           PaymentStatus @default(unpaid)
+  refundAmount     Float?
+  refundReason     String?
+  paidAt           DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([userId])
+  @@map("payments")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: Payout
+// ─────────────────────────────────────────────
+
+model Payout {
+  id              String       @id @default(cuid())
+  providerId      String
+  bookingId       String?
+  grossAmount     Float
+  platformFee     Float
+  payoutAmount    Float
+  currency        String       @default("USD")
+  status          PayoutStatus @default(pending)
+  payoutReference String?
+  paidAt          DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Restrict)
+
+  @@index([providerId])
+  @@index([status])
+  @@map("payouts")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: Conversation
+// ─────────────────────────────────────────────
+
+model Conversation {
+  id                  String       @id @default(cuid())
+  travelerId          String
+  providerId          String
+  listingType         ListingType?
+  listingId           String?
+  bookingId           String?      @unique
+  lastMessageAt       DateTime     @default(now())
+  lastMessagePreview  String?
+  travelerUnreadCount Int          @default(0)
+  providerUnreadCount Int          @default(0)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  traveler User     @relation(fields: [travelerId], references: [id], onDelete: Cascade)
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  booking  Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  messages Message[]
+
+  @@unique([travelerId, providerId])
+  @@index([travelerId])
+  @@index([providerId])
+  @@index([lastMessageAt(sort: Desc)])
+  @@map("conversations")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: Message
+// ─────────────────────────────────────────────
+
+model Message {
+  id             String     @id @default(cuid())
+  conversationId String
+  senderId       String
+  senderRole     SenderRole
+  text           String
+  attachments    String[]
+  isRead         Boolean    @default(false)
+  readAt         DateTime?
+  createdAt      DateTime   @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([createdAt])
+  @@map("messages")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: Review
+// One per completed booking. listingId is a plain
+// string — polymorphic lookups handled in app code.
+// ─────────────────────────────────────────────
+
+model Review {
+  id            String      @id @default(cuid())
+  bookingId     String      @unique
+  userId        String
+  providerId    String
+  listingType   ListingType
+  listingId     String
+  rating        Int
+  title         String?
+  comment       String?
+  providerReply String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([listingType, listingId])
+  @@index([userId])
+  @@index([providerId])
+  @@map("reviews")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: WishlistItem
+// listingId is a plain string — resolved in app code.
+// ─────────────────────────────────────────────
+
+model WishlistItem {
+  id          String      @id @default(cuid())
+  userId      String
+  listingType ListingType
+  listingId   String
+  createdAt   DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingType, listingId])
+  @@index([userId])
+  @@map("wishlist_items")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: Notification
+// ─────────────────────────────────────────────
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String
+  actionUrl String?
+  isRead    Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
+}

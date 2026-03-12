@@ -112,9 +112,7 @@ export default function HeroInteractive() {
             <span className="text-green-400">GO</span>
             <span className="text-white">LIA</span>
           </h1>
-          <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white/90 px-4">
-            Your #1 Travel Consulting Service
-          </div>
+         
         </div>
 
     
