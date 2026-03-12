@@ -2,8 +2,9 @@
 
 import { Suspense, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { ChevronLeft, Loader2, ChevronRight, Lock } from 'lucide-react'
+import { ChevronLeft, Loader2, ChevronRight, Lock, AlertTriangle } from 'lucide-react'
 import { TravelerForm, type TravelerData } from '@/components/checkout/TravelerForm'
 import { BookingSummary } from '@/components/checkout/BookingSummary'
 import { getTourBySlug } from '@/lib/mock-data/tourDetails'
@@ -14,23 +15,26 @@ import {
   saveBooking,
   calcServiceFee,
 } from '@/lib/booking'
+import { createBooking } from '@/lib/api/bookings'
 
 const EMPTY_TRAVELER: TravelerData = {
   name: '', email: '', phone: '', country: '', specialRequests: '',
 }
 
 function CheckoutContent() {
-  const params = useSearchParams()
-  const router = useRouter()
+  const params    = useSearchParams()
+  const router    = useRouter()
+  const { data: session } = useSession()
 
   // Read URL params passed from TourBookingCard
-  const slug      = params.get('slug') ?? ''
-  const tourId    = params.get('tourId') ?? ''
+  const slug      = params.get('slug')     ?? ''
+  const tourId    = params.get('tourId')   ?? ''
+  const depId     = params.get('depId')    ?? ''   // backend departure ID (optional)
   const guests    = Math.max(1, Number(params.get('guests') ?? 1))
-  const date      = params.get('date') ?? ''
+  const date      = params.get('date')     ?? ''
 
   // Resolve tour data — prefer full detail, fallback to list entry
-  const detail  = getTourBySlug(slug)
+  const detail   = getTourBySlug(slug)
   const listTour = mockTours.find(t => t.id === tourId || t.slug === slug)
   const tourTitle    = detail?.title    ?? listTour?.title    ?? 'Mongolia Tour'
   const tourLocation = detail?.location ?? listTour?.location ?? 'Mongolia'
@@ -38,9 +42,10 @@ function CheckoutContent() {
   const tourImage    = detail?.images[0] ?? listTour?.images[0]
   const price        = detail?.price    ?? listTour?.price    ?? 0
 
-  const [traveler, setTraveler] = useState<TravelerData>(EMPTY_TRAVELER)
-  const [errors, setErrors] = useState<Partial<Record<keyof TravelerData, string>>>({})
-  const [submitting, setSubmitting] = useState(false)
+  const [traveler,    setTraveler]    = useState<TravelerData>(EMPTY_TRAVELER)
+  const [errors,      setErrors]      = useState<Partial<Record<keyof TravelerData, string>>>({})
+  const [submitting,  setSubmitting]  = useState(false)
+  const [apiError,    setApiError]    = useState<string | null>(null)
 
   function validate(): boolean {
     const e: Partial<Record<keyof TravelerData, string>> = {}
@@ -58,16 +63,71 @@ function CheckoutContent() {
     e.preventDefault()
     if (!validate()) return
     setSubmitting(true)
-
-    // Simulate a short async "processing" delay
-    await new Promise(r => setTimeout(r, 1200))
+    setApiError(null)
 
     const subtotal   = price * guests
     const serviceFee = calcServiceFee(subtotal)
+
+    // ── Attempt backend booking ──────────────────────────────────────────
+    const token = session?.user?.accessToken
+    if (token && tourId) {
+      try {
+        const backendBooking = await createBooking(
+          {
+            listingType:      'tour',
+            listingId:        tourId,
+            tourDepartureId:  depId || undefined,
+            startDate:        date || new Date().toISOString().split('T')[0],
+            guests,
+            adults:           guests,
+            children:         0,
+            travelerFullName: traveler.name,
+            travelerEmail:    traveler.email,
+            travelerPhone:    traveler.phone,
+            travelerCountry:  traveler.country,
+            specialRequests:  traveler.specialRequests || undefined,
+          },
+          token,
+        )
+
+        // Also persist to localStorage for the success page display
+        const booking: Booking = {
+          id:             backendBooking.bookingCode,
+          tourId,
+          tourSlug:       slug,
+          tourTitle,
+          tourLocation,
+          tourDuration,
+          date,
+          guests,
+          pricePerPerson: price,
+          subtotal:       backendBooking.subtotal,
+          serviceFee:     backendBooking.serviceFee,
+          total:          backendBooking.totalAmount,
+          travelerName:   traveler.name,
+          email:          traveler.email,
+          phone:          traveler.phone,
+          country:        traveler.country,
+          specialRequests: traveler.specialRequests,
+          createdAt:      new Date().toISOString(),
+        }
+        saveBooking(booking)
+        router.push('/booking-success')
+        return
+      } catch (err: any) {
+        // Backend returned an error — show it and stop
+        setApiError(err.message ?? 'Booking failed. Please try again.')
+        setSubmitting(false)
+        return
+      }
+    }
+
+    // ── Fallback: no auth / no tourId — save locally only ──────────────
+    await new Promise(r => setTimeout(r, 900))
     const booking: Booking = {
-      id: generateBookingId(),
+      id:             generateBookingId(),
       tourId,
-      tourSlug: slug,
+      tourSlug:       slug,
       tourTitle,
       tourLocation,
       tourDuration,
@@ -76,15 +136,14 @@ function CheckoutContent() {
       pricePerPerson: price,
       subtotal,
       serviceFee,
-      total: subtotal + serviceFee,
-      travelerName: traveler.name,
-      email: traveler.email,
-      phone: traveler.phone,
-      country: traveler.country,
+      total:          subtotal + serviceFee,
+      travelerName:   traveler.name,
+      email:          traveler.email,
+      phone:          traveler.phone,
+      country:        traveler.country,
       specialRequests: traveler.specialRequests,
-      createdAt: new Date().toISOString(),
+      createdAt:      new Date().toISOString(),
     }
-
     saveBooking(booking)
     router.push('/booking-success')
   }
@@ -128,6 +187,29 @@ function CheckoutContent() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        {/* Auth notice — shown when not logged in */}
+        {!session && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800">Sign in to save your booking</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                You can continue as a guest, but your booking won&apos;t be synced to your account.{' '}
+                <Link href="/auth/login" className="underline hover:no-underline">Sign in</Link>
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* API error banner */}
+        {apiError && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+            <p className="text-sm text-red-700">{apiError}</p>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} noValidate>
           <div className="flex flex-col lg:flex-row gap-8">
 
@@ -139,7 +221,6 @@ function CheckoutContent() {
                 errors={errors}
               />
 
-              {/* Confirm button (desktop: shows here; mobile: same) */}
               <button
                 type="submit"
                 disabled={submitting}
@@ -160,7 +241,9 @@ function CheckoutContent() {
               </button>
 
               <p className="text-center text-xs text-gray-400">
-                Your card will not be charged until we confirm availability.
+                {session
+                  ? 'Your booking will be saved to your account.'
+                  : 'Your card will not be charged until we confirm availability.'}
               </p>
             </div>
 

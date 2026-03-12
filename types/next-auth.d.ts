@@ -5,6 +5,8 @@ declare module "next-auth" {
     id: string;
     role: string;
     avatar?: string;
+    /** JWT issued by the Express backend — stored in NextAuth session */
+    accessToken?: string;
   }
 
   interface Session {
@@ -14,6 +16,8 @@ declare module "next-auth" {
       email?: string | null;
       role: string;
       avatar?: string;
+      /** Backend JWT — use this as Bearer token for API calls */
+      accessToken?: string;
     };
   }
 }
@@ -23,5 +27,6 @@ declare module "next-auth/jwt" {
     id: string;
     role: string;
     avatar?: string;
+    accessToken?: string;
   }
 }

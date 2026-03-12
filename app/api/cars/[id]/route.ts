@@ -5,11 +5,12 @@ import Car from '@/lib/models/Car';
 import Business from '@/lib/models/Business';
 
 // GET - Get a single car
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     await connectDB();
 
-    const car = await Car.findById(params.id).populate('businessId', 'businessName logo rating contactInfo');
+    const car = await Car.findById(id).populate('businessId', 'businessName logo rating contactInfo');
 
     if (!car) {
       return NextResponse.json({ error: 'Car not found' }, { status: 404 });
@@ -23,8 +24,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 }
 
 // PUT - Update a car
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const session = await auth();
 
     if (!session || !session.user) {
@@ -33,14 +35,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
     await connectDB();
 
-    // Get user's business
     const business = await Business.findOne({ userId: session.user.id });
     if (!business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
 
-    // Check if car belongs to user's business
-    const car = await Car.findById(params.id);
+    const car = await Car.findById(id);
     if (!car) {
       return NextResponse.json({ error: 'Car not found' }, { status: 404 });
     }
@@ -52,7 +52,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const body = await req.json();
 
     const updatedCar = await Car.findByIdAndUpdate(
-      params.id,
+      id,
       { $set: body },
       { new: true, runValidators: true }
     );
@@ -65,8 +65,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 }
 
 // DELETE - Delete a car
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const session = await auth();
 
     if (!session || !session.user) {
@@ -75,14 +76,12 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
     await connectDB();
 
-    // Get user's business
     const business = await Business.findOne({ userId: session.user.id });
     if (!business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
 
-    // Check if car belongs to user's business
-    const car = await Car.findById(params.id);
+    const car = await Car.findById(id);
     if (!car) {
       return NextResponse.json({ error: 'Car not found' }, { status: 404 });
     }
@@ -91,7 +90,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       return NextResponse.json({ error: 'Unauthorized to delete this car' }, { status: 403 });
     }
 
-    await Car.findByIdAndDelete(params.id);
+    await Car.findByIdAndDelete(id);
 
     return NextResponse.json({ message: 'Car deleted successfully' }, { status: 200 });
   } catch (error: any) {

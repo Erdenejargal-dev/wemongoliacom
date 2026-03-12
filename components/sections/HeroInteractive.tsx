@@ -96,14 +96,7 @@ export default function HeroInteractive() {
 
       <div className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 pt-16 pb-20 sm:pt-20 sm:pb-24 md:pt-24 md:pb-28 lg:pt-28 lg:pb-32">
         {/* Announcement Badge */}
-        <div className="flex justify-center mb-6 sm:mb-8 animate-fade-in">
-          <div className="inline-flex items-center gap-2 px-3 py-2 sm:px-5 sm:py-2.5 bg-white/10 backdrop-blur-md rounded-full border border-white/20 shadow-lg">
-            <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-green-400 flex-shrink-0" />
-            <span className="text-xs sm:text-sm font-medium text-white text-center">
-              Mongolia&apos;s #1 Travel Agency with Full Insurance
-            </span>
-          </div>
-        </div>
+     
 
         {/* Main Headline */}
         <div className="text-center mb-6 sm:mb-8">

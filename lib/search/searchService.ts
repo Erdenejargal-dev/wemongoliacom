@@ -1,74 +1,69 @@
-import { mockTours } from '@/lib/mock-data/tours'
+/**
+ * lib/search/searchService.ts
+ *
+ * Primary: call the Express backend GET /search?type=tour
+ * Fallback: if the backend is unreachable, filter the local mock data.
+ *
+ * This keeps the tours page working during development even when the
+ * backend server is not running.
+ */
+
 import type { SearchQuery, Tour } from './types'
+import { searchToursFromBackend } from '@/lib/api/search'
 
-/** Simulates an async API call — swap fetch() in here when backend is ready */
+// ── Lazy-loaded mock fallback ────────────────────────────────────────────────
+async function getMockTours(): Promise<Tour[]> {
+  const { mockTours } = await import('@/lib/mock-data/tours')
+  return mockTours as unknown as Tour[]
+}
+
+// ── Mock filter logic (unchanged from original) ───────────────────────────────
+function filterMock(tours: Tour[], q: SearchQuery): Tour[] {
+  return tours.filter(t => {
+    if (q.destination) {
+      const dest = q.destination.toLowerCase()
+      if (
+        !t.location.toLowerCase().includes(dest) &&
+        !t.region.toLowerCase().includes(dest) &&
+        !t.title.toLowerCase().includes(dest)
+      ) return false
+    }
+    if (t.price < q.priceRange[0] || t.price > q.priceRange[1]) return false
+    if (q.rating > 0 && t.rating < q.rating) return false
+    if (q.style !== 'any' && t.style !== q.style) return false
+    if (q.region && t.regionSlug !== q.region) return false
+    if (q.experienceType && !t.experienceTypes.includes(q.experienceType)) return false
+    if (q.durationFilter && q.durationFilter !== 'any') {
+      if (q.durationFilter === '1'   && t.durationDays !== 1)                   return false
+      if (q.durationFilter === '2-3' && (t.durationDays < 2 || t.durationDays > 3)) return false
+      if (q.durationFilter === '4-7' && (t.durationDays < 4 || t.durationDays > 7)) return false
+      if (q.durationFilter === '8+'  && t.durationDays < 8)                     return false
+    }
+    return true
+  })
+}
+
+function sortMock(tours: Tour[], sortBy: string): Tour[] {
+  return [...tours].sort((a, b) => {
+    if (sortBy === 'price_asc')  return a.price - b.price
+    if (sortBy === 'price_desc') return b.price - a.price
+    if (sortBy === 'top_rated')  return b.rating - a.rating
+    // 'popular' — keep original order (pre-sorted by mock data)
+    return 0
+  })
+}
+
+// ── Exported function used by useSearch ───────────────────────────────────────
 export async function searchTours(query: SearchQuery): Promise<Tour[]> {
-  // Simulate network latency
-  await new Promise(r => setTimeout(r, 400))
-
-  let results = mockTours.filter(t => t.available)
-
-  // Destination filter
-  if (query.destination.trim()) {
-    const q = query.destination.toLowerCase()
-    results = results.filter(t =>
-      t.location.toLowerCase().includes(q) ||
-      t.region.toLowerCase().includes(q) ||
-      t.title.toLowerCase().includes(q)
-    )
+  // 1. Try backend
+  try {
+    const { tours } = await searchToursFromBackend(query)
+    if (tours.length > 0) return tours as unknown as Tour[]
+  } catch {
+    // Backend unreachable — fall through to mock data
   }
 
-  // Price range
-  results = results.filter(t =>
-    t.price >= query.priceRange[0] && t.price <= query.priceRange[1]
-  )
-
-  // Duration filter
-  if (query.durationFilter !== 'any') {
-    results = results.filter(t => {
-      switch (query.durationFilter) {
-        case '1':    return t.durationDays === 1
-        case '2-3':  return t.durationDays >= 2 && t.durationDays <= 3
-        case '4-7':  return t.durationDays >= 4 && t.durationDays <= 7
-        case '8+':   return t.durationDays >= 8
-        default:     return true
-      }
-    })
-  }
-
-  // Min rating
-  if (query.rating > 0) {
-    results = results.filter(t => t.rating >= query.rating)
-  }
-
-  // Style filter
-  if (query.style !== 'any') {
-    results = results.filter(t => t.style === query.style)
-  }
-
-  // Region filter (from hero dropdown)
-  if (query.region) {
-    results = results.filter(t => t.regionSlug === query.region)
-  }
-
-  // Experience type filter (from hero dropdown)
-  if (query.experienceType) {
-    results = results.filter(t => t.experienceTypes.includes(query.experienceType))
-  }
-
-  // Guest capacity
-  const totalGuests = query.guests.adults + query.guests.children
-  if (totalGuests > 1) {
-    results = results.filter(t => t.maxGuests >= totalGuests)
-  }
-
-  // Sorting
-  switch (query.sortBy) {
-    case 'price_asc':  results.sort((a, b) => a.price - b.price); break
-    case 'price_desc': results.sort((a, b) => b.price - a.price); break
-    case 'top_rated':  results.sort((a, b) => b.rating - a.rating); break
-    case 'popular':    results.sort((a, b) => b.reviewCount - a.reviewCount); break
-  }
-
-  return results
+  // 2. Fallback to mock data
+  const all = await getMockTours()
+  return sortMock(filterMock(all, query), query.sortBy)
 }

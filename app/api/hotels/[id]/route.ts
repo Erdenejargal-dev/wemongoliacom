@@ -5,11 +5,12 @@ import Hotel from '@/lib/models/Hotel';
 import Business from '@/lib/models/Business';
 
 // GET - Get a single hotel
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     await connectDB();
 
-    const hotel = await Hotel.findById(params.id).populate('businessId', 'businessName logo rating contactInfo');
+    const hotel = await Hotel.findById(id).populate('businessId', 'businessName logo rating contactInfo');
 
     if (!hotel) {
       return NextResponse.json({ error: 'Hotel not found' }, { status: 404 });
@@ -23,8 +24,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 }
 
 // PUT - Update a hotel
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const session = await auth();
 
     if (!session || !session.user) {
@@ -33,14 +35,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
     await connectDB();
 
-    // Get user's business
     const business = await Business.findOne({ userId: session.user.id });
     if (!business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
 
-    // Check if hotel belongs to user's business
-    const hotel = await Hotel.findById(params.id);
+    const hotel = await Hotel.findById(id);
     if (!hotel) {
       return NextResponse.json({ error: 'Hotel not found' }, { status: 404 });
     }
@@ -52,7 +52,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const body = await req.json();
 
     const updatedHotel = await Hotel.findByIdAndUpdate(
-      params.id,
+      id,
       { $set: body },
       { new: true, runValidators: true }
     );
@@ -65,8 +65,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 }
 
 // DELETE - Delete a hotel
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const session = await auth();
 
     if (!session || !session.user) {
@@ -75,14 +76,12 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
     await connectDB();
 
-    // Get user's business
     const business = await Business.findOne({ userId: session.user.id });
     if (!business) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 });
     }
 
-    // Check if hotel belongs to user's business
-    const hotel = await Hotel.findById(params.id);
+    const hotel = await Hotel.findById(id);
     if (!hotel) {
       return NextResponse.json({ error: 'Hotel not found' }, { status: 404 });
     }
@@ -91,7 +90,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       return NextResponse.json({ error: 'Unauthorized to delete this hotel' }, { status: 403 });
     }
 
-    await Hotel.findByIdAndDelete(params.id);
+    await Hotel.findByIdAndDelete(id);
 
     return NextResponse.json({ message: 'Hotel deleted successfully' }, { status: 200 });
   } catch (error: any) {
