@@ -1,10 +1,10 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Star, MapPin, Clock, Users, Globe, Zap, CheckCircle2, XCircle, ChevronLeft, Shield } from 'lucide-react'
-import { getTourBySlug } from '@/lib/mock-data/tourDetails'
 import { TourGallery } from '@/components/tours/TourGallery'
 import { TourItinerary } from '@/components/tours/TourItinerary'
 import { TourBookingCard } from '@/components/tours/TourBookingCard'
+import { fetchTourBySlug } from '@/lib/api/tours'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -12,15 +12,26 @@ interface Props {
 
 export default async function TourDetailPage({ params }: Props) {
   const { slug } = await params
-  const tour = getTourBySlug(slug)
+  const tour = await fetchTourBySlug(slug)
   if (!tour) notFound()
 
-  const difficultyColor = {
+  const images = (tour.images ?? []).map(i => i.imageUrl).filter(Boolean)
+  const durationLabel = tour.durationDays ? `${tour.durationDays} day${tour.durationDays > 1 ? 's' : ''}` : ''
+  const languagesLabel = Array.isArray(tour.languages) && tour.languages.length > 0
+    ? tour.languages.join(', ')
+    : '—'
+
+  const difficulty = tour.difficulty ?? '—'
+  const difficultyColor = ({
     Easy: 'bg-green-50 text-green-700',
     Moderate: 'bg-yellow-50 text-yellow-700',
     Challenging: 'bg-orange-50 text-orange-700',
     Extreme: 'bg-red-50 text-red-700',
-  }[tour.difficulty]
+  } as Record<string, string>)[difficulty] ?? 'bg-gray-100 text-gray-600'
+
+  const included = (tour.includedItems ?? []).map(i => i.label).filter(Boolean)
+  const excluded = (tour.excludedItems ?? []).map(i => i.label).filter(Boolean)
+  const itinerary = (tour.itinerary ?? []).slice().sort((a, b) => a.dayNumber - b.dayNumber)
 
   return (
     <div className="min-h-screen bg-gray-50/40">
@@ -39,7 +50,13 @@ export default async function TourDetailPage({ params }: Props) {
 
         {/* ── Gallery ──────────────────────────── */}
         <div className="mb-6">
-          <TourGallery images={tour.images} title={tour.title} />
+          {images.length > 0 ? (
+            <TourGallery images={images} title={tour.title} />
+          ) : (
+            <div className="rounded-2xl border border-gray-100 bg-white h-[420px] flex items-center justify-center text-sm text-gray-400">
+              No photos available yet
+            </div>
+          )}
         </div>
 
         {/* ── Main layout ──────────────────────── */}
@@ -52,14 +69,18 @@ export default async function TourDetailPage({ params }: Props) {
             <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
               <div className="flex flex-wrap items-center gap-2 mb-3">
                 <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${difficultyColor}`}>
-                  {tour.difficulty}
+                  {difficulty}
                 </span>
-                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 capitalize">
-                  {tour.style}
-                </span>
-                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700">
-                  {tour.experienceType}
-                </span>
+                {tour.category && (
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600 capitalize">
+                    {tour.category}
+                  </span>
+                )}
+                {tour.experienceType && (
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700">
+                    {tour.experienceType}
+                  </span>
+                )}
               </div>
 
               <h1 className="text-2xl font-bold text-gray-900 mb-3 leading-tight">{tour.title}</h1>
@@ -67,24 +88,24 @@ export default async function TourDetailPage({ params }: Props) {
               <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-4">
                 <div className="flex items-center gap-1.5">
                   <MapPin className="w-4 h-4 text-green-500" />
-                  {tour.location}, {tour.region}
+                  {tour.destination?.name ?? 'Mongolia'}
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                  <span className="font-semibold text-gray-900">{tour.rating}</span>
-                  <span>({tour.reviewCount} reviews)</span>
+                  <span className="font-semibold text-gray-900">{tour.ratingAverage ?? 0}</span>
+                  <span>({tour.reviewsCount ?? 0} reviews)</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Clock className="w-4 h-4 text-gray-400" />
-                  {tour.duration}
+                  {durationLabel || '—'}
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Users className="w-4 h-4 text-gray-400" />
-                  {tour.groupSize}
+                  Max {tour.maxGuests} guests
                 </div>
               </div>
 
-              <p className="text-gray-700 leading-relaxed">{tour.description}</p>
+              <p className="text-gray-700 leading-relaxed">{tour.description ?? tour.shortDescription ?? '—'}</p>
             </div>
 
             {/* Key information grid */}
@@ -92,11 +113,11 @@ export default async function TourDetailPage({ params }: Props) {
               <h2 className="text-lg font-bold text-gray-900 mb-4">Tour Information</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {[
-                  { icon: Clock, label: 'Duration', value: tour.duration },
-                  { icon: Users, label: 'Group Size', value: tour.groupSize },
-                  { icon: Zap, label: 'Experience', value: tour.experienceType },
-                  { icon: Shield, label: 'Difficulty', value: tour.difficulty },
-                  { icon: Globe, label: 'Language', value: tour.language },
+                  { icon: Clock, label: 'Duration', value: durationLabel || '—' },
+                  { icon: Users, label: 'Group Size', value: `Max ${tour.maxGuests} guests` },
+                  { icon: Zap, label: 'Experience', value: tour.experienceType ?? '—' },
+                  { icon: Shield, label: 'Difficulty', value: difficulty },
+                  { icon: Globe, label: 'Language', value: languagesLabel },
                   { icon: MapPin, label: 'Pickup', value: tour.pickupIncluded ? 'Included' : 'Not included' },
                 ].map(item => (
                   <div key={item.label} className="flex items-start gap-3 p-3 rounded-xl bg-gray-50">
@@ -112,22 +133,24 @@ export default async function TourDetailPage({ params }: Props) {
               </div>
             </div>
 
-            {/* Highlights */}
+            {/* Highlights (backend gap: no highlights field yet) */}
             <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Tour Highlights</h2>
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {tour.highlights.map((h, i) => (
-                  <li key={i} className="flex items-center gap-2.5 text-sm text-gray-700">
-                    <span className="w-2 h-2 rounded-full bg-green-400 shrink-0" />
-                    {h}
-                  </li>
-                ))}
-              </ul>
+              <h2 className="text-lg font-bold text-gray-900 mb-2">Tour Highlights</h2>
+              <p className="text-sm text-gray-500">
+                Highlights will appear here once providers add them.
+              </p>
             </div>
 
             {/* Itinerary */}
             <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-              <TourItinerary itinerary={tour.itinerary} />
+              {itinerary.length > 0 ? (
+                <TourItinerary itinerary={itinerary} />
+              ) : (
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900 mb-2">Day-by-Day Itinerary</h2>
+                  <p className="text-sm text-gray-500">Itinerary will be available soon.</p>
+                </div>
+              )}
             </div>
 
             {/* Included / Not Included */}
@@ -139,12 +162,14 @@ export default async function TourDetailPage({ params }: Props) {
                     <CheckCircle2 className="w-4 h-4 text-green-500" /> Included
                   </p>
                   <ul className="space-y-2">
-                    {tour.included.map((item, i) => (
+                    {included.length > 0 ? included.map((item, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
                         <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0 mt-0.5" />
                         {item}
                       </li>
-                    ))}
+                    )) : (
+                      <li className="text-sm text-gray-500">No included items listed yet.</li>
+                    )}
                   </ul>
                 </div>
                 <div>
@@ -152,50 +177,32 @@ export default async function TourDetailPage({ params }: Props) {
                     <XCircle className="w-4 h-4 text-gray-400" /> Not Included
                   </p>
                   <ul className="space-y-2">
-                    {tour.notIncluded.map((item, i) => (
+                    {excluded.length > 0 ? excluded.map((item, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-gray-500">
                         <XCircle className="w-3.5 h-3.5 text-gray-300 shrink-0 mt-0.5" />
                         {item}
                       </li>
-                    ))}
+                    )) : (
+                      <li className="text-sm text-gray-500">No excluded items listed yet.</li>
+                    )}
                   </ul>
                 </div>
               </div>
             </div>
 
-            {/* Reviews */}
+            {/* Reviews (backend gap: tour reviews are not yet exposed on this endpoint) */}
             <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-              <div className="flex items-center gap-3 mb-5">
+              <div className="flex items-center gap-3 mb-3">
                 <h2 className="text-lg font-bold text-gray-900">Traveler Reviews</h2>
                 <div className="flex items-center gap-1.5 bg-amber-50 px-3 py-1 rounded-full">
                   <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                  <span className="text-sm font-bold text-gray-900">{tour.rating}</span>
-                  <span className="text-xs text-gray-500">({tour.reviewCount})</span>
+                  <span className="text-sm font-bold text-gray-900">{tour.ratingAverage ?? 0}</span>
+                  <span className="text-xs text-gray-500">({tour.reviewsCount ?? 0})</span>
                 </div>
               </div>
-
-              <div className="space-y-5">
-                {tour.reviews.map(review => (
-                  <div key={review.id} className="pb-5 border-b border-gray-50 last:border-0 last:pb-0">
-                    <div className="flex items-start gap-3 mb-3">
-                      <img src={review.avatar} alt={review.name} className="w-10 h-10 rounded-full object-cover shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-semibold text-gray-900">{review.name}</p>
-                          <span className="text-xs text-gray-400">{review.country}</span>
-                          <span className="ml-auto text-xs text-gray-400">{new Date(review.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
-                        </div>
-                        <div className="flex gap-0.5 mt-1">
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <Star key={i} className={`w-3 h-3 ${i < review.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`} />
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-700 leading-relaxed">{review.comment}</p>
-                  </div>
-                ))}
-              </div>
+              <p className="text-sm text-gray-500">
+                Reviews will appear here once the reviews API is connected to tour pages.
+              </p>
             </div>
 
           </div>
@@ -205,7 +212,19 @@ export default async function TourDetailPage({ params }: Props) {
             {/* Mobile: shown inline after gallery */}
             {/* Desktop: sticky */}
             <div className="lg:sticky lg:top-24">
-              <TourBookingCard tour={tour} />
+              <TourBookingCard
+                tour={{
+                  id: tour.id,
+                  slug: tour.slug,
+                  basePrice: tour.basePrice,
+                  currency: tour.currency,
+                  durationDays: tour.durationDays,
+                  ratingAverage: tour.ratingAverage,
+                  reviewsCount: tour.reviewsCount,
+                  maxGuests: tour.maxGuests,
+                }}
+                departures={tour.departures ?? []}
+              />
 
               {/* Contact card */}
               <div className="mt-4 bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
@@ -221,9 +240,4 @@ export default async function TourDetailPage({ params }: Props) {
       </div>
     </div>
   )
-}
-
-export async function generateStaticParams() {
-  const { tourDetails } = await import('@/lib/mock-data/tourDetails')
-  return tourDetails.map(t => ({ slug: t.slug }))
 }

@@ -5,11 +5,11 @@ import { X, AlertTriangle, Loader2 } from 'lucide-react'
 
 interface CancelBookingButtonProps {
   bookingId: string
-  tourTitle: string
+  listingTitle: string
   onConfirm: () => void
 }
 
-export function CancelBookingButton({ bookingId, tourTitle, onConfirm }: CancelBookingButtonProps) {
+export function CancelBookingButton({ bookingId, listingTitle, onConfirm }: CancelBookingButtonProps) {
   const [open, setOpen] = useState(false)
   const [cancelling, setCancelling] = useState(false)
 
@@ -39,7 +39,7 @@ export function CancelBookingButton({ bookingId, tourTitle, onConfirm }: CancelB
                 <AlertTriangle className="w-5 h-5 text-red-500" />
               </div>
               <h3 className="text-base font-bold text-gray-900 mb-1">Cancel this trip?</h3>
-              <p className="text-sm text-gray-600 leading-relaxed mb-1">{tourTitle}</p>
+              <p className="text-sm text-gray-600 leading-relaxed mb-1">{listingTitle}</p>
               <p className="text-xs text-gray-400 mb-5">Booking ID: <span className="font-mono font-semibold text-gray-600">{bookingId}</span></p>
               <p className="text-sm text-gray-700 mb-5">
                 Are you sure you want to cancel this booking? This action cannot be undone.

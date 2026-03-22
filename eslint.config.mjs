@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Monorepo / backend build output:
+    "backend/dist/**",
+    "backend/node_modules/**",
+    // Backend is linted separately
+    "backend/src/**",
   ]),
 ]);
 

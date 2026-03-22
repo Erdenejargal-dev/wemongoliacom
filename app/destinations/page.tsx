@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { Search, X, MapPin, Compass } from 'lucide-react'
 import { destinations } from '@/lib/mock-data/destinations'
 import { DestinationCard } from '@/components/destinations/DestinationCard'
+import Link from 'next/link'
 
 const REGIONS = ['All', ...Array.from(new Set(destinations.map(d => d.region))).sort()]
 const DIFFICULTIES = ['All', 'Easy', 'Moderate', 'Challenging']
@@ -16,18 +17,16 @@ export default function DestinationsPage() {
 
   const featured = destinations.filter(d => FEATURED_SLUGS.includes(d.slug))
 
-  const filtered = useMemo(() => {
-    return destinations.filter(d => {
-      const q = search.toLowerCase()
-      const matchSearch = !q
-        || d.name.toLowerCase().includes(q)
-        || d.region.toLowerCase().includes(q)
-        || d.tagline.toLowerCase().includes(q)
-      const matchRegion     = region === 'All'     || d.region === region
-      const matchDifficulty = difficulty === 'All' || d.difficulty === difficulty
-      return matchSearch && matchRegion && matchDifficulty
-    })
-  }, [search, region, difficulty])
+  const filtered = destinations.filter(d => {
+    const q = search.toLowerCase()
+    const matchSearch = !q
+      || d.name.toLowerCase().includes(q)
+      || d.region.toLowerCase().includes(q)
+      || d.tagline.toLowerCase().includes(q)
+    const matchRegion     = region === 'All'     || d.region === region
+    const matchDifficulty = difficulty === 'All' || d.difficulty === difficulty
+    return matchSearch && matchRegion && matchDifficulty
+  })
 
   const hasFilters = search || region !== 'All' || difficulty !== 'All'
 
@@ -157,11 +156,11 @@ export default function DestinationsPage() {
         <section className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-8 text-center">
           <h3 className="text-xl font-bold text-white mb-2">Can&apos;t find what you&apos;re looking for?</h3>
           <p className="text-white/80 text-sm mb-5">Browse all available tours across Mongolia and filter by your interests.</p>
-          <a href="/tours"
+          <Link href="/tours"
             className="inline-flex items-center gap-2 bg-white text-green-700 font-bold text-sm px-6 py-3 rounded-xl hover:bg-green-50 transition-colors shadow-lg">
             <Compass className="w-4 h-4" />
             Browse All Tours
-          </a>
+          </Link>
         </section>
 
       </div>

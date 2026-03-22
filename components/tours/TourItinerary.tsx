@@ -1,15 +1,22 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, MapPin, Bed, Utensils } from 'lucide-react'
-import type { TourItineraryDay } from '@/lib/mock-data/tourDetails'
+import { ChevronDown, Bed } from 'lucide-react'
 
 interface TourItineraryProps {
-  itinerary: TourItineraryDay[]
+  itinerary: {
+    dayNumber: number
+    title: string
+    description?: string | null
+    overnightLocation?: string | null
+  }[]
 }
 
 export function TourItinerary({ itinerary }: TourItineraryProps) {
-  const [openDays, setOpenDays] = useState<Set<number>>(new Set([1]))
+  const [openDays, setOpenDays] = useState<Set<number>>(() => {
+    const first = itinerary?.[0]?.dayNumber
+    return new Set(first ? [first] : [])
+  })
 
   const toggle = (day: number) => {
     setOpenDays(prev => {
@@ -19,7 +26,7 @@ export function TourItinerary({ itinerary }: TourItineraryProps) {
     })
   }
 
-  const expandAll = () => setOpenDays(new Set(itinerary.map(d => d.day)))
+  const expandAll = () => setOpenDays(new Set(itinerary.map(d => d.dayNumber)))
   const collapseAll = () => setOpenDays(new Set())
 
   return (
@@ -35,18 +42,18 @@ export function TourItinerary({ itinerary }: TourItineraryProps) {
 
       <div className="space-y-2">
         {itinerary.map((day, idx) => {
-          const isOpen = openDays.has(day.day)
+          const isOpen = openDays.has(day.dayNumber)
           const isLast = idx === itinerary.length - 1
           return (
-            <div key={day.day} className="border border-gray-100 rounded-2xl overflow-hidden bg-white">
+            <div key={day.dayNumber} className="border border-gray-100 rounded-2xl overflow-hidden bg-white">
               <button
-                onClick={() => toggle(day.day)}
+                onClick={() => toggle(day.dayNumber)}
                 className="flex items-center justify-between w-full px-5 py-4 text-left hover:bg-gray-50/70 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   {/* Day badge */}
                   <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isOpen ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
-                    Day {day.day}
+                    Day {day.dayNumber}
                   </span>
                   <span className="text-sm font-semibold text-gray-900">{day.title}</span>
                 </div>
@@ -55,28 +62,15 @@ export function TourItinerary({ itinerary }: TourItineraryProps) {
 
               {isOpen && (
                 <div className="px-5 pb-5 border-t border-gray-50">
-                  <p className="text-sm text-gray-600 leading-relaxed mt-3 mb-3">{day.description}</p>
-
-                  {/* Activities */}
-                  <ul className="space-y-1.5 mb-3">
-                    {day.activities.map((a, i) => (
-                      <li key={i} className="flex items-center gap-2 text-sm text-gray-700">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
-                        {a}
-                      </li>
-                    ))}
-                  </ul>
+                  {day.description && (
+                    <p className="text-sm text-gray-600 leading-relaxed mt-3 mb-3">{day.description}</p>
+                  )}
 
                   {/* Meta pills */}
                   <div className="flex flex-wrap gap-2 mt-3">
-                    {day.accommodation && (
+                    {day.overnightLocation && (
                       <span className="flex items-center gap-1.5 text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full">
-                        <Bed className="w-3 h-3" />{day.accommodation}
-                      </span>
-                    )}
-                    {day.meals && (
-                      <span className="flex items-center gap-1.5 text-xs bg-amber-50 text-amber-700 px-2.5 py-1 rounded-full">
-                        <Utensils className="w-3 h-3" />{day.meals}
+                        <Bed className="w-3 h-3" />{day.overnightLocation}
                       </span>
                     )}
                   </div>

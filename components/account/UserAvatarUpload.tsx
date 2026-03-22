@@ -62,6 +62,23 @@ export function UserAvatarUpload({ current, name, onChange }: UserAvatarUploadPr
         className="hidden"
         onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
       />
+
+      {/* URL fallback: backend persists only URLs (no upload endpoint for user avatar yet). */}
+      <div className="w-full">
+        <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1.5">
+          Avatar URL
+        </label>
+        <input
+          type="url"
+          value={preview}
+          onChange={e => { setPreview(e.target.value); onChange(e.target.value) }}
+          placeholder="https://example.com/avatar.jpg"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-400/10"
+        />
+        <p className="text-[10px] text-gray-400 mt-1.5">
+          If you upload a file, saving will require a hosted URL.
+        </p>
+      </div>
     </div>
   )
 }

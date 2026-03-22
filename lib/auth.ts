@@ -3,68 +3,45 @@
  * NextAuth configuration.
  *
  * Auth strategy:
- *   PRIMARY  — Call the Express backend POST /auth/login.
- *              On success the backend returns { user, accessToken }.
- *              The accessToken is stored in the NextAuth JWT and forwarded
- *              to session.user.accessToken for Bearer-authenticated API calls.
- *
- *   FALLBACK — If the backend is unreachable (network error / not started),
- *              authenticate directly against MongoDB using bcryptjs.
- *              The session works normally; session.user.accessToken will be
- *              undefined, so backend-protected API calls won't be available,
- *              but the UI renders correctly.
+ *   Call the Express backend POST /auth/login.
+ *   On success the backend returns { user, accessToken }.
+ *   The accessToken is stored in the NextAuth JWT and forwarded to
+ *   session.user.accessToken for Bearer-authenticated API calls.
  */
 
 import NextAuth from "next-auth";
+import type { NextAuthConfig } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 
 const API_URL = process.env.API_URL ?? "http://localhost:4000/api/v1";
 
-// ── MongoDB fallback (used when Express backend is not running) ─────────────
-//
-// DATABASE ARCHITECTURE (from actual source files):
-//
-//  FRONTEND  → MongoDB Atlas (mongodb+srv://.../wemongolia)
-//              ORM: Mongoose  |  lib/mongodb.ts + lib/models/User.ts
-//              User fields:   name, email, password, role (customer|business_owner|admin)
-//              Used by:       old Next.js API routes (app/api/auth/register, etc.)
-//
-//  BACKEND   → PostgreSQL  (DATABASE_URL=postgresql://...)
-//              ORM: Prisma  |  backend/prisma/schema.prisma  provider="postgresql"
-//              User fields:   firstName, lastName, email, passwordHash, role (traveler|provider_owner|admin)
-//              Used by:       Express API (backend/src/)
-//
-//  These are TWO separate databases / user pools.
-//  This fallback lets MongoDB users (registered via old Next.js routes) still
-//  authenticate when the Express/PostgreSQL backend is not running.
-//
-async function mongoFallback(email: string, password: string) {
-  // Dynamic imports keep the bundle clean when the backend IS running
-  const { default: dbConnect } = await import("@/lib/mongodb");
-  const { default: User }      = await import("@/lib/models/User");
-  const bcrypt                 = await import("bcryptjs");
+type BackendLoginUser = {
+  id: string
+  email: string
+  firstName?: string
+  lastName?: string
+  role: string
+  avatarUrl?: string | null
+}
 
-  await dbConnect();
-
-  const user = await User.findOne({ email: email.toLowerCase().trim() }).select("+password");
-  if (!user) throw new Error("Invalid email or password.");
-
-  const valid = await bcrypt.compare(password, user.password);
-  if (!valid) throw new Error("Invalid email or password.");
-
-  return {
-    id:          (user._id as any).toString(),
-    email:       user.email,
-    name:        user.name,
-    role:        user.role,       // 'customer' | 'business_owner' | 'admin'
-    avatar:      user.avatar ?? undefined,
-    accessToken: undefined,       // no JWT without the backend
-  };
+function decodeJwt(token: string): { exp?: number; userId?: string; role?: string } {
+  try {
+    const parts = token.split('.')
+    if (parts.length < 2) return {}
+    const payloadB64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const json =
+      typeof Buffer !== 'undefined'
+        ? Buffer.from(payloadB64, 'base64').toString('utf8')
+        : atob(payloadB64)
+    return JSON.parse(json)
+  } catch {
+    return {}
+  }
 }
 
 // ── Main authorize ─────────────────────────────────────────────────────────
 
-export const authOptions = {
+export const authOptions: NextAuthConfig = {
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -73,7 +50,7 @@ export const authOptions = {
         password: { label: "Password", type: "password" },
       },
 
-      async authorize(credentials) {
+      async authorize(credentials, _req) {
         if (!credentials?.email || !credentials?.password) {
           throw new Error("Email and password are required.");
         }
@@ -81,85 +58,105 @@ export const authOptions = {
         const email    = credentials.email    as string;
         const password = credentials.password as string;
 
-        // ── 1. Try Express backend ────────────────────────────────────────
-        let backendUnreachable = false;
+        const res = await fetch(`${API_URL}/auth/login`, {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ email, password }),
+        });
+
+        let json: {
+          success: boolean;
+          data?: { user: BackendLoginUser; accessToken: string; refreshToken: string };
+          error?: string;
+        };
+
         try {
-          const res = await fetch(`${API_URL}/auth/login`, {
-            method:  "POST",
-            headers: { "Content-Type": "application/json" },
-            body:    JSON.stringify({ email, password }),
-          });
-
-          let json: {
-            success: boolean;
-            data?: { user: any; accessToken: string };
-            error?: string;
-          };
-
-          try {
-            json = await res.json();
-          } catch {
-            throw new Error("Invalid response from server.");
-          }
-
-          if (!res.ok || !json.success) {
-            // Backend is up but returned an auth error (wrong password etc.)
-            throw new Error(json.error ?? "Invalid email or password.");
-          }
-
-          const { user, accessToken } = json.data!;
-          return {
-            id:          user.id,
-            email:       user.email,
-            name:        [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email,
-            role:        user.role,
-            avatar:      user.avatarUrl ?? undefined,
-            accessToken,
-          };
-
-        } catch (err: any) {
-          // Network-level error → backend not running → try MongoDB
-          if (
-            err instanceof TypeError ||           // fetch() network failure
-            err?.cause?.code === "ECONNREFUSED" ||
-            err?.message?.includes("fetch failed") ||
-            err?.message?.includes("ECONNREFUSED")
-          ) {
-            console.warn("[auth] Express backend unreachable — falling back to MongoDB.");
-            backendUnreachable = true;
-          } else {
-            // Real auth error from the backend (wrong credentials, etc.)
-            throw err;
-          }
+          json = await res.json();
+        } catch {
+          throw new Error("Invalid response from server.");
         }
 
-        // ── 2. MongoDB fallback ──────────────────────────────────────────
-        if (backendUnreachable) {
-          return await mongoFallback(email, password);
+        if (!res.ok || !json.success) {
+          throw new Error(json.error ?? "Invalid email or password.");
         }
 
-        return null;
+        const { user, accessToken, refreshToken } = json.data!;
+        return {
+          id:          user.id,
+          email:       user.email,
+          name:        [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email,
+          role:        user.role ?? "traveler",
+          avatar:      user.avatarUrl ?? undefined,
+          accessToken,
+          refreshToken,
+        };
       },
     }),
   ],
 
   callbacks: {
-    async jwt({ token, user }: any) {
+    async jwt({ token, user }) {
       if (user) {
-        token.id          = user.id;
-        token.role        = user.role;
-        token.avatar      = user.avatar;
-        token.accessToken = user.accessToken;  // may be undefined (MongoDB mode)
+        const u = user as any
+        token.id          = u.id
+        token.role        = u.role
+        token.avatar      = u.avatar
+        token.accessToken = u.accessToken
+        token.refreshToken = u.refreshToken
+
+        const decoded = decodeJwt(String(u.accessToken))
+        if (decoded.exp) {
+          token.accessTokenExpiresAt = decoded.exp * 1000
+        } else {
+          token.accessTokenExpiresAt = Date.now() + 10 * 60 * 1000 // safe fallback
+        }
+      }
+
+      // If we have an expiry timestamp, refresh the access token when needed.
+      const expiresAt = token.accessTokenExpiresAt as number | undefined
+      const now = Date.now()
+      if (expiresAt && token.accessToken && token.refreshToken && now >= expiresAt - 10_000) {
+        try {
+          const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken: token.refreshToken }),
+          })
+
+          const payload = await refreshRes.json().catch(() => null)
+          const data = payload?.data as { accessToken?: string; refreshToken?: string } | undefined
+
+          if (!refreshRes.ok || !payload?.success || !data?.accessToken) {
+            throw new Error(payload?.error ?? 'Failed to refresh access token.')
+          }
+
+          token.accessToken = data.accessToken
+          if (data.refreshToken) token.refreshToken = data.refreshToken
+
+          const decoded = decodeJwt(token.accessToken as string)
+          if (decoded.role) token.role = decoded.role
+          if (decoded.exp) token.accessTokenExpiresAt = decoded.exp * 1000
+        } catch (e) {
+          // If refresh fails, clear tokens so the UI can sign out/redirect cleanly.
+          token.accessToken = undefined
+          token.refreshToken = undefined
+          token.accessTokenExpiresAt = undefined
+          token.error = 'TokenRefreshFailed'
+        }
       }
       return token;
     },
 
-    async session({ session, token }: any) {
+    async session({ session, token }) {
       if (session.user) {
-        session.user.id          = token.id   as string;
-        session.user.role        = token.role as string;
-        session.user.avatar      = token.avatar as string | undefined;
-        session.user.accessToken = token.accessToken as string | undefined;
+        session.user.id          = token.id as string
+        session.user.role        = token.role as string
+        session.user.avatar      = token.avatar as string | undefined
+        session.user.accessToken = token.accessToken as string | undefined
+        // Expose refresh failure so UI can sign out / redirect
+        if (token.error === 'TokenRefreshFailed') {
+          (session as any).error = 'TokenRefreshFailed'
+        }
       }
       return session;
     },

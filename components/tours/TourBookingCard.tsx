@@ -3,23 +3,51 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Shield, Star, Users, CalendarDays, Minus, Plus, ChevronRight, Clock } from 'lucide-react'
-import type { TourDetail } from '@/lib/mock-data/tourDetails'
+import type { BackendDeparture } from '@/lib/api/tours'
 
 interface TourBookingCardProps {
-  tour: TourDetail
+  tour: {
+    id: string
+    slug: string
+    basePrice: number
+    currency?: string
+    durationDays?: number | null
+    ratingAverage?: number | null
+    reviewsCount?: number | null
+    maxGuests: number
+  }
+  departures?: BackendDeparture[] | null
 }
 
-export function TourBookingCard({ tour }: TourBookingCardProps) {
+function toYMD(dateLike: string): string {
+  return String(dateLike).slice(0, 10)
+}
+
+export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
   const router = useRouter()
   const [guests, setGuests] = useState(1)
-  const [date, setDate] = useState('')
+  const [date, setDate] = useState(() => {
+    const first = departures?.[0]?.startDate
+    return first ? toYMD(first) : ''
+  })
   const today = new Date().toISOString().split('T')[0]
-  const total = tour.price * guests
+
+  const selectedDeparture =
+    departures?.find(d => toYMD(d.startDate) === date) ??
+    null
+
+  const pricePerPerson =
+    selectedDeparture?.priceOverride ??
+    tour.basePrice
+
+  const total = pricePerPerson * guests
 
   const handleReserve = () => {
+    if (!date) return
     const params = new URLSearchParams({
-      tourId: tour.id,
-      slug: tour.slug,
+      tourId: tour.id,          // Prisma tour id
+      depId: selectedDeparture?.id ?? '',
+      slug: tour.slug,          // slug is still used for display + resolution
       guests: String(guests),
       date,
       total: String(total),
@@ -27,21 +55,27 @@ export function TourBookingCard({ tour }: TourBookingCardProps) {
     router.push(`/checkout?${params.toString()}`)
   }
 
+  const durationLabel = tour.durationDays ? `${tour.durationDays} day${tour.durationDays > 1 ? 's' : ''}` : ''
+
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-xl p-6">
       {/* Price */}
       <div className="flex items-baseline gap-1 mb-1">
-        <span className="text-2xl font-bold text-gray-900">${tour.price}</span>
+        <span className="text-2xl font-bold text-gray-900">${pricePerPerson}</span>
         <span className="text-sm text-gray-500">/ person</span>
       </div>
 
       {/* Rating */}
       <div className="flex items-center gap-1.5 mb-5 text-sm">
         <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-        <span className="font-semibold text-gray-900">{tour.rating}</span>
-        <span className="text-gray-500">({tour.reviewCount} reviews)</span>
-        <span className="text-gray-300 mx-1">·</span>
-        <span className="text-gray-500">{tour.duration}</span>
+        <span className="font-semibold text-gray-900">{tour.ratingAverage ?? 0}</span>
+        <span className="text-gray-500">({tour.reviewsCount ?? 0} reviews)</span>
+        {durationLabel && (
+          <>
+            <span className="text-gray-300 mx-1">·</span>
+            <span className="text-gray-500">{durationLabel}</span>
+          </>
+        )}
       </div>
 
       {/* Date */}
@@ -59,6 +93,15 @@ export function TourBookingCard({ tour }: TourBookingCardProps) {
             className="flex-1 text-sm text-gray-900 bg-transparent focus:outline-none"
           />
         </div>
+        {departures && departures.length > 0 ? (
+          <p className="text-xs text-gray-400 mt-1">
+            Available departures: {departures.map(d => toYMD(d.startDate)).join(', ')}
+          </p>
+        ) : (
+          <p className="text-xs text-gray-400 mt-1">
+            Dates are subject to availability.
+          </p>
+        )}
       </div>
 
       {/* Guests */}
@@ -89,7 +132,7 @@ export function TourBookingCard({ tour }: TourBookingCardProps) {
       {/* Price breakdown */}
       <div className="border-t border-gray-100 pt-4 mb-4 space-y-2">
         <div className="flex justify-between text-sm text-gray-600">
-          <span>${tour.price} × {guests} guest{guests !== 1 ? 's' : ''}</span>
+          <span>${pricePerPerson} × {guests} guest{guests !== 1 ? 's' : ''}</span>
           <span>${total}</span>
         </div>
         <div className="flex justify-between text-sm font-bold text-gray-900 pt-1 border-t border-gray-100">
@@ -101,6 +144,7 @@ export function TourBookingCard({ tour }: TourBookingCardProps) {
       {/* Reserve button */}
       <button
         onClick={handleReserve}
+        disabled={!date}
         className="w-full py-3.5 bg-green-500 hover:bg-green-600 text-white font-bold text-sm rounded-xl transition-colors shadow-sm shadow-green-200 flex items-center justify-center gap-2 active:scale-[0.98]"
       >
         Reserve Tour

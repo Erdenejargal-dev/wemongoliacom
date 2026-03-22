@@ -37,8 +37,10 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
                 <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-green-400 to-blue-500 rounded-full transition-all"
-                    style={{ width: `${(s.bookings / maxBookings) * 100}%` }} />
+                  <div
+                    className="h-full bg-gradient-to-r from-green-400 to-blue-500 rounded-full transition-all"
+                    style={{ width: `${(s.bookings / maxBookings) * 100}%` }}
+                  />
                 </div>
                 <p className="text-xs text-gray-400 mt-1">{s.bookings} bookings</p>
               </div>
@@ -49,3 +51,4 @@ export default function AnalyticsPage() {
     </div>
   )
 }
+

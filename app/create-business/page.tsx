@@ -37,7 +37,7 @@ export default function CreateBusinessPage() {
                 List your business on<br />WeMongolia
               </h1>
               <p className="text-white/60 text-base leading-relaxed mb-8">
-                Join Mongolia's fastest-growing travel marketplace. List tours, rentals, camps, and more — and connect with travelers from around the world.
+                Join Mongolia&apos;s fastest-growing travel marketplace. List tours, rentals, camps, and more — and connect with travelers from around the world.
               </p>
 
               {/* How it works */}

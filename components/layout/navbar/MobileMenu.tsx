@@ -85,7 +85,7 @@ export function MobileMenu({ session, onClose }: MobileMenuProps) {
       <div className="border-t border-gray-100 p-4 space-y-2">
         {session ? (
           <>
-            <Link href="/dashboard/business/bookings" onClick={onClose}
+            <Link href="/account/trips" onClick={onClose}
               className="flex items-center gap-3 p-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
               <CalendarDays className="w-4 h-4 text-gray-400" /> My Trips
             </Link>

@@ -2,15 +2,16 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { X, ChevronRight,
   LayoutDashboard, Plus, Compass, CalendarCheck, CalendarDays,
   Star, MessageSquare, CreditCard, BarChart2, Settings,
   Car, BedDouble,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { buildProviderMenu, SECTION_LABELS, type MenuSection } from '@/lib/provider-menu'
-import { mockProviders, PROVIDER_TYPE_META, type Provider, type ProviderType } from '@/lib/mock-data/provider'
+import { apiClient } from '@/lib/api/client'
+import { buildProviderMenu, SECTION_LABELS, type ProviderType } from '@/lib/provider-menu'
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard,
@@ -34,34 +35,31 @@ interface DashboardSidebarProps {
 
 export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
   const pathname = usePathname()
-  const [provider, setProvider]   = useState<Provider | null>(null)
-  const [activeId, setActiveId]   = useState<string | null>(null)
+  const { data: session } = useSession()
+  const token = session?.user?.accessToken
 
-  useEffect(() => {
+  const [provider, setProvider] = useState<{
+    id: string
+    name: string
+    email?: string | null
+    providerTypes: ProviderType[]
+  } | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [activeId, setActiveId] = useState<string | null>(() => {
     try {
-      const stored = localStorage.getItem('wm_provider')
-      if (stored) setProvider(JSON.parse(stored))
-      else setProvider(mockProviders[0])
+      return localStorage.getItem('wm_nav_active')
     } catch {
-      setProvider(mockProviders[0])
+      return null
     }
-    // Restore last-clicked nav item
-    const savedActive = localStorage.getItem('wm_nav_active')
-    if (savedActive) setActiveId(savedActive)
-  }, [])
+  })
 
-  // When pathname changes (e.g. browser back/forward), clear the saved id
-  // so active falls back to url matching for items with unique hrefs
-  useEffect(() => {
-    setActiveId(prev => {
-      if (!prev) return prev
-      // Keep the saved id only if its href still matches the current pathname
-      const allItems = buildProviderMenu(provider?.providerTypes ?? ['tour_operator'])
-        .flatMap(s => s.items)
-      const saved = allItems.find(i => i.id === prev)
-      return saved?.href === pathname ? prev : null
-    })
-  }, [pathname, provider])
+  // Derive the effective active id from state + current pathname.
+  const effectiveActiveId = (() => {
+    if (!activeId) return null
+    const allItems = buildProviderMenu(provider?.providerTypes ?? ['tour_operator']).flatMap(s => s.items)
+    const saved = allItems.find(i => i.id === activeId)
+    return saved?.href === pathname ? activeId : null
+  })()
 
   function handleItemClick(id: string) {
     setActiveId(id)
@@ -69,8 +67,36 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
     onClose()
   }
 
-  const providerTypes: ProviderType[] = provider?.providerTypes ?? ['tour_operator']
-  const sections = buildProviderMenu(providerTypes)
+  useEffect(() => {
+    let alive = true
+    async function load() {
+      if (!token) {
+        setLoading(false)
+        return
+      }
+      setLoading(true)
+      try {
+        const p = await apiClient.get<any>('/provider/profile', token)
+        if (!alive) return
+        setProvider({
+          id: p.id,
+          name: p.name,
+          email: p.email ?? null,
+          providerTypes: (p.providerTypes ?? []) as ProviderType[],
+        })
+      } catch {
+        if (!alive) return
+        setProvider(null)
+      } finally {
+        if (alive) setLoading(false)
+      }
+    }
+    load()
+    return () => { alive = false }
+  }, [token])
+
+  const providerTypes: ProviderType[] = provider?.providerTypes?.length ? provider.providerTypes : ['tour_operator']
+  const sections = useMemo(() => buildProviderMenu(providerTypes), [providerTypes])
 
   /** Determine if a menu item is active:
    *  - If we have a stored activeId AND the current pathname matches one of the
@@ -78,7 +104,7 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
    *  - Otherwise fall back to pathname match
    */
   function isActive(item: { id: string; href: string }): boolean {
-    if (activeId) return activeId === item.id
+    if (effectiveActiveId) return effectiveActiveId === item.id
     return pathname === item.href
   }
 
@@ -114,10 +140,15 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
             <div className="flex flex-wrap gap-1 mt-1">
               {providerTypes.map(t => (
                 <span key={t} className="text-[9px] font-semibold text-gray-500 bg-white border border-gray-200 px-1.5 py-0.5 rounded-full">
-                  {PROVIDER_TYPE_META[t].icon} {SECTION_LABELS[t]}
+                  {t === 'tour_operator' ? '🗺️' : t === 'car_rental' ? '🚐' : '🏕️'} {SECTION_LABELS[t]}
                 </span>
               ))}
             </div>
+          </div>
+        )}
+        {loading && (
+          <div className="px-4 py-3 border-b border-gray-50 text-xs text-gray-400">
+            Loading business…
           </div>
         )}
 
@@ -165,7 +196,7 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-gray-900 truncate">{provider?.name ?? 'Business Admin'}</p>
-              <p className="text-[10px] text-gray-400 truncate">{provider?.email ?? 'admin@wemongolia.com'}</p>
+              <p className="text-[10px] text-gray-400 truncate">{provider?.email ?? ''}</p>
             </div>
           </div>
         </div>

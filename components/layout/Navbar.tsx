@@ -76,7 +76,7 @@ export default function Navbar() {
             ) : session ? (
               <>
                 {/* My Trips */}
-                <Link href="/dashboard/business/bookings" title="My Trips"
+                <Link href="/account/trips" title="My Trips"
                   className="hidden sm:flex p-2 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors">
                   <CalendarCheck className="w-5 h-5" />
                 </Link>
@@ -93,7 +93,7 @@ export default function Navbar() {
                 </button>
                 {/* User Avatar */}
                 <div className="ml-1">
-                  <UserMenu name={session.user?.name} email={session.user?.email} />
+                  <UserMenu name={session.user?.name} email={session.user?.email} role={session.user?.role} />
                 </div>
               </>
             ) : (
@@ -114,7 +114,7 @@ export default function Navbar() {
 
             {/* Become a Host (guest only, desktop) */}
             {!session && !isLoading && (
-              <Link href="/dashboard/business"
+              <Link href="/onboarding"
                 className="hidden md:block text-xs font-medium text-gray-500 hover:text-gray-700 ml-2 border-l border-gray-200 pl-3 transition-colors whitespace-nowrap">
                 Become a Host
               </Link>

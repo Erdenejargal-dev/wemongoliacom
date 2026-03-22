@@ -328,6 +328,8 @@ export async function listMyBookings(userId: string, status?: string) {
       startDate:     true,
       endDate:       true,
       guests:        true,
+      subtotal:      true,
+      serviceFee:    true,
       totalAmount:   true,
       currency:      true,
       bookingStatus: true,
@@ -335,6 +337,62 @@ export async function listMyBookings(userId: string, status?: string) {
       listingSnapshot: true,
       createdAt:     true,
       provider:      { select: { name: true, slug: true, logoUrl: true } },
+
+      // Tour-specific fields needed by traveler trip cards.
+      // For non-tour bookings this will be null.
+      tourDeparture: {
+        select: {
+          tour: {
+            select: {
+              slug:         true,
+              title:        true,
+              durationDays: true,
+              destination:  { select: { name: true, slug: true } },
+              images: {
+                orderBy: { sortOrder: 'asc' },
+                take: 1,
+                select: { imageUrl: true },
+              },
+            },
+          },
+        },
+      },
+
+      // Vehicle-specific fields (primary image + destination) for non-tour bookings.
+      vehicleAvailability: {
+        select: {
+          vehicle: {
+            select: {
+              slug:  true,
+              title: true,
+              destination: { select: { name: true, slug: true } },
+              images: {
+                orderBy: { sortOrder: 'asc' },
+                take: 1,
+                select: { imageUrl: true },
+              },
+            },
+          },
+        },
+      },
+
+      // Accommodation-specific fields (primary image + destination).
+      roomType: {
+        select: {
+          accommodation: {
+            select: {
+              slug:  true,
+              name:  true,
+              destination: { select: { name: true, slug: true } },
+              images: {
+                orderBy: { sortOrder: 'asc' },
+                take: 1,
+                select: { imageUrl: true },
+              },
+            },
+          },
+        },
+      },
     },
   })
 

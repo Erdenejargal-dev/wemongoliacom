@@ -7,10 +7,12 @@ import {
   changePassword,
   changeEmail,
   deactivateAccount,
+  registerProvider,
   updateProfileSchema,
   changePasswordSchema,
   changeEmailSchema,
   deactivateSchema,
+  registerProviderSchema,
 } from '../controllers/account.controller'
 
 const router = Router()
@@ -20,6 +22,7 @@ router.use(authenticate)
 
 router.get('/',                  getProfile)
 router.put('/',                  validate(updateProfileSchema), updateProfile)
+router.post('/provider',         validate(registerProviderSchema), registerProvider)
 router.post('/change-password',  validate(changePasswordSchema), changePassword)
 router.post('/change-email',     validate(changeEmailSchema), changeEmail)
 router.post('/deactivate',       validate(deactivateSchema), deactivateAccount)

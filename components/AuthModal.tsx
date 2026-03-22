@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { EyeIcon, EyeOffIcon } from 'lucide-react'
+import { apiClient } from '@/lib/api/client'
 
 import {
   Dialog,
@@ -305,15 +306,17 @@ function RegisterPanel({
     }
 
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: formData.name, email: formData.email, password: formData.password }),
+      const fullName = formData.name.trim().replace(/\s+/g, ' ')
+      const [firstName, ...rest] = fullName.split(' ')
+      const lastName = rest.join(' ').trim() || 'User'
+
+      await apiClient.post('/auth/register', {
+        firstName,
+        lastName,
+        email: formData.email,
+        password: formData.password,
+        role: 'traveler',
       })
-
-      const data = await response.json()
-
-      if (!response.ok) throw new Error(data.error || 'Failed to register')
 
       setSuccess(true)
       setTimeout(() => {
@@ -384,7 +387,7 @@ function RegisterPanel({
             onChange={handleChange}
             required
             disabled={isLoading}
-            minLength={6}
+            minLength={8}
           />
           <Button
             type='button'
@@ -413,7 +416,7 @@ function RegisterPanel({
             onChange={handleChange}
             required
             disabled={isLoading}
-            minLength={6}
+            minLength={8}
           />
           <Button
             type='button'

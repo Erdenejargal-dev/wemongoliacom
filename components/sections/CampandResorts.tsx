@@ -5,44 +5,55 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, Navigation, Pagination } from 'swiper/modules';
 import { Star, Clock, MapPin, Users, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
+import { fetchTours, type BackendTour } from '@/lib/api/tours';
 
 // Import Swiper styles
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 
-interface Tour {
-  _id: string;
+interface TourCardModel {
+  id: string;
+  slug: string;
   name: string;
-  description: string;
   category: string;
-  duration: {
-    days: number;
-    nights: number;
-  };
-  destination: string[];
-  pricing: {
-    adult: number;
-    child?: number;
-    group?: {
-      minSize: number;
-      pricePerPerson: number;
-    };
-  };
+  durationDays: number;
+  durationNights: number;
+  destinationName: string;
+  priceFrom: number;
   images: string[];
   maxGroupSize: number;
   difficulty: string;
-  rating?: number;
-  totalReviews?: number;
+  rating: number;
+  totalReviews: number;
   featured: boolean;
 }
 
-const TourCard = ({ tour }: { tour: Tour }) => {
+function mapBackendTourToCard(t: BackendTour): TourCardModel {
+  return {
+    id: t.id,
+    slug: t.slug,
+    name: t.title,
+    category: t.category ?? 'Tour',
+    durationDays: t.durationDays ?? 0,
+    durationNights: Math.max(0, (t.durationDays ?? 0) - 1),
+    destinationName: t.destination?.name ?? 'Mongolia',
+    priceFrom: t.basePrice,
+    images: (t.images ?? []).map(i => i.imageUrl).filter(Boolean),
+    maxGroupSize: 12,
+    difficulty: (t.difficulty ?? 'moderate').toLowerCase(),
+    rating: t.ratingAverage ?? 0,
+    totalReviews: t.reviewsCount ?? 0,
+    featured: t.featured ?? false,
+  };
+}
+
+const TourCard = ({ tour }: { tour: TourCardModel }) => {
   const [imageError, setImageError] = useState(false);
   const imageUrl = tour.images?.[0] || 'https://images.unsplash.com/photo-1569949381669-ecf31ae8e613?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
   return (
-    <Link href={`/tours/${tour._id}`} className="group block h-full">
+    <Link href={`/tours/${tour.slug}`} className="group block h-full">
       <div className="bg-white shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden h-full flex flex-col border-2 border-gray-200 hover:border-orange-500">
         {/* Image Container */}
         <div className="relative h-48 overflow-hidden bg-gray-200">
@@ -95,7 +106,7 @@ const TourCard = ({ tour }: { tour: Tour }) => {
           <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-gray-200">
             <MapPin className="w-3.5 h-3.5 text-orange-600 flex-shrink-0" />
             <span className="text-xs text-gray-600 line-clamp-1">
-              {tour.destination.join(', ')}
+              {tour.destinationName}
             </span>
           </div>
 
@@ -103,7 +114,7 @@ const TourCard = ({ tour }: { tour: Tour }) => {
           <div className="grid grid-cols-2 gap-2 mb-2">
             <div className="flex items-center gap-1.5 border border-gray-200 p-1.5">
               <Clock className="w-3.5 h-3.5 text-gray-600" />
-              <span className="text-xs font-medium text-gray-700">{tour.duration.days}D/{tour.duration.nights}N</span>
+              <span className="text-xs font-medium text-gray-700">{tour.durationDays}D/{tour.durationNights}N</span>
             </div>
             <div className="flex items-center gap-1.5 border border-gray-200 p-1.5">
               <Users className="w-3.5 h-3.5 text-gray-600" />
@@ -150,7 +161,7 @@ const TourCard = ({ tour }: { tour: Tour }) => {
               <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-0.5">From</p>
               <div className="flex items-baseline gap-0.5">
                 <span className="text-xl font-bold text-orange-600">
-                  ${tour.pricing.adult.toLocaleString()}
+                  ${tour.priceFrom.toLocaleString()}
                 </span>
                 <span className="text-[10px] text-gray-500">/person</span>
               </div>
@@ -166,19 +177,16 @@ const TourCard = ({ tour }: { tour: Tour }) => {
 };
 
 const CampandResorts = () => {
-  const [tours, setTours] = useState<Tour[]>([]);
+  const [tours, setTours] = useState<TourCardModel[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchTours = async () => {
+    const loadTours = async () => {
       try {
-        const response = await fetch('/api/tours');
-        if (response.ok) {
-          const data = await response.json();
-          // Filter featured tours or take first 10
-          const featuredTours = data.filter((tour: Tour) => tour.featured);
-          setTours(featuredTours.length > 0 ? featuredTours : data.slice(0, 10));
-        }
+        const res = await fetchTours({ limit: 24, sort: 'popular' });
+        const mapped = res.data.map(mapBackendTourToCard);
+        const featured = mapped.filter(t => t.featured);
+        setTours(featured.length > 0 ? featured.slice(0, 10) : mapped.slice(0, 10));
       } catch (error) {
         console.error('Error fetching tours:', error);
       } finally {
@@ -186,7 +194,7 @@ const CampandResorts = () => {
       }
     };
 
-    fetchTours();
+    loadTours();
   }, []);
 
   if (loading) {
@@ -273,7 +281,7 @@ const CampandResorts = () => {
             className="!pb-12"
           >
             {tours.map((tour) => (
-              <SwiperSlide key={tour._id} className="h-auto">
+              <SwiperSlide key={tour.id} className="h-auto">
                 <TourCard tour={tour} />
               </SwiperSlide>
             ))}

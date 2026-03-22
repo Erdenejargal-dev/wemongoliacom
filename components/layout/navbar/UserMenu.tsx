@@ -1,16 +1,17 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { User, LogOut, LayoutDashboard, Heart, CalendarCheck, ChevronDown, Building2 } from 'lucide-react'
+import { LogOut, LayoutDashboard, Heart, CalendarCheck, ChevronDown, Building2, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { signOut } from 'next-auth/react'
 
 interface UserMenuProps {
   name?: string | null
   email?: string | null
+  role?: string | null
 }
 
-export function UserMenu({ name, email }: UserMenuProps) {
+export function UserMenu({ name, email, role }: UserMenuProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -44,11 +45,12 @@ export function UserMenu({ name, email }: UserMenuProps) {
           </div>
 
           {[
-            { href: '/dashboard', icon: LayoutDashboard, label: 'My Dashboard' },
-            { href: '/dashboard/business/bookings', icon: CalendarCheck, label: 'My Trips' },
-            { href: '#', icon: Heart, label: 'Saved Trips' },
-            { href: '/dashboard/business', icon: Building2, label: 'Business Portal' },
-          ].map(item => (
+            { href: '/dashboard', icon: LayoutDashboard, label: 'My Dashboard', show: true },
+            { href: '/account/trips', icon: CalendarCheck, label: 'My Trips', show: true },
+            { href: '/account', icon: Heart, label: 'Saved Trips', show: true },
+            { href: '/dashboard/business', icon: Building2, label: 'Business Portal', show: role === 'provider_owner' || role === 'admin' },
+            { href: '/onboarding', icon: Sparkles, label: 'Become a Host', show: role !== 'provider_owner' && role !== 'admin' },
+          ].filter(i => i.show).map(item => (
             <Link key={item.label} href={item.href} onClick={() => setOpen(false)}
               className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
               <item.icon className="w-4 h-4 text-gray-400" />

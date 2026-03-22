@@ -31,17 +31,20 @@ export function BookingDetails({ trip }: BookingDetailsProps) {
         <div className="bg-white rounded-xl border border-gray-100 p-4">
           <p className="text-xs font-bold text-gray-700 mb-3">Booking Information</p>
           <Row label="Booking ID" value={<span className="font-mono text-green-700">{trip.bookingId}</span>} />
-          <Row label="Tour" value={trip.tourTitle} />
-          <Row label="Destination" value={trip.destination} />
+          <Row label="Listing" value={trip.listingTitle} />
+          <Row label="Location" value={trip.location} />
           <Row label="Start Date" value={<span className="flex items-center gap-1 justify-end"><CalendarDays className="w-3 h-3 text-green-500" />{formatDate(trip.date)}</span>} />
-          <Row label="Duration" value={`${trip.durationDays} day${trip.durationDays !== 1 ? 's' : ''}`} />
+          <Row
+            label="Duration"
+            value={`${trip.durationDays} ${trip.durationUnit}${trip.durationDays !== 1 ? 's' : ''}`}
+          />
           <Row label="Guests" value={<span className="flex items-center gap-1 justify-end"><Users className="w-3 h-3 text-green-500" />{trip.guests} guest{trip.guests !== 1 ? 's' : ''}</span>} />
           <Row label="Price Paid" value={<span className="flex items-center gap-1 justify-end text-green-700"><Receipt className="w-3 h-3" />${trip.price.toLocaleString()}</span>} />
         </div>
 
         {/* Host info */}
         <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <p className="text-xs font-bold text-gray-700 mb-3">Tour Operator</p>
+          <p className="text-xs font-bold text-gray-700 mb-3">Provider</p>
           <div className="flex items-center gap-2.5 mb-4">
             <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center">
               <Building2 className="w-4 h-4 text-green-600" />
@@ -54,10 +57,12 @@ export function BookingDetails({ trip }: BookingDetailsProps) {
             </div>
           </div>
           <div className="space-y-2">
-            <Link href={`/tours/${trip.tourSlug}`}
-              className="flex items-center justify-center gap-2 w-full py-2.5 bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold rounded-xl transition-colors">
-              <ExternalLink className="w-3.5 h-3.5" />View Tour Page
-            </Link>
+            {trip.listingType === 'tour' && (
+              <Link href={`/tours/${trip.listingSlug}`}
+                className="flex items-center justify-center gap-2 w-full py-2.5 bg-gray-900 hover:bg-gray-800 text-white text-xs font-bold rounded-xl transition-colors">
+                <ExternalLink className="w-3.5 h-3.5" />View Tour Page
+              </Link>
+            )}
             <Link href={`/hosts/${trip.hostSlug}`}
               className="flex items-center justify-center gap-2 w-full py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold rounded-xl transition-colors">
               <MessageSquare className="w-3.5 h-3.5" />Contact Host

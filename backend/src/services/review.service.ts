@@ -47,6 +47,82 @@ export async function listReviews(query: ReviewListQuery) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Traveler: list own (written) tour reviews
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface MyTourReview {
+  id: string
+  tourSlug: string
+  tourTitle: string
+  tourImage: string | null
+  rating: number
+  comment: string | null
+  date: string
+}
+
+export async function listMyReviews(input: { userId: string; page?: number; limit?: number }) {
+  const page  = Math.max(1, input.page ?? 1)
+  const limit = Math.min(50, input.limit ?? 10)
+  const skip  = (page - 1) * limit
+
+  // UI currently supports tour reviews only.
+  const where = { userId: input.userId, listingType: 'tour' as any }
+
+  const [reviews, total] = await Promise.all([
+    prisma.review.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
+      select: {
+        id: true,
+        rating: true,
+        title: true,
+        comment: true,
+        createdAt: true,
+        listingId: true,
+      },
+    }),
+    prisma.review.count({ where }),
+  ])
+
+  const tourIds = reviews.map(r => r.listingId)
+  const tours = await prisma.tour.findMany({
+    where: { id: { in: tourIds } },
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      images: {
+        orderBy: { sortOrder: 'asc' },
+        take: 1,
+        select: { imageUrl: true },
+      },
+    },
+  })
+
+  const tourById = new Map(tours.map(t => [t.id, t]))
+
+  const data: MyTourReview[] = reviews.map(r => {
+    const tour = tourById.get(r.listingId)
+    return {
+      id: r.id,
+      tourSlug: tour?.slug ?? '',
+      tourTitle: tour?.title ?? 'Tour',
+      tourImage: tour?.images?.[0]?.imageUrl ?? null,
+      rating: r.rating,
+      comment: r.comment,
+      date: r.createdAt.toISOString(),
+    }
+  })
+
+  return {
+    data,
+    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Create review (traveler, completed booking only)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -93,6 +169,97 @@ export async function createReview(input: CreateReviewInput) {
     .catch(() => null)
 
   return review
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Traveler: update own review (rating/comment/title)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function updateMyReview(input: {
+  userId: string
+  reviewId: string
+  rating: number
+  title?: string
+  comment?: string
+}) {
+  const review = await prisma.review.findUnique({
+    where: { id: input.reviewId },
+    select: {
+      id: true,
+      userId: true,
+      listingType: true,
+      listingId: true,
+      providerId: true,
+    },
+  })
+  if (!review) throw new AppError('Review not found.', 404)
+  if (review.userId !== input.userId) throw new AppError('Forbidden.', 403)
+
+  if (review.listingType !== 'tour')
+    throw new AppError('Only tour reviews are editable here.', 400)
+
+  const updated = await prisma.review.update({
+    where: { id: input.reviewId },
+    data: {
+      rating: input.rating,
+      title: input.title,
+      comment: input.comment,
+    },
+    select: {
+      id: true,
+      rating: true,
+      title: true,
+      comment: true,
+      createdAt: true,
+      listingId: true,
+    },
+  })
+
+  // Update listing + provider aggregate ratings
+  updateRatingAverages(review.listingType as string, updated.listingId, review.providerId).catch(() => null)
+
+  // Resolve tour info for the response
+  const tour = await prisma.tour.findUnique({
+    where: { id: updated.listingId },
+    select: {
+      slug: true,
+      title: true,
+      images: { orderBy: { sortOrder: 'asc' }, take: 1, select: { imageUrl: true } },
+    },
+  })
+
+  return {
+    id: updated.id,
+    tourSlug: tour?.slug ?? '',
+    tourTitle: tour?.title ?? 'Tour',
+    tourImage: tour?.images?.[0]?.imageUrl ?? null,
+    rating: updated.rating,
+    comment: updated.comment,
+    date: updated.createdAt.toISOString(),
+  } satisfies MyTourReview
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Traveler: delete own review
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function deleteMyReview(userId: string, reviewId: string) {
+  const review = await prisma.review.findUnique({
+    where: { id: reviewId },
+    select: {
+      id: true,
+      userId: true,
+      listingType: true,
+      listingId: true,
+      providerId: true,
+    },
+  })
+  if (!review) throw new AppError('Review not found.', 404)
+  if (review.userId !== userId) throw new AppError('Forbidden.', 403)
+  if (review.listingType !== 'tour') throw new AppError('Only tour reviews are deletable here.', 400)
+
+  await prisma.review.delete({ where: { id: reviewId } })
+  await updateRatingAverages(review.listingType as string, review.listingId, review.providerId).catch(() => null)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

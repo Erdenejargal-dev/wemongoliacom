@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { Search, X, Users, Compass } from 'lucide-react'
 import { hosts } from '@/lib/mock-data/hosts'
 import { HostCard } from '@/components/hosts/HostCard'
+import Link from 'next/link'
 
 const TYPES = ['All', 'company', 'guide', 'experience', 'driver']
 const TYPE_LABELS: Record<string, string> = {
@@ -22,17 +23,15 @@ export default function HostsPage() {
 
   const featured = hosts.filter(h => FEATURED_SLUGS.includes(h.slug))
 
-  const filtered = useMemo(() => {
+  const filtered = hosts.filter(h => {
     const q = search.toLowerCase()
-    return hosts.filter(h => {
-      const matchSearch = !q
-        || h.name.toLowerCase().includes(q)
-        || h.location.toLowerCase().includes(q)
-        || h.description.toLowerCase().includes(q)
-      const matchType = type === 'All' || h.type === type
-      return matchSearch && matchType
-    })
-  }, [search, type])
+    const matchSearch = !q
+      || h.name.toLowerCase().includes(q)
+      || h.location.toLowerCase().includes(q)
+      || h.description.toLowerCase().includes(q)
+    const matchType = type === 'All' || h.type === type
+    return matchSearch && matchType
+  })
 
   const hasFilters = search || type !== 'All'
 
@@ -144,11 +143,11 @@ export default function HostsPage() {
         <section className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-8 text-center">
           <h3 className="text-xl font-bold text-white mb-2">Are you a local guide or operator?</h3>
           <p className="text-white/80 text-sm mb-5">Join the platform and connect with travelers from around the world.</p>
-          <a href="/dashboard/business/register"
+          <Link href="/onboarding"
             className="inline-flex items-center gap-2 bg-white text-green-700 font-bold text-sm px-6 py-3 rounded-xl hover:bg-green-50 transition-colors shadow-lg">
             <Users className="w-4 h-4" />
             Register as a Host
-          </a>
+          </Link>
         </section>
 
       </div>

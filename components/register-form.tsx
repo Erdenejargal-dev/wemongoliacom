@@ -14,6 +14,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Mountain } from "lucide-react";
+import { apiClient } from "@/lib/api/client";
 
 export function RegisterForm({
   className,
@@ -48,27 +49,21 @@ export function RegisterForm({
     }
 
     try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-        }),
+      const fullName = formData.name.trim().replace(/\s+/g, " ");
+      const [firstName, ...rest] = fullName.split(" ");
+      const lastName = rest.join(" ").trim() || "User";
+
+      await apiClient.post("/auth/register", {
+        firstName,
+        lastName,
+        email: formData.email,
+        password: formData.password,
+        role: "traveler",
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to register");
-      }
-
       router.push("/auth/login?registered=true");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to register");
     } finally {
       setIsLoading(false);
     }
@@ -135,7 +130,7 @@ export function RegisterForm({
                   onChange={handleChange}
                   required
                   disabled={isLoading}
-                  minLength={6}
+                  minLength={8}
                 />
               </Field>
               <Field>
@@ -148,7 +143,7 @@ export function RegisterForm({
                   onChange={handleChange}
                   required
                   disabled={isLoading}
-                  minLength={6}
+                  minLength={8}
                 />
               </Field>
               <Field>

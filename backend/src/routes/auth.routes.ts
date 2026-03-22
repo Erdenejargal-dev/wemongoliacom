@@ -4,9 +4,11 @@ import { authenticate } from '../middleware/auth'
 import {
   register,
   login,
+  refresh,
   getMe,
   registerSchema,
   loginSchema,
+  refreshSchema,
 } from '../controllers/auth.controller'
 
 const router = Router()
@@ -19,5 +21,8 @@ router.post('/login', validate(loginSchema), login)
 
 // GET /auth/me  (protected)
 router.get('/me', authenticate, getMe)
+
+// POST /auth/refresh
+router.post('/refresh', validate(refreshSchema), refresh)
 
 export default router

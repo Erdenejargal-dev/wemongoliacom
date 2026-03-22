@@ -1,24 +1,10 @@
-'use client'
-
-import { useState } from 'react'
-import { DashboardSidebar } from '@/components/provider-dashboard/DashboardSidebar'
-import { DashboardHeader } from '@/components/provider-dashboard/DashboardHeader'
-
-export default function UnifiedDashboardLayout({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  // Traveler dashboard layout (provider portal has its own layout under /dashboard/business/*)
   return (
-    <div className="min-h-screen bg-gray-50/60">
-      {/* Dynamic sidebar — reads provider from localStorage */}
-      <DashboardSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
-      {/* Main area offset by sidebar width on desktop */}
-      <div className="md:pl-60">
-        <DashboardHeader onMenuClick={() => setSidebarOpen(true)} />
-        <main className="p-4 sm:p-6">
-          {children}
-        </main>
-      </div>
+    <div className="min-h-screen bg-gray-50/40">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {children}
+      </main>
     </div>
   )
 }

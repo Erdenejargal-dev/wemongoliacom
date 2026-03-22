@@ -15,7 +15,7 @@ export default function BusinessSection() {
             Grow Your Tourism Business
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Join Mongolia's leading tourism platform and reach thousands of travelers looking for authentic experiences
+            Join Mongolia&apos;s leading tourism platform and reach thousands of travelers looking for authentic experiences
           </p>
         </div>
 

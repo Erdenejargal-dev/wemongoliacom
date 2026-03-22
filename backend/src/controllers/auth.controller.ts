@@ -18,6 +18,10 @@ export const loginSchema = z.object({
   password: z.string().min(1),
 })
 
+export const refreshSchema = z.object({
+  refreshToken: z.string().min(1),
+})
+
 // ── Handlers ───────────────────────────────────────────────────────────────
 
 export async function register(req: Request, res: Response, next: NextFunction) {
@@ -33,6 +37,16 @@ export async function login(req: Request, res: Response, next: NextFunction) {
   try {
     const result = await authService.login(req.body)
     return ok(res, result, 'Logged in successfully.')
+  } catch (err) {
+    next(err)
+  }
+}
+
+// POST /auth/refresh
+export async function refresh(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await authService.refresh(req.body)
+    return ok(res, result, 'Token refreshed successfully.')
   } catch (err) {
     next(err)
   }

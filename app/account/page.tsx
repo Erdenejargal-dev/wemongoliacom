@@ -1,7 +1,15 @@
 'use client'
 
-import { useState } from 'react'
-import { mockUser, mockTrips, mockReviews } from '@/lib/mock-data/account'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useSession, signOut } from 'next-auth/react'
+import { fetchMyProfile } from '@/lib/api/account'
+import { ApiError } from '@/lib/api/client'
+import { getFreshAccessToken } from '@/lib/auth-utils'
+import { fetchMyBookings } from '@/lib/api/bookings'
+import { fetchMyTourReviews } from '@/lib/api/reviews'
+import { mapBackendBookingToUserTrip } from '@/lib/account/mapBookingToTrips'
+import type { UserProfile, UserTrip, UserReview } from '@/lib/mock-data/account'
 import { AccountSidebar, type AccountSection } from '@/components/account/AccountSidebar'
 import { ProfileForm } from '@/components/account/ProfileForm'
 import { SecuritySettings } from '@/components/account/SecuritySettings'
@@ -19,6 +27,81 @@ const TITLES: Record<AccountSection, { title: string; desc: string }> = {
 export default function AccountPage() {
   const [section, setSection] = useState<AccountSection>('profile')
   const { title, desc } = TITLES[section]
+
+  const router = useRouter()
+  const { data: session } = useSession()
+  const token = session?.user?.accessToken
+
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [trips, setTrips] = useState<UserTrip[]>([])
+  const [reviews, setReviews] = useState<UserReview[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let alive = true
+
+    async function load() {
+      const freshToken = token ? await getFreshAccessToken() : null
+      if (!freshToken) {
+        if (!alive) return
+        setLoading(false)
+        setError('Not signed in.')
+        return
+      }
+
+      setLoading(true)
+      setError(null)
+      try {
+        const p = await fetchMyProfile(freshToken)
+        const mapped: UserProfile = {
+          id: p.id,
+          firstName: p.firstName,
+          lastName: p.lastName,
+          email: p.email,
+          phone: p.phone ?? '',
+          country: p.country ?? '',
+          avatar: p.avatarUrl ?? '',
+          bio: p.bio ?? '',
+          memberSince: p.createdAt,
+        }
+
+        const bookings = await fetchMyBookings(freshToken)
+        const mappedTrips = bookings
+          .map(mapBackendBookingToUserTrip)
+          .filter((t): t is UserTrip => Boolean(t))
+
+        const backendReviews = await fetchMyTourReviews(freshToken)
+        const mappedReviews: UserReview[] = backendReviews.map(r => ({
+          id: r.id,
+          tourSlug: r.tourSlug,
+          tourTitle: r.tourTitle,
+          tourImage: r.tourImage ?? '',
+          rating: r.rating,
+          comment: r.comment ?? '',
+          date: r.date,
+        }))
+
+        if (!alive) return
+        setProfile(mapped)
+        setTrips(mappedTrips)
+        setReviews(mappedReviews)
+      } catch (e: unknown) {
+        if (!alive) return
+        if (e instanceof ApiError && e.status === 401) {
+          await signOut({ redirect: false })
+          router.push('/auth/login')
+        } else {
+          setError(e instanceof Error ? e.message : 'Failed to load account.')
+        }
+      } finally {
+        if (alive) setLoading(false)
+      }
+    }
+
+    load()
+    return () => { alive = false }
+  }, [token])
 
   return (
     <div className="min-h-screen bg-gray-50/40">
@@ -46,7 +129,13 @@ export default function AccountPage() {
           {/* Sidebar — hidden on mobile (uses top pill nav instead) */}
           <div className="hidden lg:block">
             <div className="sticky top-6">
-              <AccountSidebar user={mockUser} active={section} onSelect={setSection} />
+              {profile ? (
+                <AccountSidebar user={profile} active={section} onSelect={setSection} />
+              ) : (
+                <div className="w-64 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                  <p className="text-xs text-gray-500">{loading ? 'Loading account…' : error ?? 'Unable to load account.'}</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -60,22 +149,42 @@ export default function AccountPage() {
 
             {/* Section content */}
             {section === 'profile' && (
-              <ProfileForm initial={mockUser} />
+              profile ? (
+                <ProfileForm
+                  initial={profile}
+                  accessToken={token ?? ''}
+                  onSaved={(updated) => setProfile(updated)}
+                />
+              ) : (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                  <p className="text-sm font-semibold text-gray-900">
+                    {loading ? 'Loading profile…' : error ?? 'Profile unavailable.'}
+                  </p>
+                </div>
+              )
             )}
 
             {section === 'settings' && (
               <div className="space-y-5">
-                <SecuritySettings />
+                <SecuritySettings accessToken={token ?? ''} />
                 <NotificationSettings />
               </div>
             )}
 
             {section === 'trips' && (
-              <TripsSection trips={mockTrips} />
+              loading ? (
+                <div className="text-sm text-gray-500 py-6">Loading your trips…</div>
+              ) : (
+                <TripsSection trips={trips} />
+              )
             )}
 
             {section === 'reviews' && (
-              <ReviewsSection initialReviews={mockReviews} />
+              <ReviewsSection
+                initialReviews={reviews}
+                accessToken={token ?? ''}
+                onReviewsChange={(next) => setReviews(next)}
+              />
             )}
           </div>
 

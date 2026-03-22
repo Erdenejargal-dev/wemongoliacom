@@ -2,13 +2,14 @@
 
 import { Suspense, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { useSession } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
 import { ChevronLeft, Loader2, ChevronRight, Lock, AlertTriangle } from 'lucide-react'
 import { TravelerForm, type TravelerData } from '@/components/checkout/TravelerForm'
 import { BookingSummary } from '@/components/checkout/BookingSummary'
 import { getTourBySlug } from '@/lib/mock-data/tourDetails'
 import { mockTours } from '@/lib/mock-data/tours'
+import { fetchTourBySlug, fetchTourDepartures } from '@/lib/api/tours'
 import {
   type Booking,
   generateBookingId,
@@ -16,6 +17,8 @@ import {
   calcServiceFee,
 } from '@/lib/booking'
 import { createBooking } from '@/lib/api/bookings'
+import { getFreshAccessToken } from '@/lib/auth-utils'
+import { ApiError } from '@/lib/api/client'
 
 const EMPTY_TRAVELER: TravelerData = {
   name: '', email: '', phone: '', country: '', specialRequests: '',
@@ -69,15 +72,39 @@ function CheckoutContent() {
     const serviceFee = calcServiceFee(subtotal)
 
     // ── Attempt backend booking ──────────────────────────────────────────
-    const token = session?.user?.accessToken
-    if (token && tourId) {
+    const token = session ? await getFreshAccessToken() : null
+    if (token) {
       try {
+        if (!slug || !date) throw new Error('Missing tour slug or travel date.')
+
+        // Resolve Prisma IDs from the backend using the tour slug + date.
+        // This fixes bookings that would otherwise use mock tour ids.
+        const backendTour = await fetchTourBySlug(slug)
+        if (!backendTour) throw new Error('Tour not found.')
+
+        const departures = await fetchTourDepartures(backendTour.id)
+        if (departures.length === 0) throw new Error('No available departures for this tour.')
+
+        const selectedDate = date // expected: YYYY-MM-DD
+        const departureMatch =
+          departures.find(d => d.startDate?.startsWith(selectedDate)) ??
+          (() => {
+            const cutoff = new Date(selectedDate + 'T00:00:00')
+            const after = departures
+              .map(d => ({ d, dt: new Date(d.startDate) }))
+              .filter(x => !Number.isNaN(x.dt.getTime()) && x.dt >= cutoff)
+              .sort((a, b) => a.dt.getTime() - b.dt.getTime())
+            return after[0]?.d
+          })()
+
+        if (!departureMatch) throw new Error('No available departure for the selected date.')
+
         const backendBooking = await createBooking(
           {
             listingType:      'tour',
-            listingId:        tourId,
-            tourDepartureId:  depId || undefined,
-            startDate:        date || new Date().toISOString().split('T')[0],
+            listingId:        backendTour.id,
+            tourDepartureId:  departureMatch.id,
+            startDate:        selectedDate,
             guests,
             adults:           guests,
             children:         0,
@@ -93,11 +120,11 @@ function CheckoutContent() {
         // Also persist to localStorage for the success page display
         const booking: Booking = {
           id:             backendBooking.bookingCode,
-          tourId,
+          tourId:         backendTour.id,
           tourSlug:       slug,
-          tourTitle,
-          tourLocation,
-          tourDuration,
+          tourTitle:      backendTour.title,
+          tourLocation:   backendTour.destination?.name ?? tourLocation,
+          tourDuration:   backendTour.durationDays ? `${backendTour.durationDays} day${backendTour.durationDays > 1 ? 's' : ''}` : tourDuration,
           date,
           guests,
           pricePerPerson: price,
@@ -114,9 +141,14 @@ function CheckoutContent() {
         saveBooking(booking)
         router.push('/booking-success')
         return
-      } catch (err: any) {
-        // Backend returned an error — show it and stop
-        setApiError(err.message ?? 'Booking failed. Please try again.')
+      } catch (err: unknown) {
+        if (err instanceof ApiError && err.status === 401) {
+          setApiError('Session expired. Please log in again.')
+          await signOut({ redirect: false })
+          router.push('/auth/login')
+        } else {
+          setApiError(err instanceof Error ? err.message : 'Booking failed. Please try again.')
+        }
         setSubmitting(false)
         return
       }

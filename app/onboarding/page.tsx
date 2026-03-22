@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, ArrowLeft, Loader2, Upload, Globe, Plus, X } from 'lucide-react'
+import { ArrowRight, ArrowLeft, Loader2, Upload, Globe, Plus, X, Check } from 'lucide-react'
+import { useSession } from 'next-auth/react'
 import { OnboardingLayout } from '@/components/onboarding/OnboardingLayout'
-import { ServiceTypeCard } from '@/components/onboarding/ServiceTypeCard'
 import { DEFAULT_ONBOARDING, type OnboardingState, type ProviderType } from '@/lib/mock-data/provider'
+import { apiClient, ApiError } from '@/lib/api/client'
+import { getFreshAccessToken } from '@/lib/auth-utils'
 
 const LANGUAGE_OPTIONS = ['English', 'Mongolian', 'Russian', 'Chinese', 'Japanese', 'Korean', 'German', 'French']
 
@@ -64,36 +66,135 @@ function StepBusinessInfo({ data, onNext }: { data: OnboardingState; onNext: (p:
 
 // ── Step 2 ──────────────────────────────────────────────────────────────────
 function StepServiceType({ data, onNext, onBack }: { data: OnboardingState; onNext: (p: Partial<OnboardingState>) => void; onBack: () => void }) {
-  const [selected, setSelected] = useState<ProviderType[]>(data.providerTypes)
+  type ProviderCombo = 'hotel' | 'tour_operator' | 'car_rental' | 'multiple'
 
-  function toggle(t: ProviderType) {
-    setSelected(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])
+  const comboFromProviderTypes = (providerTypes: ProviderType[]): ProviderCombo | null => {
+    const sorted = [...providerTypes].sort().join(',')
+    if (sorted === ['accommodation'].sort().join(',')) return 'hotel'
+    if (sorted === ['tour_operator'].sort().join(',')) return 'tour_operator'
+    if (sorted === ['car_rental'].sort().join(',')) return 'car_rental'
+    if (sorted === ['accommodation', 'car_rental', 'tour_operator'].sort().join(',')) return 'multiple'
+    return null
   }
 
-  const TYPES: ProviderType[] = ['tour_operator', 'car_rental', 'accommodation']
+  const toProviderTypes = (combo: ProviderCombo): ProviderType[] => {
+    switch (combo) {
+      case 'hotel':
+        return ['accommodation']
+      case 'tour_operator':
+        return ['tour_operator']
+      case 'car_rental':
+        return ['car_rental']
+      case 'multiple':
+        return ['accommodation', 'tour_operator', 'car_rental']
+    }
+  }
+
+  const [combo, setCombo] = useState<ProviderCombo | null>(comboFromProviderTypes(data.providerTypes))
+
+  const Card = ({
+    value,
+    title,
+    subtitle,
+    badge,
+    colorClass,
+    iconBgClass,
+  }: {
+    value: ProviderCombo
+    title: string
+    subtitle: string
+    badge: string
+    colorClass: string
+    iconBgClass: string
+  }) => {
+    const selected = combo === value
+    return (
+      <button
+        type="button"
+        onClick={() => setCombo(value)}
+        className={`w-full text-left p-5 rounded-2xl border-2 transition-all duration-200 relative ${
+          selected ? colorClass : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50'
+        }`}
+        aria-pressed={selected}
+      >
+        {selected && (
+          <div className="absolute top-3 right-3 w-6 h-6 rounded-full flex items-center justify-center bg-green-500">
+            <Check className="w-3.5 h-3.5 text-white" />
+          </div>
+        )}
+
+        <div className="flex items-start gap-4">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconBgClass}`}>
+            <span className="text-xl">{badge}</span>
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-gray-900 mb-1">{title}</p>
+            <p className="text-xs text-gray-500 leading-relaxed">{subtitle}</p>
+          </div>
+        </div>
+      </button>
+    )
+  }
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 space-y-5">
       <div>
         <h2 className="text-lg font-bold text-gray-900 mb-1">What services do you offer?</h2>
-        <p className="text-sm text-gray-500">Select all that apply. You can always add more later.</p>
+        <p className="text-sm text-gray-500">Pick one option that matches what you&apos;ll offer first. You can extend later.</p>
       </div>
+
       <div className="space-y-3">
-        {TYPES.map(t => (
-          <ServiceTypeCard key={t} type={t} selected={selected.includes(t)} onToggle={toggle} />
-        ))}
+        <Card
+          value="hotel"
+          title="Hotel only"
+          subtitle="List accommodations (hotels/camps) for travelers."
+          badge="🏨"
+          colorClass="border-green-400 bg-green-50/50"
+          iconBgClass="bg-green-100"
+        />
+        <Card
+          value="tour_operator"
+          title="Tour Operator only"
+          subtitle="Offer guided tours, excursions, and experiences."
+          badge="🗺️"
+          colorClass="border-blue-400 bg-blue-50/50"
+          iconBgClass="bg-blue-100"
+        />
+        <Card
+          value="car_rental"
+          title="Car Rental only"
+          subtitle="Rent vehicles and provide driver services."
+          badge="🚐"
+          colorClass="border-orange-400 bg-orange-50/50"
+          iconBgClass="bg-orange-100"
+        />
+        <Card
+          value="multiple"
+          title="Multiple Services"
+          subtitle="Offer all supported types: hotel + tours + car rental."
+          badge="✨"
+          colorClass="border-gray-900 bg-gray-50"
+          iconBgClass="bg-gray-900 text-white"
+        />
       </div>
-      {selected.length === 0 && (
-        <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
-          Please select at least one service type to continue.
-        </p>
-      )}
+
       <div className="pt-2 flex items-center justify-between">
-        <button type="button" onClick={onBack} className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors">
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
+        >
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
-        <button type="button" disabled={selected.length === 0} onClick={() => onNext({ providerTypes: selected })}
-          className="flex items-center gap-2 px-6 py-2.5 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 text-white font-bold text-sm rounded-xl transition-colors">
+        <button
+          type="button"
+          disabled={!combo}
+          onClick={() => {
+            if (!combo) return
+            onNext({ providerTypes: toProviderTypes(combo) })
+          }}
+          className="flex items-center gap-2 px-6 py-2.5 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 text-white font-bold text-sm rounded-xl transition-colors"
+        >
           Continue <ArrowRight className="w-4 h-4" />
         </button>
       </div>
@@ -199,9 +300,13 @@ function StepProfileSetup({ data, onFinish, onBack, saving }: { data: Onboarding
 // ── Main wizard ─────────────────────────────────────────────────────────────
 export default function OnboardingPage() {
   const router = useRouter()
+  const { data: session, status } = useSession()
+  const token = session?.user?.accessToken
   const [step, setStep]     = useState<1 | 2 | 3>(1)
   const [data, setData]     = useState<OnboardingState>(DEFAULT_ONBOARDING)
   const [saving, setSaving] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [checkingProvider, setCheckingProvider] = useState(true)
 
   function patch(p: Partial<OnboardingState>) { setData(prev => ({ ...prev, ...p })) }
 
@@ -209,21 +314,129 @@ export default function OnboardingPage() {
   function handleStep2(p: Partial<OnboardingState>) { patch(p); setStep(3) }
   function handleBack()  { setStep(prev => (prev - 1) as 1 | 2 | 3) }
 
+  function mapProviderTypes(providerTypes: ProviderType[]): 'hotel' | 'tour_operator' | 'car_rental' | 'multiple' {
+    const sorted = [...providerTypes].sort().join(',')
+    if (sorted === ['accommodation', 'car_rental', 'tour_operator'].sort().join(',')) return 'multiple'
+    if (sorted === ['accommodation'].sort().join(',')) return 'hotel'
+    if (sorted === ['tour_operator'].sort().join(',')) return 'tour_operator'
+    if (sorted === ['car_rental'].sort().join(',')) return 'car_rental'
+    throw new Error('Invalid service selection.')
+  }
+
+  // Redirect unauthenticated users to login.
+  useEffect(() => {
+    if (status === 'unauthenticated') router.push('/auth/login')
+  }, [status, router])
+
+  // If user already has a provider profile, skip onboarding.
+  // Backend returns 404 when provider does not exist yet.
+  // Backend provider routes are role-protected; travelers may receive 403, which we ignore.
+  useEffect(() => {
+    let alive = true
+    async function check() {
+      if (status !== 'authenticated' || !token) {
+        setCheckingProvider(false)
+        return
+      }
+
+      const freshToken = await getFreshAccessToken()
+      if (!freshToken || !alive) {
+        setCheckingProvider(false)
+        return
+      }
+
+      setCheckingProvider(true)
+      try {
+        await apiClient.get('/provider/profile', freshToken, { cache: 'no-store' })
+        if (alive) router.push('/dashboard/business')
+      } catch (err: unknown) {
+        // Ignore "no provider profile" and "not a provider role yet".
+        if (err instanceof ApiError && (err.status === 404 || err.status === 403)) return
+        if (err instanceof ApiError && err.status === 401) {
+          if (alive) router.push('/auth/login')
+          return
+        }
+        if (alive) setSubmitError(err instanceof Error ? err.message : 'Failed to verify provider profile.')
+      } finally {
+        if (alive) setCheckingProvider(false)
+      }
+    }
+    check()
+    return () => { alive = false }
+  }, [status, token, router])
+
+  if (status === 'loading' || checkingProvider) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+      </div>
+    )
+  }
+
+  if (status === 'unauthenticated') return null
+
   async function handleFinish(p: Partial<OnboardingState>) {
     const final = { ...data, ...p }
     patch(p)
     setSaving(true)
-    // Mock save — store in localStorage
-    await new Promise(r => setTimeout(r, 1000))
-    localStorage.setItem('wm_provider', JSON.stringify({ ...final, id: `provider-${Date.now()}`, completedOnboarding: true }))
-    setSaving(false)
-    router.push('/host/dashboard')
+    setSubmitError(null)
+
+    // Fetch fresh token right before submit to avoid stale token after long idle
+    const freshToken = await getFreshAccessToken()
+    if (!freshToken) {
+      setSubmitError('Session expired. Please log in again.')
+      setSaving(false)
+      router.push('/auth/login')
+      return
+    }
+
+    let businessType: 'hotel' | 'tour_operator' | 'car_rental' | 'multiple'
+    try {
+      businessType = mapProviderTypes(final.providerTypes)
+    } catch (e) {
+      setSubmitError('Invalid service selection. Please restart onboarding.')
+      setSaving(false)
+      return
+    }
+
+    try {
+      await apiClient.post(
+        '/account/provider',
+        {
+          businessName: final.name,
+          businessType,
+          description: final.description,
+          contactEmail: final.email,
+          contactPhone: final.phone,
+          city: final.location,
+          websiteUrl: final.website || undefined,
+        },
+        freshToken,
+      )
+
+      router.push('/dashboard/business')
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 401) {
+        setSubmitError('Session expired. Please log in again.')
+        router.push('/auth/login')
+      } else {
+        setSubmitError(err instanceof Error ? err.message : 'Failed to complete onboarding.')
+      }
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
     <OnboardingLayout step={step}>
+      {submitError && (
+        <div className="mb-5 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+          {submitError}
+        </div>
+      )}
+
       {step === 1 && <StepBusinessInfo data={data} onNext={handleStep1} />}
-      {step === 2 && <StepServiceType  data={data} onNext={handleStep2} onBack={handleBack} />}
+      {step === 2 && <StepServiceType data={data} onNext={handleStep2} onBack={handleBack} />}
       {step === 3 && <StepProfileSetup data={data} onFinish={handleFinish} onBack={handleBack} saving={saving} />}
     </OnboardingLayout>
   )

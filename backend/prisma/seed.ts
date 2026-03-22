@@ -89,101 +89,145 @@ async function main() {
   })
   console.log('  Destination:', destination.name)
 
-  // ── 5. Tour ───────────────────────────────────────────────────────────────
-  const tour = await prisma.tour.upsert({
-    where:  { slug: 'gobi-explorer-5-days' },
+  // ── 5. Tours (aligned with frontend tour mock slugs) ─────────────────────
+  const destinationKh = await prisma.destination.upsert({
+    where:  { slug: 'lake-khovsgol' },
     update: {},
     create: {
-      providerId:         provider.id,
-      destinationId:      destination.id,
-      slug:               'gobi-explorer-5-days',
-      title:              'Gobi Explorer - 5-Day Desert Adventure',
-      shortDescription:   'An immersive 5-day journey into the heart of the Gobi Desert.',
-      description:        'Experience the raw beauty of the Gobi Desert. Visit the famous Flaming Cliffs, ride camels across the Khongoryn Els dunes, and spend nights in traditional ger camps under the Milky Way.',
-      category:           'Adventure',
-      experienceType:     'Desert Expedition',
-      durationDays:       5,
-      durationNights:     4,
-      difficulty:         'Moderate',
-      meetingPoint:       'Ulaanbaatar city centre hotel lobby',
-      pickupIncluded:     true,
-      cancellationPolicy: 'Free cancellation up to 7 days before departure.',
-      languages:          ['English', 'Mongolian'],
-      maxGuests:          12,
-      minGuests:          2,
-      priceType:          'per_person',
-      basePrice:          499,
-      currency:           'USD',
-      ratingAverage:      4.9,
-      reviewsCount:       42,
-      status:             ListingStatus.active,
-      featured:           true,
+      name:           'Lake Khövsgöl',
+      slug:           'lake-khovsgol',
+      country:        'Mongolia',
+      region:         'Northern Mongolia',
+      featured:       true,
+      shortDescription: "Ride along Mongolia's deepest lake through ancient taiga forests.",
     },
   })
-  console.log('  Tour:', tour.title)
 
-  await prisma.tourImage.createMany({
-    skipDuplicates: true,
-    data: [
-      { tourId: tour.id, imageUrl: 'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?w=800', sortOrder: 0 },
-      { tourId: tour.id, imageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800', sortOrder: 1 },
-    ],
-  })
-
-  await prisma.tourItineraryDay.createMany({
-    skipDuplicates: true,
-    data: [
-      { tourId: tour.id, dayNumber: 1, title: 'Ulaanbaatar to Flaming Cliffs', description: 'Drive south to Bayanzag, the Flaming Cliffs where first dinosaur eggs were discovered.' },
-      { tourId: tour.id, dayNumber: 2, title: 'Yol Valley',                    description: 'Explore the narrow ice gorge of Yol Valley and its vultures and bearded eagles.' },
-      { tourId: tour.id, dayNumber: 3, title: 'Khongoryn Els Dunes',           description: 'Camel trek through the tallest sand dunes in Mongolia (up to 300m).' },
-      { tourId: tour.id, dayNumber: 4, title: 'Nomad Family Visit',            description: 'Stay with a real nomad family, learn to make airag and help herd animals.' },
-      { tourId: tour.id, dayNumber: 5, title: 'Return to Ulaanbaatar',         description: 'Scenic drive back with a stop at Ongiin Khiid monastery ruins.' },
-    ],
-  })
-
-  await prisma.tourIncludedItem.createMany({
-    skipDuplicates: true,
-    data: [
-      { tourId: tour.id, label: 'All transport in 4WD vehicle' },
-      { tourId: tour.id, label: '4 nights accommodation (ger camp or family ger)' },
-      { tourId: tour.id, label: 'All meals (full board)' },
-      { tourId: tour.id, label: 'English-speaking guide' },
-      { tourId: tour.id, label: 'Camel trekking (1 hour)' },
-    ],
-  })
-
-  await prisma.tourExcludedItem.createMany({
-    skipDuplicates: true,
-    data: [
-      { tourId: tour.id, label: 'International flights' },
-      { tourId: tour.id, label: 'Travel insurance' },
-      { tourId: tour.id, label: 'Personal expenses' },
-    ],
+  const destinationAltai = await prisma.destination.upsert({
+    where:  { slug: 'altai-mountains' },
+    update: {},
+    create: {
+      name:             'Altai Mountains',
+      slug:             'altai-mountains',
+      country:          'Mongolia',
+      region:           'Western Mongolia',
+      featured:         true,
+      shortDescription: 'Join Kazakh eagle hunters in the remote Altai and capture once-in-a-lifetime photographs.',
+    },
   })
 
   const now = new Date()
-  await prisma.tourDeparture.createMany({
-    skipDuplicates: true,
-    data: [
-      {
-        tourId:         tour.id,
-        startDate:      new Date(now.getFullYear(), now.getMonth() + 1, 15),
-        endDate:        new Date(now.getFullYear(), now.getMonth() + 1, 19),
-        availableSeats: 10,
-        bookedSeats:    3,
-        status:         'scheduled',
+  const addDays = (days: number) => new Date(now.getTime() + days * 86400000)
+
+  const toursSeed = [
+    {
+      slug:        'gobi-desert-camel-trek',
+      title:       'Gobi Desert Camel Trek',
+      destination: destination.id,
+      durationDays: 4,
+      difficulty:  'Moderate' as const,
+      maxGuests:   10,
+      basePrice:   420,
+      featured:    true,
+      imageUrl:    'https://images.unsplash.com/photo-1516912481808-3406841bd33c?w=1200',
+      depOffsetDays1: 30,
+      depOffsetDays2: 60,
+    },
+    {
+      slug:        'lake-khovsgol-horseback-expedition',
+      title:       'Lake Khövsgöl Horseback Expedition',
+      destination: destinationKh.id,
+      durationDays: 7,
+      difficulty:  'Challenging' as const,
+      maxGuests:   8,
+      basePrice:   680,
+      featured:    true,
+      imageUrl:    'https://images.unsplash.com/photo-1549880338-65ddcdfd017b?w=1200',
+      depOffsetDays1: 35,
+      depOffsetDays2: 65,
+    },
+    {
+      slug:        'altai-eagle-hunter-expedition',
+      title:       'Altai Eagle Hunter Expedition',
+      destination: destinationAltai.id,
+      durationDays: 10,
+      difficulty:  'Challenging' as const,
+      maxGuests:   6,
+      basePrice:   1280,
+      featured:    true,
+      imageUrl:    'https://images.unsplash.com/photo-1440342359743-84fcb8c21f21?w=1200',
+      depOffsetDays1: 40,
+      depOffsetDays2: 70,
+    },
+  ] as const
+
+  for (const [idx, t] of toursSeed.entries()) {
+    const tour = await prisma.tour.upsert({
+      where: { slug: t.slug },
+      update: {},
+      create: {
+        providerId:          provider.id,
+        destinationId:       t.destination,
+        slug:                t.slug,
+        title:               t.title,
+        shortDescription:   'Adventure tour seeded for local UI bookings.',
+        description:        'Adventure tour seeded for local UI bookings.',
+        durationDays:       t.durationDays,
+        durationNights:     Math.max(0, t.durationDays - 1),
+        difficulty:         t.difficulty,
+        pickupIncluded:     true,
+        languages:          ['English', 'Mongolian'],
+        maxGuests:          t.maxGuests,
+        minGuests:          1,
+        priceType:          'per_person',
+        basePrice:          t.basePrice,
+        currency:           'USD',
+        ratingAverage:      4.9,
+        reviewsCount:       10 + idx * 7,
+        status:             ListingStatus.active,
+        featured:           t.featured,
       },
-      {
-        tourId:         tour.id,
-        startDate:      new Date(now.getFullYear(), now.getMonth() + 2, 5),
-        endDate:        new Date(now.getFullYear(), now.getMonth() + 2, 9),
-        availableSeats: 12,
-        bookedSeats:    0,
-        status:         'scheduled',
-      },
-    ],
+    })
+
+    // Keep seed re-runs from stacking departures infinitely.
+    await prisma.tourDeparture.deleteMany({ where: { tourId: tour.id } })
+    await prisma.tourImage.deleteMany({ where: { tourId: tour.id } })
+
+    await prisma.tourImage.createMany({
+      data: [{ tourId: tour.id, imageUrl: t.imageUrl, sortOrder: 0 }],
+    })
+
+    const start1 = addDays(t.depOffsetDays1)
+    const start2 = addDays(t.depOffsetDays2)
+
+    await prisma.tourDeparture.createMany({
+      data: [
+        {
+          tourId:         tour.id,
+          startDate:      start1,
+          endDate:        new Date(start1.getTime() + (t.durationDays - 1) * 86400000),
+          availableSeats: 10 + idx * 2,
+          bookedSeats:    0,
+          status:         'scheduled',
+        },
+        {
+          tourId:         tour.id,
+          startDate:      start2,
+          endDate:        new Date(start2.getTime() + (t.durationDays - 1) * 86400000),
+          availableSeats: 12 + idx * 2,
+          bookedSeats:    0,
+          status:         'scheduled',
+        },
+      ],
+    })
+  }
+
+  // Ensure only seed-aligned tours are visible to the frontend tours listing.
+  // (The Next.js tour detail route is generated from mock-data params.)
+  await prisma.tour.updateMany({
+    where: { slug: { notIn: toursSeed.map(t => t.slug) } },
+    data:  { status: 'paused' },
   })
-  console.log('  Tour departures created')
 
   // ── 6. Vehicle ────────────────────────────────────────────────────────────
   const vehicle = await prisma.vehicle.upsert({

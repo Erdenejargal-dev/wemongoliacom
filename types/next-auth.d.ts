@@ -19,6 +19,8 @@ declare module "next-auth" {
       /** Backend JWT — use this as Bearer token for API calls */
       accessToken?: string;
     };
+    /** Set when token refresh failed; UI should sign out / redirect */
+    error?: 'TokenRefreshFailed';
   }
 }
 
@@ -28,5 +30,8 @@ declare module "next-auth/jwt" {
     role: string;
     avatar?: string;
     accessToken?: string;
+    refreshToken?: string;
+    accessTokenExpiresAt?: number;
+    error?: 'TokenRefreshFailed';
   }
 }

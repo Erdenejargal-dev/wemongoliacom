@@ -13,37 +13,45 @@ export interface BackendTour {
   slug: string
   title: string
   shortDescription?: string
+  category?: string
   basePrice: number
   currency: string
   durationDays?: number
+  difficulty?: string
   ratingAverage: number
   reviewsCount: number
+  featured?: boolean
   images: { imageUrl: string }[]
   provider?: { id: string; name: string; slug: string }
-  destination?: { id: string; name: string; country: string }
+  destination?: { id: string; name: string; slug: string }
 }
 
 export interface BackendTourDetail extends BackendTour {
-  description?: string
-  difficulty?: string
+  description?: string | null
   maxGuests: number
   minGuests: number
   languages: string[]
-  includes?: string[]
-  excludes?: string[]
-  highlights?: string[]
   pickupIncluded: boolean
-  cancellationPolicy?: string
-  category?: string
-  experienceType?: string
+  cancellationPolicy?: string | null
+  experienceType?: string | null
+  meetingPoint?: string | null
+  durationNights?: number | null
+
+  images: { imageUrl: string; altText?: string | null; sortOrder: number }[]
+  itinerary: { dayNumber: number; title: string; description?: string | null; overnightLocation?: string | null }[]
+  includedItems: { label: string }[]
+  excludedItems: { label: string }[]
   departures?: BackendDeparture[]
 }
 
 export interface BackendDeparture {
   id: string
-  departureDate: string
-  availableSpots: number
-  price?: number
+  startDate: string
+  endDate?: string
+  availableSeats: number
+  bookedSeats?: number
+  priceOverride?: number | null
+  currency?: string
   status: string
 }
 

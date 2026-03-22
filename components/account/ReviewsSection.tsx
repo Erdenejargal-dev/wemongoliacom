@@ -1,12 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Star, Pencil, Trash2, X, CheckCircle2, MessageSquare } from 'lucide-react'
+import { signOut } from 'next-auth/react'
 import type { UserReview } from '@/lib/mock-data/account'
+import { deleteMyTourReview, updateMyTourReview, type BackendMyTourReview, ApiError } from '@/lib/api/reviews'
+import { getFreshAccessToken } from '@/lib/auth-utils'
 
 interface ReviewsSectionProps {
   initialReviews: UserReview[]
+  accessToken: string
+  onReviewsChange?: (next: UserReview[]) => void
 }
 
 function StarRow({ rating }: { rating: number }) {
@@ -19,24 +25,105 @@ function StarRow({ rating }: { rating: number }) {
   )
 }
 
-export function ReviewsSection({ initialReviews }: ReviewsSectionProps) {
-  const [reviews, setReviews] = useState(initialReviews)
+export function ReviewsSection({ initialReviews, accessToken, onReviewsChange }: ReviewsSectionProps) {
+  const [reviews, setReviews] = useState<UserReview[]>(initialReviews)
   const [editing, setEditing] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   const [editRating, setEditRating] = useState(5)
   const [saved, setSaved] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setReviews(initialReviews)
+  }, [initialReviews])
 
   function startEdit(r: UserReview) {
     setEditing(r.id); setEditText(r.comment); setEditRating(r.rating)
   }
 
-  function saveEdit() {
-    setReviews(prev => prev.map(r => r.id === editing ? { ...r, comment: editText, rating: editRating } : r))
-    setEditing(null); setSaved(true); setTimeout(() => setSaved(false), 2000)
+  const router = useRouter()
+
+  async function saveEdit() {
+    if (!editing) return
+    if (saving) return
+    setSaving(true)
+    setActionError(null)
+
+    const token = await getFreshAccessToken()
+    if (!token) {
+      setActionError('Session expired. Please log in again.')
+      setSaving(false)
+      await signOut({ redirect: false })
+      router.push('/auth/login')
+      return
+    }
+
+    try {
+      const updated = await updateMyTourReview(token, editing, { rating: editRating, comment: editText })
+      const mapped: UserReview = {
+        id: updated.id,
+        tourSlug: updated.tourSlug,
+        tourTitle: updated.tourTitle,
+        tourImage: updated.tourImage ?? '',
+        rating: updated.rating,
+        comment: updated.comment ?? '',
+        date: updated.date,
+      }
+      setReviews(prev => {
+        const next = prev.map(r => r.id === editing ? mapped : r)
+        onReviewsChange?.(next)
+        return next
+      })
+      setEditing(null)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 401) {
+        setActionError('Session expired. Please log in again.')
+        await signOut({ redirect: false })
+        router.push('/auth/login')
+      } else {
+        setActionError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Failed to update review.')
+      }
+    } finally {
+      setSaving(false)
+    }
   }
 
-  function deleteReview(id: string) {
-    if (confirm('Delete this review?')) setReviews(prev => prev.filter(r => r.id !== id))
+  async function deleteReview(id: string) {
+    if (!confirm('Delete this review?')) return
+    if (saving) return
+    setSaving(true)
+    setActionError(null)
+
+    const token = await getFreshAccessToken()
+    if (!token) {
+      setActionError('Session expired. Please log in again.')
+      setSaving(false)
+      await signOut({ redirect: false })
+      router.push('/auth/login')
+      return
+    }
+
+    try {
+      await deleteMyTourReview(token, id)
+      setReviews(prev => {
+        const next = prev.filter(r => r.id !== id)
+        onReviewsChange?.(next)
+        return next
+      })
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 401) {
+        setActionError('Session expired. Please log in again.')
+        await signOut({ redirect: false })
+        router.push('/auth/login')
+      } else {
+        setActionError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Failed to delete review.')
+      }
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (reviews.length === 0) {
@@ -56,6 +143,11 @@ export function ReviewsSection({ initialReviews }: ReviewsSectionProps) {
         <h3 className="text-sm font-bold text-gray-900">My Reviews ({reviews.length})</h3>
         {saved && <span className="flex items-center gap-1 text-xs text-green-600 font-medium"><CheckCircle2 className="w-3.5 h-3.5" />Review updated</span>}
       </div>
+      {actionError && (
+        <p className="text-sm text-red-600 font-medium bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+          {actionError}
+        </p>
+      )}
       {reviews.map(review => (
         <div key={review.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="flex gap-3 p-4 border-b border-gray-50">

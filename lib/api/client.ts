@@ -24,6 +24,7 @@ async function request<T>(
   path: string,
   options: RequestInit = {},
   token?: string | null,
+  retryCount = 0,
 ): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -45,6 +46,23 @@ async function request<T>(
   }
 
   if (!res.ok) {
+    // If the token expired, attempt to fetch a fresh session token once.
+    // This relies on NextAuth's JWT refresh logic.
+    if (res.status === 401 && token && retryCount < 1 && typeof window !== 'undefined') {
+      try {
+        // Fetch the latest session from NextAuth. This triggers the JWT callback
+        // (including our refreshToken logic) and returns a fresh accessToken.
+        const latestRes = await fetch('/api/auth/session', { credentials: 'include' })
+        const latest = await latestRes.json().catch(() => null)
+        const latestToken = (latest as any)?.user?.accessToken as string | undefined
+        if (latestToken && latestToken !== token) {
+          return request<T>(path, options, latestToken, retryCount + 1)
+        }
+      } catch {
+        // ignore and throw below
+      }
+    }
+
     throw new ApiError(res.status, json.error ?? `HTTP ${res.status}`)
   }
 

@@ -1,25 +1,56 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, CheckCircle2, Loader2, AlertCircle } from 'lucide-react'
+import { signOut } from 'next-auth/react'
+import { changePassword } from '@/lib/api/account'
+import { ApiError } from '@/lib/api/client'
+import { getFreshAccessToken } from '@/lib/auth-utils'
 
-export function SecuritySettings() {
+export function SecuritySettings({ accessToken: _accessToken }: { accessToken: string }) {
   const [form, setForm] = useState({ current: '', next: '', confirm: '' })
   const [show, setShow] = useState({ current: false, next: false, confirm: false })
   const [saving, setSaving] = useState(false)
   const [result, setResult] = useState<'success' | 'error' | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   function patch(p: Partial<typeof form>) { setForm(prev => ({ ...prev, ...p })) }
   function toggleShow(k: keyof typeof show) { setShow(prev => ({ ...prev, [k]: !prev[k] })) }
 
+  const router = useRouter()
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (form.next !== form.confirm) { setResult('error'); return }
-    setSaving(true); setResult(null)
-    await new Promise(r => setTimeout(r, 900))
-    setSaving(false)
-    setResult('success')
+    if (form.next !== form.confirm) { setResult('error'); setErrorMessage('Passwords do not match'); return }
+    setSaving(true); setResult(null); setErrorMessage(null)
+
+    const token = await getFreshAccessToken()
+    if (!token) {
+      setResult('error')
+      setErrorMessage('Session expired. Please log in again.')
+      setSaving(false)
+      await signOut({ redirect: false })
+      router.push('/auth/login')
+      return
+    }
+
+    try {
+      await changePassword(token, { currentPassword: form.current, newPassword: form.next })
+      setResult('success')
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 401) {
+        setResult('error')
+        setErrorMessage('Session expired. Please log in again.')
+        await signOut({ redirect: false })
+        router.push('/auth/login')
+      } else {
+        setResult('error')
+        setErrorMessage(err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Failed to update password.')
+      }
+    }
     setForm({ current: '', next: '', confirm: '' })
+    setSaving(false)
     setTimeout(() => setResult(null), 3000)
   }
 
@@ -34,7 +65,7 @@ export function SecuritySettings() {
           onChange={v => patch({ next: v })} onToggle={() => toggleShow('next')} />
         <PasswordField label="Confirm New Password" value={form.confirm} show={show.confirm}
           onChange={v => patch({ confirm: v })} onToggle={() => toggleShow('confirm')}
-          error={result === 'error' ? 'Passwords do not match' : undefined} />
+          error={result === 'error' ? errorMessage ?? undefined : undefined} />
       </div>
       <div className="flex items-center gap-3 mt-5 pt-5 border-t border-gray-50">
         <button type="submit" disabled={saving || !form.current || !form.next}
@@ -47,6 +78,11 @@ export function SecuritySettings() {
           </span>
         )}
       </div>
+        {result === 'error' && errorMessage && (
+          <p className="text-sm text-red-600 font-medium flex items-center gap-1">
+            <AlertCircle className="w-3.5 h-3.5" />{errorMessage}
+          </p>
+        )}
     </form>
   )
 }

@@ -1,6 +1,19 @@
 import { cn } from '@/lib/utils'
 
-type Variant = 'confirmed' | 'pending' | 'cancelled' | 'completed' | 'active' | 'draft' | 'paused' | 'paid' | 'unpaid' | 'refunded' | 'partial'
+type Variant =
+  | 'confirmed'
+  | 'pending'
+  | 'cancelled'
+  | 'completed'
+  | 'active'
+  | 'draft'
+  | 'paused'
+  | 'paid'
+  | 'unpaid'
+  | 'authorized'
+  | 'failed'
+  | 'refunded'
+  | 'partial'
 
 const variantStyles: Record<Variant, string> = {
   confirmed:  'bg-green-50  text-green-700  border-green-200',
@@ -12,6 +25,8 @@ const variantStyles: Record<Variant, string> = {
   paused:     'bg-orange-50 text-orange-700 border-orange-200',
   paid:       'bg-green-50  text-green-700  border-green-200',
   unpaid:     'bg-red-50    text-red-700    border-red-200',
+  authorized: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+  failed:     'bg-red-50    text-red-700    border-red-200',
   refunded:   'bg-purple-50 text-purple-700 border-purple-200',
   partial:    'bg-yellow-50 text-yellow-700 border-yellow-200',
 }

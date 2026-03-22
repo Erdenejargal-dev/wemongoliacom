@@ -157,28 +157,7 @@ export default function HeroInteractive() {
           })}
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 sm:flex sm:justify-center gap-4 sm:gap-6 md:gap-12 mb-10 sm:mb-14 px-2">
-          {[
-            { icon: Award, value: "5,000+", label: "Happy Travelers" },
-            { icon: Shield, value: "100%", label: "Insurance Coverage" },
-            { icon: Clock, value: "24/7", label: "Support Available" },
-            { icon: Sparkles, value: "50+", label: "Tour Packages" },
-          ].map((stat) => {
-            const IconComponent = stat.icon;
-            return (
-              <div key={stat.label} className="text-center group">
-                <div className="flex items-center justify-center gap-2 mb-1">
-                  <IconComponent className="w-5 h-5 text-green-400 group-hover:scale-110 transition-transform" />
-                  <div className="text-3xl sm:text-4xl font-black text-white">
-                    {stat.value}
-                  </div>
-                </div>
-                <div className="text-sm text-white/70">{stat.label}</div>
-              </div>
-            );
-          })}
-        </div>
+        
 
         {/* Search Section */}
         <div className="max-w-5xl mx-auto">

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { useSession, signOut } from 'next-auth/react'
 import { BookOpen, RefreshCw } from 'lucide-react'
 import { PageHeader } from '@/components/dashboard/ui/PageHeader'
 import { TableToolbar } from '@/components/dashboard/ui/TableToolbar'
@@ -15,6 +16,8 @@ import {
   cancelProviderBooking,
   type ProviderBooking,
 } from '@/lib/api/provider'
+import { getFreshAccessToken } from '@/lib/auth-utils'
+import { ApiError } from '@/lib/api/client'
 
 export default function BookingsPage() {
   const { data: session } = useSession()
@@ -29,17 +32,25 @@ export default function BookingsPage() {
 
   const token = session?.user?.accessToken
 
+  const router = useRouter()
+
   // ── Fetch bookings ────────────────────────────────────────────────────
   const load = useCallback(async () => {
-    if (!token) return
+    const freshToken = token ? await getFreshAccessToken() : null
+    if (!freshToken) return
     setLoading(true)
     setError(null)
     try {
-      const result = await fetchProviderBookings(token, { status: statusFilter })
+      const result = await fetchProviderBookings(freshToken, { status: statusFilter })
       setBookings(result.data)
       setTotal(result.total)
-    } catch (e: any) {
-      setError(e.message ?? 'Failed to load bookings.')
+    } catch (e: unknown) {
+      if (e instanceof ApiError && e.status === 401) {
+        await signOut({ redirect: false })
+        router.push('/auth/login')
+      } else {
+        setError(e instanceof Error ? e.message : 'Failed to load bookings.')
+      }
     } finally {
       setLoading(false)
     }
@@ -61,35 +72,59 @@ export default function BookingsPage() {
 
   // ── Actions ──────────────────────────────────────────────────────────
   async function handleConfirm(code: string) {
-    if (!token) return
+    const freshToken = await getFreshAccessToken()
+    if (!freshToken) { await signOut({ redirect: false }); router.push('/auth/login'); return }
     setActionLoading(code)
     try {
-      await confirmProviderBooking(code, token)
+      await confirmProviderBooking(code, freshToken)
       await load()
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        await signOut({ redirect: false })
+        router.push('/auth/login')
+      } else {
+        setError(e instanceof Error ? e.message : 'Action failed.')
+      }
     } finally {
       setActionLoading(null)
     }
   }
 
   async function handleComplete(code: string) {
-    if (!token) return
+    const freshToken = await getFreshAccessToken()
+    if (!freshToken) { await signOut({ redirect: false }); router.push('/auth/login'); return }
     setActionLoading(code)
     try {
-      await completeProviderBooking(code, token)
+      await completeProviderBooking(code, freshToken)
       await load()
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        await signOut({ redirect: false })
+        router.push('/auth/login')
+      } else {
+        setError(e instanceof Error ? e.message : 'Action failed.')
+      }
     } finally {
       setActionLoading(null)
     }
   }
 
   async function handleCancel(code: string) {
-    if (!token) return
+    const freshToken = await getFreshAccessToken()
+    if (!freshToken) { await signOut({ redirect: false }); router.push('/auth/login'); return }
     const reason = window.prompt('Reason for cancellation:')
     if (!reason) return
     setActionLoading(code)
     try {
-      await cancelProviderBooking(code, reason, token)
+      await cancelProviderBooking(code, reason, freshToken)
       await load()
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) {
+        await signOut({ redirect: false })
+        router.push('/auth/login')
+      } else {
+        setError(e instanceof Error ? e.message : 'Action failed.')
+      }
     } finally {
       setActionLoading(null)
     }
@@ -125,8 +160,24 @@ export default function BookingsPage() {
       render: r => new Date(r.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
     },
     { key: 'guests', header: 'Guests', render: r => `${r.guests}` },
-    { key: 'bookingStatus',  header: 'Status',  render: r => <StatusBadge status={r.bookingStatus as any} /> },
-    { key: 'paymentStatus',  header: 'Payment', render: r => <StatusBadge status={r.paymentStatus as any} /> },
+    {
+      key: 'bookingStatus',
+      header: 'Status',
+      render: r => {
+        const allowed = ['pending', 'confirmed', 'cancelled', 'completed'] as const
+        const s = r.bookingStatus as (typeof allowed)[number]
+        return <StatusBadge status={allowed.includes(s) ? s : 'pending'} />
+      },
+    },
+    {
+      key: 'paymentStatus',
+      header: 'Payment',
+      render: r => {
+        const allowed = ['unpaid', 'authorized', 'paid', 'refunded', 'failed', 'partial'] as const
+        const s = r.paymentStatus as (typeof allowed)[number]
+        return <StatusBadge status={allowed.includes(s) ? s : 'unpaid'} />
+      },
+    },
     {
       key: 'totalAmount',
       header: 'Amount',
@@ -252,3 +303,4 @@ export default function BookingsPage() {
     </div>
   )
 }
+

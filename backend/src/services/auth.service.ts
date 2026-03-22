@@ -1,6 +1,6 @@
 import { prisma } from '../lib/prisma'
 import { hashPassword, verifyPassword } from '../utils/password'
-import { signAccessToken, signRefreshToken } from '../utils/jwt'
+import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt'
 import { AppError } from '../middleware/error'
 
 export interface RegisterInput {
@@ -74,6 +74,29 @@ export async function login(input: LoginInput) {
     },
     ...tokens,
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Refresh access token using a valid refresh token.
+// Returns a new accessToken (and refreshToken for rotation).
+// ─────────────────────────────────────────────────────────────────────────────
+export async function refresh(input: { refreshToken: string }) {
+  let payload: { userId: string }
+  try {
+    payload = verifyRefreshToken(input.refreshToken) as { userId: string }
+  } catch {
+    throw new AppError('Invalid or expired refresh token.', 401)
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: payload.userId },
+    select: { id: true, role: true },
+  })
+
+  if (!user) throw new AppError('User not found.', 401)
+
+  const tokens = buildTokens(user.id, user.role)
+  return tokens
 }
 
 export async function getMe(userId: string) {

@@ -9,7 +9,7 @@ import { RevenueChart } from '@/components/dashboard/domain/RevenueChart'
 import { BookingChart } from '@/components/dashboard/domain/BookingChart'
 import { mockBookings, type Booking } from '@/lib/mock-data/bookings'
 import { summaryStats } from '@/lib/mock-data/analytics'
-import type { ProviderType } from '@/lib/mock-data/provider'
+import type { ProviderType } from '@/lib/provider-menu'
 import { SECTION_LABELS } from '@/lib/provider-menu'
 
 const recentBookingColumns: Column<Booking>[] = [

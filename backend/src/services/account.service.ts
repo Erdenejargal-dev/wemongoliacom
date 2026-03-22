@@ -1,6 +1,8 @@
 import { prisma } from '../lib/prisma'
 import { AppError } from '../middleware/error'
 import { hashPassword, verifyPassword } from '../utils/password'
+import { uniqueSlug } from '../utils/slug'
+import { ProviderType } from '@prisma/client'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Get own profile
@@ -18,6 +20,7 @@ export async function getMyProfile(userId: string) {
       avatarUrl:   true,
       country:   true,
       role:      true,
+      bio:         true,
       createdAt:   true,
       _count: {
         select: {
@@ -42,6 +45,7 @@ export interface UpdateProfileInput {
   phone?:     string
   avatarUrl?: string
   country?:   string
+  bio?:       string
 }
 
 export async function updateMyProfile(userId: string, data: UpdateProfileInput) {
@@ -55,6 +59,7 @@ export async function updateMyProfile(userId: string, data: UpdateProfileInput) 
       phone:     true,
       avatarUrl: true,
       country:   true,
+      bio:       true,
     },
   })
 }
@@ -120,4 +125,60 @@ export async function deactivateAccount(userId: string, password: string) {
       lastName:     'User',
     },
   })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Register a provider profile (business)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface RegisterProviderInput {
+  businessName:  string
+  businessTypes: ProviderType[]
+  description?:  string
+  contactEmail?: string
+  contactPhone?: string
+  address?:      string
+  city?:         string
+  country?:      string
+  websiteUrl?:   string
+}
+
+export async function registerProvider(userId: string, input: RegisterProviderInput) {
+  const user = await prisma.user.findUnique({ where: { id: userId } })
+  if (!user) throw new AppError('User not found.', 404)
+
+  const existing = await prisma.provider.findUnique({ where: { ownerUserId: userId } })
+  if (existing) throw new AppError('Provider profile already exists for this user.', 409)
+
+  const slug = await uniqueSlug(input.businessName, async (s) => {
+    const exists = await prisma.provider.findUnique({ where: { slug: s } })
+    return !!exists
+  })
+
+  const provider = await prisma.$transaction(async (tx) => {
+    // Ensure role is provider_owner (or admin) once a business is created
+    if (user.role === 'traveler') {
+      await tx.user.update({ where: { id: userId }, data: { role: 'provider_owner' } })
+    }
+
+    return tx.provider.create({
+      data: {
+        ownerUserId:   userId,
+        name:          input.businessName,
+        slug,
+        description:   input.description,
+        email:         input.contactEmail,
+        phone:         input.contactPhone,
+        website:       input.websiteUrl,
+        address:       input.address,
+        city:          input.city,
+        country:       input.country ?? 'Mongolia',
+        languages:     [],
+        providerTypes: input.businessTypes,
+        status:        'draft',
+      },
+    })
+  })
+
+  return provider
 }

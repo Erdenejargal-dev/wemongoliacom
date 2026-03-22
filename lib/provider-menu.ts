@@ -1,4 +1,4 @@
-import type { ProviderType } from '@/lib/mock-data/provider'
+export type ProviderType = 'tour_operator' | 'car_rental' | 'accommodation'
 
 export interface MenuItem {
   id: string          // unique stable key for active-state tracking
@@ -9,7 +9,7 @@ export interface MenuItem {
 
 // Base items every provider always sees
 const SHARED_ITEMS: MenuItem[] = [
-  { id: 'overview',   label: 'Overview',  href: '/dashboard',                       icon: 'LayoutDashboard' },
+  { id: 'overview',   label: 'Overview',  href: '/dashboard/business',              icon: 'LayoutDashboard' },
   { id: 'messages',   label: 'Messages',  href: '/dashboard/business/messages',     icon: 'MessageSquare'   },
   { id: 'analytics',  label: 'Analytics', href: '/dashboard/business/analytics',    icon: 'BarChart2'       },
   { id: 'settings',   label: 'Settings',  href: '/dashboard/business/settings',     icon: 'Settings'        },

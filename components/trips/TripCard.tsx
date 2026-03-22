@@ -9,7 +9,7 @@ import { CancelBookingButton } from './CancelBookingButton'
 
 interface TripCardProps {
   trip: Trip
-  onCancel: (id: string) => void
+  onCancel: (bookingCode: string) => void
 }
 
 export function TripCard({ trip, onCancel }: TripCardProps) {
@@ -25,7 +25,7 @@ export function TripCard({ trip, onCancel }: TripCardProps) {
       <div className="flex flex-col sm:flex-row">
         {/* Image */}
         <div className="relative h-36 sm:h-auto sm:w-40 shrink-0 overflow-hidden bg-gray-200">
-          <img src={trip.image} alt={trip.tourTitle} className="w-full h-full object-cover" />
+          <img src={trip.image} alt={trip.listingTitle} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
         </div>
 
@@ -34,8 +34,8 @@ export function TripCard({ trip, onCancel }: TripCardProps) {
           {/* Title row */}
           <div className="flex items-start justify-between gap-2 flex-wrap">
             <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-bold text-gray-900 leading-tight mb-1">{trip.tourTitle}</h3>
-              <p className="text-xs text-gray-500">{trip.destination} · {trip.hostName}</p>
+              <h3 className="text-sm font-bold text-gray-900 leading-tight mb-1">{trip.listingTitle}</h3>
+              <p className="text-xs text-gray-500">{trip.location} · {trip.hostName}</p>
             </div>
             <TripStatusBadge status={trip.status} />
           </div>
@@ -44,7 +44,7 @@ export function TripCard({ trip, onCancel }: TripCardProps) {
           <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
             <span className="flex items-center gap-1">
               <CalendarDays className="w-3.5 h-3.5 text-green-500" />
-              {formatDate(trip.date)} · {trip.durationDays}d
+              {formatDate(trip.date)} · {trip.durationDays} {trip.durationUnit}{trip.durationDays !== 1 ? 's' : ''}
             </span>
             <span className="flex items-center gap-1">
               <Users className="w-3.5 h-3.5 text-green-500" />
@@ -60,8 +60,8 @@ export function TripCard({ trip, onCancel }: TripCardProps) {
               {trip.status === 'Upcoming' && (
                 <CancelBookingButton
                   bookingId={trip.bookingId}
-                  tourTitle={trip.tourTitle}
-                  onConfirm={() => onCancel(trip.id)}
+                  listingTitle={trip.listingTitle}
+                  onConfirm={() => onCancel(trip.bookingId)}
                 />
               )}
               <button

@@ -34,7 +34,41 @@ export interface BackendBooking {
   currency: string
   listingType: string
   startDate: string
+  endDate?: string
   guests: number
+
+  provider?: { name: string; slug: string; logoUrl?: string | null } | null
+
+  listingSnapshot?: any
+
+  // Included for tour bookings via BookingService.listMyBookings select()
+  tourDeparture?: {
+    tour?: {
+      slug: string
+      title: string
+      durationDays: number
+      destination?: { name: string; slug: string }
+      images?: { imageUrl: string }[]
+    }
+  } | null
+
+  vehicleAvailability?: {
+    vehicle?: {
+      slug: string
+      title: string
+      destination?: { name: string; slug: string }
+      images?: { imageUrl: string }[]
+    }
+  } | null
+
+  roomType?: {
+    accommodation?: {
+      slug: string
+      name: string
+      destination?: { name: string; slug: string }
+      images?: { imageUrl: string }[]
+    }
+  } | null
 }
 
 export async function createBooking(
@@ -50,7 +84,9 @@ export async function fetchMyBookings(token: string): Promise<BackendBooking[]> 
     // apiClient.get<T> unwraps json.data, so result IS the array, not { data: [...] }
     const result = await apiClient.get<BackendBooking[]>('/bookings/me', token)
     return result ?? []
-  } catch {
+  } catch (err: unknown) {
+    // If the backend says the token is expired, do not silently degrade to empty UI.
+    if (err instanceof Error && 'status' in err && (err as any).status === 401) throw err
     return []
   }
 }

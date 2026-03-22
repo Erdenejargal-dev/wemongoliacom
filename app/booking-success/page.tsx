@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { CheckCircle2, CalendarDays, Users, MapPin, Clock, Copy, ChevronRight } from 'lucide-react'
 import { getLastBooking, type Booking } from '@/lib/booking'
@@ -12,12 +12,8 @@ function formatDate(dateStr: string) {
 }
 
 export default function BookingSuccessPage() {
-  const [booking, setBooking] = useState<Booking | null>(null)
+  const [booking] = useState<Booking | null>(() => getLastBooking())
   const [copied, setCopied] = useState(false)
-
-  useEffect(() => {
-    setBooking(getLastBooking())
-  }, [])
 
   function copyId() {
     if (!booking) return
@@ -109,7 +105,7 @@ export default function BookingSuccessPage() {
           <p className="text-xs text-gray-500">{booking.country}</p>
           {booking.specialRequests && (
             <div className="mt-2 pt-2 border-t border-gray-50">
-              <p className="text-xs text-gray-500 italic">"{booking.specialRequests}"</p>
+              <p className="text-xs text-gray-500 italic">&ldquo;{booking.specialRequests}&rdquo;</p>
             </div>
           )}
         </div>
