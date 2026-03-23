@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { BookOpen, RefreshCw } from 'lucide-react'
 import { PageHeader } from '@/components/dashboard/ui/PageHeader'
@@ -21,18 +21,25 @@ import { ApiError } from '@/lib/api/client'
 
 export default function BookingsPage() {
   const { data: session } = useSession()
+  const searchParams = useSearchParams()
+  const statusParam = searchParams.get('status')
 
   const [bookings,      setBookings]      = useState<ProviderBooking[]>([])
   const [total,         setTotal]         = useState(0)
   const [loading,       setLoading]       = useState(true)
   const [error,         setError]         = useState<string | null>(null)
   const [search,        setSearch]        = useState('')
-  const [statusFilter,  setStatusFilter]  = useState('all')
+  const [statusFilter,  setStatusFilter]  = useState<'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled'>('all')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   const token = session?.user?.accessToken
-
   const router = useRouter()
+
+  // Sync URL ?status= to filter when present
+  useEffect(() => {
+    const v = statusParam?.toLowerCase()
+    if (['pending', 'confirmed', 'completed', 'cancelled'].includes(v ?? '')) setStatusFilter(v as any)
+  }, [statusParam])
 
   // ── Fetch bookings ────────────────────────────────────────────────────
   const load = useCallback(async () => {

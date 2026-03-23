@@ -9,6 +9,48 @@ import { apiClient } from './client'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
+/** Provider profile from GET /provider/profile (Prisma Provider model) */
+export interface ProviderProfile {
+  id: string
+  name: string
+  slug?: string
+  description?: string | null
+  logoUrl?: string | null
+  coverImageUrl?: string | null
+  email?: string | null
+  phone?: string | null
+  website?: string | null
+  address?: string | null
+  city?: string | null
+  region?: string | null
+  country?: string | null
+  languages?: string[]
+  providerTypes: string[]
+  ratingAverage?: number
+  reviewsCount?: number
+  totalGuestsHosted?: number
+  isVerified?: boolean
+  status?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+/** Update profile input — matches backend updateProfileSchema */
+export interface UpdateProviderProfileInput {
+  name?: string
+  tagline?: string
+  description?: string
+  logoUrl?: string
+  coverUrl?: string
+  phone?: string
+  email?: string
+  websiteUrl?: string
+  address?: string
+  city?: string
+  country?: string
+  socialLinks?: Record<string, string>
+}
+
 /**
  * Traveler info is returned nested under `user` by the backend.
  * Backend: prisma.booking.findMany({ include: { user: { select: {...} } } })
@@ -64,6 +106,25 @@ export interface ProviderAnalytics {
 
 // ── API functions ──────────────────────────────────────────────────────────
 
+export async function fetchProviderProfile(token: string): Promise<ProviderProfile | null> {
+  try {
+    return await apiClient.get<ProviderProfile>('/provider/profile', token)
+  } catch {
+    return null
+  }
+}
+
+export async function updateProviderProfile(
+  token: string,
+  data: UpdateProviderProfileInput,
+): Promise<ProviderProfile | null> {
+  try {
+    return await apiClient.put<ProviderProfile>('/provider/profile', data, token)
+  } catch {
+    return null
+  }
+}
+
 export async function fetchProviderBookings(
   token: string,
   params: { status?: string; page?: number; limit?: number } = {},
@@ -111,4 +172,63 @@ export async function cancelProviderBooking(
   token: string,
 ) {
   return apiClient.patch(`/provider/bookings/${bookingCode}/cancel`, { reason }, token)
+}
+
+// ── Provider Reviews ────────────────────────────────────────────────────────
+
+export interface ProviderReview {
+  id:            string
+  rating:        number
+  title:         string | null
+  comment:       string | null
+  providerReply: string | null
+  createdAt:     string
+  listingType:   string
+  listingId:     string
+  listingName:   string
+  user: {
+    firstName: string
+    lastName:  string
+    avatarUrl: string | null
+  }
+}
+
+export async function fetchProviderReviews(
+  token: string,
+  params: { page?: number; limit?: number } = {},
+): Promise<{ data: ProviderReview[]; total: number }> {
+  try {
+    const qs = new URLSearchParams()
+    if (params.page)  qs.set('page',  String(params.page))
+    if (params.limit) qs.set('limit', String(params.limit))
+    const query = qs.toString() ? `?${qs.toString()}` : ''
+
+    const result = await apiClient.get<{
+      data: ProviderReview[]
+      pagination: { page: number; limit: number; total: number; pages: number }
+    }>(`/provider/reviews${query}`, token)
+
+    return {
+      data: result.data ?? [],
+      total: result.pagination?.total ?? 0,
+    }
+  } catch {
+    return { data: [], total: 0 }
+  }
+}
+
+export async function replyToProviderReview(
+  reviewId: string,
+  reply: string,
+  token: string,
+): Promise<ProviderReview | null> {
+  try {
+    return await apiClient.patch<ProviderReview>(
+      `/provider/reviews/${reviewId}/reply`,
+      { reply },
+      token,
+    )
+  } catch {
+    return null
+  }
 }

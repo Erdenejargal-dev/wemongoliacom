@@ -8,6 +8,7 @@ import { apiClient, type Paginated } from './client'
 
 // ── Backend response shapes ───────────────────────────────────────────────
 
+/** GET /tours list response item */
 export interface BackendTour {
   id: string
   slug: string
@@ -24,6 +25,23 @@ export interface BackendTour {
   images: { imageUrl: string }[]
   provider?: { id: string; name: string; slug: string }
   destination?: { id: string; name: string; slug: string }
+}
+
+/** GET /search?type=tour response item (slightly different shape) */
+export interface BackendSearchTour {
+  id: string
+  slug: string
+  title: string
+  shortDescription?: string | null
+  basePrice: number
+  currency: string
+  durationDays?: number | null
+  maxGuests?: number
+  ratingAverage: number
+  reviewsCount: number
+  images: { imageUrl: string }[]
+  provider?: { id: string; name: string; slug: string }
+  destination?: { id: string; name: string; slug: string; country?: string; region?: string | null }
 }
 
 export interface BackendTourDetail extends BackendTour {
@@ -61,12 +79,12 @@ export function mapTour(t: BackendTour) {
   return {
     id: t.id,
     slug: t.slug,
-    destinationSlug: t.destination?.name?.toLowerCase().replace(/\s+/g, '-') ?? '',
+    destinationSlug: t.destination?.slug ?? t.destination?.name?.toLowerCase().replace(/\s+/g, '-') ?? '',
     hostSlug: t.provider?.slug ?? '',
     title: t.title,
     location: t.destination?.name ?? 'Mongolia',
     region: t.destination?.name ?? '',
-    regionSlug: '',
+    regionSlug: t.destination?.slug ?? '',
     price: t.basePrice,
     duration: t.durationDays ? `${t.durationDays} day${t.durationDays > 1 ? 's' : ''}` : '',
     durationDays: t.durationDays ?? 0,
@@ -77,6 +95,35 @@ export function mapTour(t: BackendTour) {
     style: 'adventure' as const,
     experienceTypes: [],
     images: t.images.map(i => i.imageUrl),
+    shortDescription: t.shortDescription ?? '',
+    highlights: [],
+    included: [],
+    available: true,
+  }
+}
+
+/** Maps GET /search?type=tour item → frontend Tour */
+export function mapSearchTourToFrontend(t: BackendSearchTour) {
+  const dest = t.destination
+  return {
+    id: t.id,
+    slug: t.slug,
+    destinationSlug: dest?.slug ?? dest?.name?.toLowerCase().replace(/\s+/g, '-') ?? '',
+    hostSlug: t.provider?.slug ?? '',
+    title: t.title,
+    location: dest?.name ?? 'Mongolia',
+    region: dest?.region ?? dest?.name ?? '',
+    regionSlug: dest?.slug ?? '',
+    price: t.basePrice,
+    duration: t.durationDays ? `${t.durationDays} day${t.durationDays > 1 ? 's' : ''}` : '',
+    durationDays: t.durationDays ?? 0,
+    rating: t.ratingAverage,
+    reviewCount: t.reviewsCount,
+    maxGuests: t.maxGuests ?? 12,
+    groupSize: 'group' as const,
+    style: 'adventure' as const,
+    experienceTypes: [],
+    images: Array.isArray(t.images) ? t.images.map((i: { imageUrl: string }) => i.imageUrl) : [],
     shortDescription: t.shortDescription ?? '',
     highlights: [],
     included: [],

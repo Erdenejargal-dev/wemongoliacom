@@ -4,28 +4,18 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { X, ChevronRight,
-  LayoutDashboard, Plus, Compass, CalendarCheck, CalendarDays,
-  Star, MessageSquare, CreditCard, BarChart2, Settings,
-  Car, BedDouble,
-} from 'lucide-react'
+import { X, ChevronRight, LayoutDashboard, CalendarCheck, MessageSquare, Star, BarChart2, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { apiClient } from '@/lib/api/client'
 import { buildProviderMenu, SECTION_LABELS, type ProviderType } from '@/lib/provider-menu'
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard,
-  Plus,
-  Compass,
   CalendarCheck,
-  CalendarDays,
-  Star,
   MessageSquare,
-  CreditCard,
+  Star,
   BarChart2,
   Settings,
-  Car,
-  BedDouble,
 }
 
 interface DashboardSidebarProps {

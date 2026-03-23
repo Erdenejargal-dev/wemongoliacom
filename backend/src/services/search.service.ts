@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -8,12 +9,41 @@ export interface SearchQuery {
   q?:           string
   type?:        'tour' | 'vehicle' | 'accommodation' | 'destination'
   destination?: string  // destination name / country / region
+  region?:      string  // destination.region (e.g. "Gobi", "Northern Mongolia")
   minPrice?:    number
   maxPrice?:    number
   minRating?:   number
-  sortBy?:      'price_asc' | 'price_desc' | 'rating' | 'newest'
+  minDays?:     number  // duration filter
+  maxDays?:     number
+  guests?:      number  // min party size — filters tours with departures that have (availableSeats - bookedSeats) >= guests
+  minDate?:     string  // ISO date — earliest departure date (tours with departures on or after this date)
+  maxDate?:     string  // ISO date — latest departure date (tours with departures on or before this date)
+  sortBy?:      'price_asc' | 'price_desc' | 'rating' | 'newest' | 'popular'
   page?:        number
   limit?:       number
+}
+
+/** Returns tour IDs that have at least one departure with remainingSeats >= minRequired. */
+async function getTourIdsWithRemainingSeats(
+  minRequired: number,
+  minDate: Date | null,
+  maxDate: Date | null,
+): Promise<string[]> {
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  const startFrom = minDate && minDate > now ? minDate : now
+
+  const rows = await prisma.$queryRaw<{ tour_id: string }[]>`
+    SELECT DISTINCT t.id as tour_id
+    FROM tours t
+    INNER JOIN tour_departures d ON d.tour_id = t.id
+    WHERE t.status = 'active'
+      AND d.status = 'scheduled'
+      AND d.start_date >= ${startFrom}
+      AND (d.available_seats - d.booked_seats) >= ${minRequired}
+      ${maxDate ? Prisma.sql`AND d.start_date <= ${maxDate}` : Prisma.empty}
+  `
+  return rows.map((r) => r.tour_id)
 }
 
 function paging(query: SearchQuery) {
@@ -39,6 +69,7 @@ async function searchTours(query: SearchQuery) {
   }
   if (query.destination) {
     where.destination = {
+      ...(where.destination as object || {}),
       OR: [
         { name:    { contains: query.destination, mode: 'insensitive' } },
         { country: { contains: query.destination, mode: 'insensitive' } },
@@ -46,15 +77,42 @@ async function searchTours(query: SearchQuery) {
       ],
     }
   }
+  if (query.region) {
+    where.destination = {
+      ...(where.destination as object || {}),
+      region: { contains: query.region, mode: 'insensitive' as const },
+    }
+  }
   if (query.minPrice)  where.basePrice = { ...where.basePrice, gte: query.minPrice }
   if (query.maxPrice)  where.basePrice = { ...where.basePrice, lte: query.maxPrice }
   if (query.minRating) where.ratingAverage = { gte: query.minRating }
+  if (query.minDays !== undefined || query.maxDays !== undefined) {
+    where.durationDays = {}
+    if (query.minDays !== undefined) (where.durationDays as any).gte = query.minDays
+    if (query.maxDays !== undefined) (where.durationDays as any).lte = query.maxDays
+  }
+  // Require at least one departure with remainingSeats >= max(1, guests)
+  // Prisma cannot express (availableSeats - bookedSeats), so we use raw SQL
+  const minRequired = Math.max(1, query.guests ?? 0)
+  const minDate = query.minDate ? (() => {
+    const d = new Date(query.minDate)
+    d.setHours(0, 0, 0, 0)
+    return d
+  })() : null
+  const maxDate = query.maxDate ? (() => {
+    const d = new Date(query.maxDate)
+    d.setHours(23, 59, 59, 999)
+    return d
+  })() : null
+  const tourIdsWithSeats = await getTourIdsWithRemainingSeats(minRequired, minDate, maxDate)
+  where.id = { in: tourIdsWithSeats }
 
   let orderBy: any = { createdAt: 'desc' }
   if (query.sortBy === 'price_asc')  orderBy = { basePrice: 'asc' }
   if (query.sortBy === 'price_desc') orderBy = { basePrice: 'desc' }
   if (query.sortBy === 'rating')     orderBy = { ratingAverage: 'desc' }
   if (query.sortBy === 'newest')     orderBy = { createdAt: 'desc' }
+  if (query.sortBy === 'popular')    orderBy = { reviewsCount: 'desc' }
 
   const [data, total] = await Promise.all([
     prisma.tour.findMany({
@@ -70,11 +128,12 @@ async function searchTours(query: SearchQuery) {
         basePrice:      true,
         currency:       true,
         durationDays:   true,
+        maxGuests:      true,
         ratingAverage:  true,
         reviewsCount:   true,
         images:  { take: 1, select: { imageUrl: true }, orderBy: { sortOrder: 'asc' } },
         provider: { select: { id: true, name: true, slug: true } },
-        destination: { select: { id: true, name: true, country: true } },
+        destination: { select: { id: true, name: true, slug: true, country: true, region: true } },
       },
     }),
     prisma.tour.count({ where }),

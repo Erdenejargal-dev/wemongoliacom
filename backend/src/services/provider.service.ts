@@ -56,9 +56,20 @@ export async function updateMyProvider(ownerUserId: string, data: UpdateProvider
     })
   }
 
+  // Map API field names to Prisma schema (websiteUrl -> website, coverUrl -> coverImageUrl)
+  const mapped = { ...data }
+  if ('websiteUrl' in mapped && mapped.websiteUrl !== undefined) {
+    ;(mapped as any).website = mapped.websiteUrl
+    delete (mapped as any).websiteUrl
+  }
+  if ('coverUrl' in mapped && mapped.coverUrl !== undefined) {
+    ;(mapped as any).coverImageUrl = mapped.coverUrl
+    delete (mapped as any).coverUrl
+  }
+
   return prisma.provider.update({
     where: { ownerUserId },
-    data:  { ...data, slug },
+    data:  { ...mapped, slug },
   })
 }
 
@@ -143,13 +154,24 @@ export async function cancelBookingByProvider(bookingCode: string, ownerUserId: 
   if (['cancelled', 'completed'].includes(booking.bookingStatus))
     throw new AppError(`Booking is already ${booking.bookingStatus}.`, 400)
 
-  return prisma.booking.update({
-    where: { bookingCode },
-    data:  {
-      bookingStatus: 'cancelled',
-      cancelledAt:   new Date(),
-      cancelReason:  reason,
-    },
+  return prisma.$transaction(async (tx) => {
+    const b = await tx.booking.update({
+      where: { bookingCode },
+      data:  {
+        bookingStatus: 'cancelled',
+        cancelledAt:   new Date(),
+        cancelReason:  reason,
+      },
+    })
+
+    if (booking.tourDepartureId && booking.guests > 0) {
+      await tx.tourDeparture.update({
+        where: { id: booking.tourDepartureId },
+        data:  { bookedSeats: { decrement: booking.guests } },
+      })
+    }
+
+    return b
   })
 }
 
@@ -222,6 +244,108 @@ export async function getProviderAnalytics(ownerUserId: string) {
       avgRating:  avgRating._avg.rating ?? 0,
     },
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Provider reviews — list all reviews for this provider
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ProviderReviewQuery {
+  page?:  number
+  limit?: number
+}
+
+export interface ProviderReviewItem {
+  id:            string
+  rating:        number
+  title:         string | null
+  comment:       string | null
+  providerReply: string | null
+  createdAt:     string
+  listingType:   string
+  listingId:     string
+  listingName:   string
+  user: {
+    firstName: string
+    lastName:  string
+    avatarUrl: string | null
+  }
+}
+
+export async function listProviderReviews(ownerUserId: string, query: ProviderReviewQuery) {
+  const provider = await prisma.provider.findUnique({ where: { ownerUserId } })
+  if (!provider) throw new AppError('Provider not found.', 404)
+
+  const page  = Math.max(1, query.page ?? 1)
+  const limit = Math.min(50, query.limit ?? 20)
+  const skip  = (page - 1) * limit
+
+  const [reviews, total] = await Promise.all([
+    prisma.review.findMany({
+      where: { providerId: provider.id },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
+      select: {
+        id:            true,
+        rating:        true,
+        title:         true,
+        comment:       true,
+        providerReply: true,
+        createdAt:     true,
+        listingType:   true,
+        listingId:     true,
+        user: { select: { firstName: true, lastName: true, avatarUrl: true } },
+      },
+    }),
+    prisma.review.count({ where: { providerId: provider.id } }),
+  ])
+
+  // Resolve listing names
+  const tourIds        = reviews.filter(r => r.listingType === 'tour').map(r => r.listingId)
+  const vehicleIds     = reviews.filter(r => r.listingType === 'vehicle').map(r => r.listingId)
+  const accommodationIds = reviews.filter(r => r.listingType === 'accommodation').map(r => r.listingId)
+
+  const [tours, vehicles, accommodations] = await Promise.all([
+    tourIds.length > 0 ? prisma.tour.findMany({ where: { id: { in: tourIds } }, select: { id: true, title: true } }) : [],
+    vehicleIds.length > 0 ? prisma.vehicle.findMany({ where: { id: { in: vehicleIds } }, select: { id: true, title: true } }) : [],
+    accommodationIds.length > 0 ? prisma.accommodation.findMany({ where: { id: { in: accommodationIds } }, select: { id: true, name: true } }) : [],
+  ])
+
+  const listingName = (type: string, id: string) => {
+    if (type === 'tour') return tours.find((t: { id: string }) => t.id === id)?.title ?? 'Tour'
+    if (type === 'vehicle') return vehicles.find((v: { id: string }) => v.id === id)?.title ?? 'Vehicle'
+    if (type === 'accommodation') return accommodations.find((a: { id: string }) => a.id === id)?.name ?? 'Accommodation'
+    return 'Listing'
+  }
+
+  const data: ProviderReviewItem[] = reviews.map(r => ({
+    id:            r.id,
+    rating:        r.rating,
+    title:         r.title,
+    comment:       r.comment,
+    providerReply: r.providerReply,
+    createdAt:     r.createdAt.toISOString(),
+    listingType:   r.listingType,
+    listingId:     r.listingId,
+    listingName:   listingName(r.listingType, r.listingId),
+    user:          { firstName: r.user.firstName, lastName: r.user.lastName, avatarUrl: r.user.avatarUrl },
+  }))
+
+  return {
+    data,
+    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Provider reply to review
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function replyToReviewByOwner(ownerUserId: string, reviewId: string, reply: string) {
+  const provider = await prisma.provider.findUnique({ where: { ownerUserId } })
+  if (!provider) throw new AppError('Provider not found.', 404)
+  return (await import('./review.service')).replyToReview(reviewId, provider.id, reply)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

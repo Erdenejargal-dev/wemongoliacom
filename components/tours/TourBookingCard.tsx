@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Shield, Star, Users, CalendarDays, Minus, Plus, ChevronRight, Clock } from 'lucide-react'
 import type { BackendDeparture } from '@/lib/api/tours'
@@ -35,6 +35,22 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
   const selectedDeparture =
     departures?.find(d => toYMD(d.startDate) === date) ??
     null
+
+  const remainingSeats = selectedDeparture
+    ? selectedDeparture.availableSeats - (selectedDeparture.bookedSeats ?? 0)
+    : null
+
+  const maxGuestsForDate = remainingSeats != null
+    ? Math.min(tour.maxGuests, remainingSeats)
+    : tour.maxGuests
+
+  const canReserve = selectedDeparture != null && remainingSeats != null && guests <= remainingSeats
+
+  useEffect(() => {
+    if (remainingSeats != null && guests > remainingSeats) {
+      setGuests(remainingSeats)
+    }
+  }, [remainingSeats])
 
   const pricePerPerson =
     selectedDeparture?.priceOverride ??
@@ -88,18 +104,21 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
           <input
             type="date"
             value={date}
-            min={today}
+            min={departures?.[0] ? toYMD(departures[0].startDate) : today}
+            max={departures?.length ? toYMD(departures[departures.length - 1].startDate) : undefined}
             onChange={e => setDate(e.target.value)}
             className="flex-1 text-sm text-gray-900 bg-transparent focus:outline-none"
           />
         </div>
         {departures && departures.length > 0 ? (
           <p className="text-xs text-gray-400 mt-1">
-            Available departures: {departures.map(d => toYMD(d.startDate)).join(', ')}
+            {date && !selectedDeparture
+              ? 'Pick a scheduled date to see availability'
+              : `Scheduled: ${departures.map(d => toYMD(d.startDate)).join(', ')}`}
           </p>
         ) : (
           <p className="text-xs text-gray-400 mt-1">
-            Dates are subject to availability.
+            Contact provider for departure dates.
           </p>
         )}
       </div>
@@ -120,13 +139,22 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
               <Minus className="w-3 h-3" />
             </button>
             <span className="w-5 text-center text-sm font-semibold text-gray-900">{guests}</span>
-            <button onClick={() => setGuests(g => Math.min(tour.maxGuests, g + 1))} disabled={guests >= tour.maxGuests}
+            <button onClick={() => setGuests(g => Math.min(maxGuestsForDate, g + 1))} disabled={guests >= maxGuestsForDate}
               className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:border-gray-400 disabled:opacity-30 transition-colors">
               <Plus className="w-3 h-3" />
             </button>
           </div>
         </div>
-        <p className="text-xs text-gray-400 mt-1">Max {tour.maxGuests} guests per booking</p>
+        {remainingSeats != null ? (
+          <p className="text-xs text-gray-400 mt-1">
+            {remainingSeats} seat{remainingSeats !== 1 ? 's' : ''} left for this date
+            {remainingSeats < 5 && remainingSeats > 0 && (
+              <span className="text-amber-600 ml-1">· Selling out</span>
+            )}
+          </p>
+        ) : (
+          <p className="text-xs text-gray-400 mt-1">Max {tour.maxGuests} guests per booking</p>
+        )}
       </div>
 
       {/* Price breakdown */}
@@ -144,7 +172,7 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
       {/* Reserve button */}
       <button
         onClick={handleReserve}
-        disabled={!date}
+        disabled={!canReserve}
         className="w-full py-3.5 bg-green-500 hover:bg-green-600 text-white font-bold text-sm rounded-xl transition-colors shadow-sm shadow-green-200 flex items-center justify-center gap-2 active:scale-[0.98]"
       >
         Reserve Tour
@@ -159,7 +187,7 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
         </div>
         <div className="flex items-center gap-2 text-xs text-gray-500">
           <Clock className="w-3.5 h-3.5 text-green-500 shrink-0" />
-          Instant confirmation
+          Confirmation after provider review
         </div>
       </div>
 

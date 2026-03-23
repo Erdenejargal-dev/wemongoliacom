@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
 import { z } from 'zod'
 import * as conversationService from '../services/conversation.service'
-import { ok, created, noContent } from '../utils/response'
+import { ok, created } from '../utils/response'
 
 // ─── Schemas ──────────────────────────────────────────────────────────────
 
@@ -84,7 +84,7 @@ export async function markAsRead(req: Request, res: Response, next: NextFunction
       req.user!.userId,
       req.user!.role,
     )
-    return noContent(res)
+    return ok(res, { ok: true })
   } catch (err) {
     next(err)
   }

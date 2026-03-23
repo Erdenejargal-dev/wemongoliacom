@@ -57,6 +57,7 @@ export function mapBackendBookingToTripCard(booking: BackendBooking): Trip | nul
       guests: booking.guests,
       price: booking.totalAmount,
       status,
+      cancelReason: (booking as { cancelReason?: string | null }).cancelReason,
     }
   }
 
@@ -86,6 +87,7 @@ export function mapBackendBookingToTripCard(booking: BackendBooking): Trip | nul
       guests: booking.guests,
       price: booking.totalAmount,
       status,
+      cancelReason: (booking as { cancelReason?: string | null }).cancelReason,
     }
   }
 
@@ -115,6 +117,7 @@ export function mapBackendBookingToTripCard(booking: BackendBooking): Trip | nul
     guests: booking.guests,
     price: booking.totalAmount,
     status,
+    cancelReason: (booking as { cancelReason?: string | null }).cancelReason,
   }
 }
 

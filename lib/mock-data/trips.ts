@@ -18,6 +18,7 @@ export interface Trip {
   guests: number
   price: number
   status: TripStatus
+  cancelReason?: string | null
 }
 
 export const mockMyTrips: Trip[] = [

@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma'
+import { env } from '../config/env'
 import { AppError } from '../middleware/error'
 import { generateBookingCode, calcPricing, countNights, eachNight } from '../utils/booking'
 
@@ -33,6 +34,62 @@ export interface CreateBookingInput {
 // ─────────────────────────────────────────────────────────────────────────────
 // Availability checkers
 // ─────────────────────────────────────────────────────────────────────────────
+//
+// Booking statuses that count against departure capacity (bookedSeats):
+//   - pending:   counts (incremented on create)
+//   - confirmed: counts (no change from pending)
+//   - completed: counts (trip happened; seats were used)
+//   - cancelled: does NOT count (decremented on cancel)
+//
+// remainingSeats = availableSeats - bookedSeats (used in search, detail, booking)
+//
+// Pending expiry: unpaid/authorized pending tour bookings older than maxAgeMinutes
+// are auto-cancelled to prevent seats from being held indefinitely.
+// Callers pass env.PENDING_EXPIRY_MINUTES (or config equivalent).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Expires stale pending tour bookings (unpaid or authorized, never confirmed).
+ * Releases seats so capacity stays accurate. Safe to call repeatedly.
+ */
+export async function expireStalePendingTourBookings(maxAgeMinutes: number = 15): Promise<number> {
+  const cutoff = new Date(Date.now() - maxAgeMinutes * 60 * 1000)
+  const stale = await prisma.booking.findMany({
+    where: {
+      listingType:   'tour',
+      bookingStatus: 'pending',
+      paymentStatus: { in: ['unpaid', 'authorized'] },
+      createdAt:     { lt: cutoff },
+    },
+    select: { id: true, bookingCode: true, tourDepartureId: true, guests: true },
+  })
+
+  let expired = 0
+  for (const b of stale) {
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.booking.update({
+          where: { id: b.id },
+          data:  {
+            bookingStatus: 'cancelled',
+            cancelledAt:   new Date(),
+            cancelReason:  'Expired: booking was not confirmed within the time limit.',
+          },
+        })
+        if (b.tourDepartureId && b.guests > 0) {
+          await tx.tourDeparture.update({
+            where: { id: b.tourDepartureId },
+            data:  { bookedSeats: { decrement: b.guests } },
+          })
+        }
+      })
+      expired++
+    } catch {
+      // Best-effort; skip failed rows
+    }
+  }
+  return expired
+}
 
 async function checkTourDeparture(departureId: string, guests: number) {
   const dep = await prisma.tourDeparture.findUnique({ where: { id: departureId } })
@@ -81,11 +138,19 @@ async function checkRoomAvailability(roomTypeId: string, checkIn: Date, checkOut
 // Inventory updaters (run inside transaction)
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function incrementDepartureSeats(tx: any, departureId: string, guests: number) {
-  await tx.tourDeparture.update({
-    where: { id: departureId },
-    data:  { bookedSeats: { increment: guests } },
-  })
+/**
+ * Atomically allocates seats if capacity allows. Fails if it would oversell.
+ * Must run inside a transaction. Returns true if allocation succeeded.
+ */
+async function allocateDepartureSeats(tx: any, departureId: string, guests: number): Promise<boolean> {
+  const rows = await tx.$executeRaw`
+    UPDATE tour_departures
+    SET booked_seats = booked_seats + ${guests}
+    WHERE id = ${departureId}
+      AND status = 'scheduled'
+      AND (available_seats - booked_seats) >= ${guests}
+  `
+  return Number(rows) > 0
 }
 
 async function createVehicleBlock(tx: any, vehicleId: string, bookingId: string, start: Date, end: Date) {
@@ -126,6 +191,11 @@ async function upsertRoomAvailability(tx: any, roomTypeId: string, roomType: any
 
 export async function createBooking(input: CreateBookingInput) {
   const { userId, listingType, listingId, guests } = input
+
+  // Free seats from stale pending bookings before allocating
+  if (listingType === 'tour') {
+    await expireStalePendingTourBookings(env.PENDING_EXPIRY_MINUTES)
+  }
 
   let providerId!:              string
   let pricePerUnit!:            number
@@ -236,9 +306,15 @@ export async function createBooking(input: CreateBookingInput) {
   // ── Transactional booking creation ──────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const booking = await prisma.$transaction(async (tx: any) => {
-    // Re-check + decrement inventory inside transaction
+    // Atomically allocate seats inside transaction (prevents overselling under concurrency)
     if (listingType === 'tour') {
-      await incrementDepartureSeats(tx, tourDepartureId!, guests)
+      const allocated = await allocateDepartureSeats(tx, tourDepartureId!, guests)
+      if (!allocated) {
+        throw new AppError(
+          'Availability has changed. This departure no longer has enough seats. Please select a different date or reduce your party size.',
+          409,
+        )
+      }
     }
 
     const b = await tx.booking.create({
@@ -334,6 +410,7 @@ export async function listMyBookings(userId: string, status?: string) {
       currency:      true,
       bookingStatus: true,
       paymentStatus: true,
+      cancelReason:   true,
       listingSnapshot: true,
       createdAt:     true,
       provider:      { select: { name: true, slug: true, logoUrl: true } },
@@ -410,22 +487,25 @@ export async function cancelBooking(bookingCode: string, userId: string, reason?
   if (['cancelled', 'completed'].includes(booking.bookingStatus))
     throw new AppError(`Booking is already ${booking.bookingStatus}.`, 400)
 
-  const updated = await prisma.booking.update({
-    where: { bookingCode },
-    data: {
-      bookingStatus: 'cancelled',
-      cancelledAt:   new Date(),
-      cancelReason:  reason,
-    },
-  })
+  const updated = await prisma.$transaction(async (tx) => {
+    const b = await tx.booking.update({
+      where: { bookingCode },
+      data: {
+        bookingStatus: 'cancelled',
+        cancelledAt:   new Date(),
+        cancelReason:  reason,
+      },
+    })
 
-  // Release inventory (best-effort, non-blocking)
-  if (booking.tourDepartureId) {
-    prisma.tourDeparture.update({
-      where: { id: booking.tourDepartureId },
-      data:  { bookedSeats: { decrement: booking.guests } },
-    }).catch(() => null)
-  }
+    if (booking.tourDepartureId && booking.guests > 0) {
+      await tx.tourDeparture.update({
+        where: { id: booking.tourDepartureId },
+        data:  { bookedSeats: { decrement: booking.guests } },
+      })
+    }
+
+    return b
+  })
 
   return updated
 }

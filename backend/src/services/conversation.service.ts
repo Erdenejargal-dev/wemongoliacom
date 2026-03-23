@@ -145,8 +145,8 @@ export async function sendMessage(input: SendMessageInput) {
 
   // Update conversation preview + unread counter for the OTHER party
   const updateData: Record<string, unknown> = {
-    lastMessage:   text.slice(0, 100),
-    lastMessageAt: new Date(),
+    lastMessagePreview: text.slice(0, 100),
+    lastMessageAt:      new Date(),
   }
   if (senderRole === 'traveler') {
     updateData.providerUnreadCount = { increment: 1 }

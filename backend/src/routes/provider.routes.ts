@@ -10,9 +10,13 @@ import {
   completeBooking,
   cancelBooking,
   getAnalytics,
+  listReviews,
+  replyToReview,
   updateProfileSchema,
   bookingListQuerySchema,
   cancelSchema,
+  reviewListQuerySchema,
+  reviewReplySchema,
 } from '../controllers/provider.controller'
 
 const router = Router()
@@ -32,5 +36,9 @@ router.patch('/bookings/:bookingCode/cancel',   validate(cancelSchema), cancelBo
 
 // Analytics
 router.get('/analytics', getAnalytics)
+
+// Reviews
+router.get('/reviews', validate(reviewListQuerySchema, 'query'), listReviews)
+router.patch('/reviews/:id/reply', validate(reviewReplySchema), replyToReview)
 
 export default router

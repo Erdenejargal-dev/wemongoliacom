@@ -15,6 +15,7 @@ import accountRoutes       from './account.routes'
 import adminRoutes         from './admin.routes'
 import searchRoutes        from './search.routes'
 import paymentRoutes       from './payment.routes'
+import internalRoutes      from './internal.routes'
 
 const router = Router()
 
@@ -53,5 +54,8 @@ router.use('/search', searchRoutes)
 
 // ── Part 10: Payments ─────────────────────────────────────────────────────
 router.use('/payments', paymentRoutes)
+
+// ── Internal jobs (cron/scheduler triggers, CRON_SECRET protected)
+router.use('/internal', internalRoutes)
 
 export default router

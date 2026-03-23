@@ -1,6 +1,6 @@
 'use client'
 
-import { SlidersHorizontal, RotateCcw, Star } from 'lucide-react'
+import { SlidersHorizontal, RotateCcw, Star, MapPin, Users } from 'lucide-react'
 import type { SearchQuery } from '@/lib/search/types'
 
 interface FilterSidebarProps {
@@ -18,14 +18,23 @@ const DURATIONS = [
   { label: '8+ Days', value: '8+' },
 ]
 
-const STYLES = [
-  { label: 'All styles', value: 'any' },
-  { label: 'Adventure', value: 'adventure' },
-  { label: 'Cultural', value: 'cultural' },
-  { label: 'Trekking', value: 'trekking' },
-  { label: 'Photography', value: 'photography' },
-  { label: 'Luxury', value: 'luxury' },
-  { label: 'Budget', value: 'budget' },
+const REGIONS = [
+  { label: 'All regions', value: '' },
+  { label: 'Gobi Desert', value: 'gobi' },
+  { label: 'Khangai Mountains', value: 'khangai' },
+  { label: 'Lake Khuvsgul', value: 'khuvsgul' },
+  { label: 'Ulaanbaatar', value: 'ulaanbaatar' },
+  { label: 'Altai Mountains', value: 'altai' },
+  { label: 'Central Steppes', value: 'steppe' },
+]
+
+const GROUP_SIZES = [
+  { label: '1', value: 1 },
+  { label: '2', value: 2 },
+  { label: '3', value: 3 },
+  { label: '4', value: 4 },
+  { label: '5', value: 5 },
+  { label: '6+', value: 6 },
 ]
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -61,6 +70,60 @@ export function FilterSidebar({ query, onUpdate, onReset, total }: FilterSidebar
         </div>
       </div>
 
+      {/* Departure dates — filters by real scheduled departure dates */}
+      <div>
+        <SectionTitle>Departure dates</SectionTitle>
+        <p className="text-xs text-gray-500 mb-2">Filter by scheduled departure date</p>
+        <div className="space-y-2">
+          <div>
+            <label className="text-[10px] text-gray-400 block mb-0.5">From</label>
+            <input
+              type="date"
+              min={new Date().toISOString().slice(0, 10)}
+              value={query.fromDate || ''}
+              onChange={e => onUpdate({ fromDate: e.target.value })}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-green-400 focus:ring-1 focus:ring-green-400/20"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] text-gray-400 block mb-0.5">To</label>
+            <input
+              type="date"
+              min={query.fromDate || new Date().toISOString().slice(0, 10)}
+              value={query.toDate || ''}
+              onChange={e => onUpdate({ toDate: e.target.value })}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-green-400 focus:ring-1 focus:ring-green-400/20"
+            />
+          </div>
+          {(query.fromDate || query.toDate) && (
+            <button
+              onClick={() => onUpdate({ fromDate: '', toDate: '' })}
+              className="text-xs text-green-600 hover:text-green-700"
+            >
+              Clear dates
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Region (backend-supported) */}
+      <div>
+        <SectionTitle>Region</SectionTitle>
+        <div className="space-y-1">
+          {REGIONS.map(r => (
+            <button key={r.value || 'all'} onClick={() => onUpdate({ region: r.value })}
+              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
+                query.region === r.value
+                  ? 'bg-green-50 text-green-700 font-medium border border-green-200'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}>
+              {r.value && <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />}
+              {r.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Duration */}
       <div>
         <SectionTitle>Duration</SectionTitle>
@@ -78,20 +141,27 @@ export function FilterSidebar({ query, onUpdate, onReset, total }: FilterSidebar
         </div>
       </div>
 
-      {/* Style */}
+      {/* Group size (guests) — filters tours with future departures that fit party size */}
       <div>
-        <SectionTitle>Tour Style</SectionTitle>
+        <SectionTitle>Group size</SectionTitle>
+        <p className="text-xs text-gray-500 mb-2">Tours with future departures that fit your party</p>
         <div className="flex flex-wrap gap-1.5">
-          {STYLES.map(s => (
-            <button key={s.value} onClick={() => onUpdate({ style: s.value })}
-              className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                query.style === s.value
-                  ? 'bg-gray-900 text-white border-gray-900'
-                  : 'border-gray-200 text-gray-600 hover:border-gray-400'
-              }`}>
-              {s.label}
-            </button>
-          ))}
+          {GROUP_SIZES.map(g => {
+            const total = (query.guests?.adults ?? 1) + (query.guests?.children ?? 0)
+            const isActive = total === g.value || (g.value === 6 && total >= 6)
+            return (
+              <button
+                key={g.value}
+                onClick={() => onUpdate({ guests: { adults: g.value, children: 0 } })}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                  isActive ? 'bg-green-50 text-green-700 border-green-200' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <Users className="w-3 h-3" />
+                {g.label}
+              </button>
+            )
+          })}
         </div>
       </div>
 

@@ -5,6 +5,15 @@ import { ok } from '../utils/response'
 
 // ─── Schemas ──────────────────────────────────────────────────────────────
 
+export const reviewListQuerySchema = z.object({
+  page:  z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().max(50).optional(),
+})
+
+export const reviewReplySchema = z.object({
+  reply: z.string().min(1).max(2000),
+})
+
 export const updateProfileSchema = z.object({
   name:         z.string().min(2).max(200).optional(),
   tagline:      z.string().max(300).optional(),
@@ -100,6 +109,28 @@ export async function cancelBooking(req: Request, res: Response, next: NextFunct
 export async function getAnalytics(req: Request, res: Response, next: NextFunction) {
   try {
     const result = await providerService.getProviderAnalytics(req.user!.userId)
+    return ok(res, result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function listReviews(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await providerService.listProviderReviews(req.user!.userId, req.query as any)
+    return ok(res, result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function replyToReview(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await providerService.replyToReviewByOwner(
+      req.user!.userId,
+      String(req.params.id),
+      req.body.reply,
+    )
     return ok(res, result)
   } catch (err) {
     next(err)

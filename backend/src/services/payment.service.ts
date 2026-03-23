@@ -114,7 +114,10 @@ export async function listMyPayments(userId: string, page = 1, limit = 20) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function requestRefund(userId: string, paymentId: string, reason: string, amount?: number) {
-  const payment = await prisma.payment.findUnique({ where: { id: paymentId } })
+  const payment = await prisma.payment.findUnique({
+    where:   { id: paymentId },
+    include: { booking: { select: { tourDepartureId: true, guests: true } } },
+  })
   if (!payment)                  throw new AppError('Payment not found.', 404)
   if (payment.userId !== userId) throw new AppError('Forbidden.', 403)
   if (payment.status !== 'paid') throw new AppError('Only paid payments can be refunded.', 400)
@@ -123,16 +126,28 @@ export async function requestRefund(userId: string, paymentId: string, reason: s
   if (refundAmount > payment.amount)
     throw new AppError(`Refund amount cannot exceed the original amount of ${payment.amount}.`, 400)
 
-  const [updatedPayment] = await prisma.$transaction([
-    prisma.payment.update({
+  const tourDepartureId = payment.booking?.tourDepartureId
+  const guests = payment.booking?.guests ?? 0
+
+  const updatedPayment = await prisma.$transaction(async (tx) => {
+    await tx.payment.update({
       where: { id: paymentId },
       data:  { status: 'refunded', refundAmount, refundReason: reason },
-    }),
-    prisma.booking.update({
+    })
+    await tx.booking.update({
       where: { id: payment.bookingId },
       data:  { paymentStatus: 'refunded', bookingStatus: 'cancelled' },
-    }),
-  ])
+    })
+
+    if (tourDepartureId && guests > 0) {
+      await tx.tourDeparture.update({
+        where: { id: tourDepartureId },
+        data:  { bookedSeats: { decrement: guests } },
+      })
+    }
+
+    return tx.payment.findUniqueOrThrow({ where: { id: paymentId } })
+  })
 
   return updatedPayment
 }

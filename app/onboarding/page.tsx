@@ -1,71 +1,32 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, ArrowLeft, Loader2, Upload, Globe, Plus, X, Check } from 'lucide-react'
+import { ArrowRight, ArrowLeft, Loader2, Check } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { OnboardingLayout } from '@/components/onboarding/OnboardingLayout'
 import { DEFAULT_ONBOARDING, type OnboardingState, type ProviderType } from '@/lib/mock-data/provider'
 import { apiClient, ApiError } from '@/lib/api/client'
 import { getFreshAccessToken } from '@/lib/auth-utils'
 
-const LANGUAGE_OPTIONS = ['English', 'Mongolian', 'Russian', 'Chinese', 'Japanese', 'Korean', 'German', 'French']
-
 // ── Shared field wrapper ────────────────────────────────────────────────────
 function Field({ label, required, children, hint }: { label: string; required?: boolean; hint?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1.5">
-        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      <label className="text-sm font-medium text-gray-700 block mb-1.5">
+        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
       {children}
-      {hint && <p className="text-[10px] text-gray-400 mt-1">{hint}</p>}
+      {hint && <p className="text-xs text-gray-500 mt-1">{hint}</p>}
     </div>
   )
 }
 
-const INPUT = 'w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-400/10'
+const INPUT =
+  'w-full border border-gray-200 rounded-xl px-4 py-3 text-base text-gray-900 placeholder-gray-400 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-colors min-h-[44px]'
 
-// ── Step 1 ──────────────────────────────────────────────────────────────────
-function StepBusinessInfo({ data, onNext }: { data: OnboardingState; onNext: (p: Partial<OnboardingState>) => void }) {
-  const [form, setForm] = useState({ name: data.name, description: data.description, location: data.location, phone: data.phone, email: data.email })
-  function patch(p: Partial<typeof form>) { setForm(prev => ({ ...prev, ...p })) }
-  function handleNext(e: React.FormEvent) { e.preventDefault(); onNext(form) }
-
-  return (
-    <form onSubmit={handleNext} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 space-y-5">
-      <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-1">Tell us about your business</h2>
-        <p className="text-sm text-gray-500">This information will appear on your public provider profile.</p>
-      </div>
-      <Field label="Business Name" required>
-        <input required value={form.name} onChange={e => patch({ name: e.target.value })} className={INPUT} placeholder="Gobi Adventure Tours" />
-      </Field>
-      <Field label="Description" required>
-        <textarea required rows={3} value={form.description} onChange={e => patch({ description: e.target.value })} className={`${INPUT} resize-none`} placeholder="Describe what your business offers…" />
-      </Field>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field label="Location" required>
-          <input required value={form.location} onChange={e => patch({ location: e.target.value })} className={INPUT} placeholder="Ulaanbaatar" />
-        </Field>
-        <Field label="Phone" required>
-          <input required type="tel" value={form.phone} onChange={e => patch({ phone: e.target.value })} className={INPUT} placeholder="+976 9900 0000" />
-        </Field>
-      </div>
-      <Field label="Business Email" required>
-        <input required type="email" value={form.email} onChange={e => patch({ email: e.target.value })} className={INPUT} placeholder="info@yourbusiness.mn" />
-      </Field>
-      <div className="pt-2 flex justify-end">
-        <button type="submit" className="flex items-center gap-2 px-6 py-2.5 bg-gray-900 hover:bg-gray-800 text-white font-bold text-sm rounded-xl transition-colors">
-          Continue <ArrowRight className="w-4 h-4" />
-        </button>
-      </div>
-    </form>
-  )
-}
-
-// ── Step 2 ──────────────────────────────────────────────────────────────────
-function StepServiceType({ data, onNext, onBack }: { data: OnboardingState; onNext: (p: Partial<OnboardingState>) => void; onBack: () => void }) {
+// ── Step 1: Business type ───────────────────────────────────────────────────
+function StepBusinessType({ data, onNext }: { data: OnboardingState; onNext: (p: Partial<OnboardingState>) => void }) {
   type ProviderCombo = 'hotel' | 'tour_operator' | 'car_rental' | 'multiple'
 
   const comboFromProviderTypes = (providerTypes: ProviderType[]): ProviderCombo | null => {
@@ -98,38 +59,33 @@ function StepServiceType({ data, onNext, onBack }: { data: OnboardingState; onNe
     subtitle,
     badge,
     colorClass,
-    iconBgClass,
   }: {
     value: ProviderCombo
     title: string
     subtitle: string
     badge: string
     colorClass: string
-    iconBgClass: string
   }) => {
     const selected = combo === value
     return (
       <button
         type="button"
         onClick={() => setCombo(value)}
-        className={`w-full text-left p-5 rounded-2xl border-2 transition-all duration-200 relative ${
+        className={`w-full text-left p-5 rounded-2xl border-2 transition-all duration-200 relative touch-manipulation ${
           selected ? colorClass : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50'
         }`}
         aria-pressed={selected}
       >
         {selected && (
-          <div className="absolute top-3 right-3 w-6 h-6 rounded-full flex items-center justify-center bg-green-500">
+          <div className="absolute top-4 right-4 w-6 h-6 rounded-full flex items-center justify-center bg-green-500">
             <Check className="w-3.5 h-3.5 text-white" />
           </div>
         )}
-
         <div className="flex items-start gap-4">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconBgClass}`}>
-            <span className="text-xl">{badge}</span>
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-bold text-gray-900 mb-1">{title}</p>
-            <p className="text-xs text-gray-500 leading-relaxed">{subtitle}</p>
+          <span className="text-2xl shrink-0">{badge}</span>
+          <div className="min-w-0 pt-0.5">
+            <p className="font-semibold text-gray-900 mb-0.5">{title}</p>
+            <p className="text-sm text-gray-600 leading-relaxed">{subtitle}</p>
           </div>
         </div>
       </button>
@@ -137,163 +93,247 @@ function StepServiceType({ data, onNext, onBack }: { data: OnboardingState; onNe
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 space-y-5">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sm:p-8 space-y-6">
       <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-1">What services do you offer?</h2>
-        <p className="text-sm text-gray-500">Pick one option that matches what you&apos;ll offer first. You can extend later.</p>
+        <h2 className="text-lg font-bold text-gray-900 mb-1">What do you offer?</h2>
+        <p className="text-sm text-gray-600">Choose the option that fits your business. You can add more later.</p>
       </div>
 
       <div className="space-y-3">
         <Card
-          value="hotel"
-          title="Hotel only"
-          subtitle="List accommodations (hotels/camps) for travelers."
-          badge="🏨"
+          value="tour_operator"
+          title="Tours & experiences"
+          subtitle="Guided tours, excursions, and adventures"
+          badge="🗺️"
           colorClass="border-green-400 bg-green-50/50"
-          iconBgClass="bg-green-100"
         />
         <Card
-          value="tour_operator"
-          title="Tour Operator only"
-          subtitle="Offer guided tours, excursions, and experiences."
-          badge="🗺️"
+          value="hotel"
+          title="Accommodation"
+          subtitle="Hotels, ger camps, lodges"
+          badge="🏨"
           colorClass="border-blue-400 bg-blue-50/50"
-          iconBgClass="bg-blue-100"
         />
         <Card
           value="car_rental"
-          title="Car Rental only"
-          subtitle="Rent vehicles and provide driver services."
+          title="Transport & drivers"
+          subtitle="Vehicle rentals and driver services"
           badge="🚐"
           colorClass="border-orange-400 bg-orange-50/50"
-          iconBgClass="bg-orange-100"
         />
         <Card
           value="multiple"
-          title="Multiple Services"
-          subtitle="Offer all supported types: hotel + tours + car rental."
+          title="All of the above"
+          subtitle="Tours, stays, and transport"
           badge="✨"
-          colorClass="border-gray-900 bg-gray-50"
-          iconBgClass="bg-gray-900 text-white"
+          colorClass="border-gray-800 bg-gray-50"
         />
       </div>
 
-      <div className="pt-2 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={onBack}
-          className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" /> Back
-        </button>
+      <div className="pt-2">
         <button
           type="button"
           disabled={!combo}
-          onClick={() => {
-            if (!combo) return
-            onNext({ providerTypes: toProviderTypes(combo) })
-          }}
-          className="flex items-center gap-2 px-6 py-2.5 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 text-white font-bold text-sm rounded-xl transition-colors"
+          onClick={() => combo && onNext({ providerTypes: toProviderTypes(combo) })}
+          className="w-full flex items-center justify-center gap-2 py-3.5 px-6 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold text-base rounded-xl transition-colors touch-manipulation"
         >
-          Continue <ArrowRight className="w-4 h-4" />
+          Next step <ArrowRight className="w-4 h-4" />
         </button>
       </div>
     </div>
   )
 }
 
-// ── Step 3 ──────────────────────────────────────────────────────────────────
-function StepProfileSetup({ data, onFinish, onBack, saving }: { data: OnboardingState; onFinish: (p: Partial<OnboardingState>) => void; onBack: () => void; saving: boolean }) {
-  const [form, setForm] = useState({ website: data.website, logo: data.logo, coverImage: data.coverImage, languages: data.languages })
-  const [langInput, setLangInput] = useState('')
-  const logoRef  = useRef<HTMLInputElement>(null)
-  const coverRef = useRef<HTMLInputElement>(null)
+// ── Step 2: Basic info ───────────────────────────────────────────────────────
+function StepBasicInfo({ data, onNext, onBack }: { data: OnboardingState; onNext: (p: Partial<OnboardingState>) => void; onBack: () => void }) {
+  const [form, setForm] = useState({
+    name: data.name,
+    description: data.description,
+    location: data.location,
+    phone: data.phone,
+    email: data.email,
+    website: data.website,
+  })
 
-  function patch(p: Partial<typeof form>) { setForm(prev => ({ ...prev, ...p })) }
-  function handleFile(key: 'logo' | 'coverImage', file: File) {
-    const url = URL.createObjectURL(file)
-    patch({ [key]: url })
+  function patch(p: Partial<typeof form>) {
+    setForm((prev) => ({ ...prev, ...p }))
   }
-  function addLang(l: string) {
-    if (!l.trim() || form.languages.includes(l)) return
-    patch({ languages: [...form.languages, l] })
-    setLangInput('')
-  }
-  function removeLang(l: string) { patch({ languages: form.languages.filter(x => x !== l) }) }
 
-  function handleFinish(e: React.FormEvent) { e.preventDefault(); onFinish(form) }
+  function handleNext(e: React.FormEvent) {
+    e.preventDefault()
+    onNext(form)
+  }
+
+  const canProceed = form.name.trim().length >= 2
 
   return (
-    <form onSubmit={handleFinish} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 space-y-6">
+    <form onSubmit={handleNext} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sm:p-8 space-y-5">
       <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-1">Set up your profile</h2>
-        <p className="text-sm text-gray-500">Add a logo, cover photo, and contact details.</p>
+        <h2 className="text-lg font-bold text-gray-900 mb-1">Tell us about your business</h2>
+        <p className="text-sm text-gray-600">Travelers will see this on your profile. You can edit it anytime.</p>
       </div>
 
-      {/* Logo */}
-      <Field label="Business Logo">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer hover:border-green-400 transition-colors" onClick={() => logoRef.current?.click()}>
-            {form.logo ? <img src={form.logo} className="w-full h-full object-cover" alt="logo" /> : <Upload className="w-5 h-5 text-gray-300" />}
-          </div>
-          <div>
-            <button type="button" onClick={() => logoRef.current?.click()} className="text-xs text-green-600 hover:text-green-700 font-semibold underline">Upload logo</button>
-            <p className="text-[10px] text-gray-400 mt-0.5">PNG, JPG · Recommended 200×200</p>
-          </div>
-        </div>
-        <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile('logo', f) }} />
+      <Field label="Business name" required>
+        <input
+          required
+          minLength={2}
+          value={form.name}
+          onChange={(e) => patch({ name: e.target.value })}
+          className={INPUT}
+          placeholder="e.g. Gobi Adventure Tours"
+          autoComplete="organization"
+        />
       </Field>
 
-      {/* Cover Image */}
-      <Field label="Cover Image">
-        <div className="h-32 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden cursor-pointer hover:border-green-400 transition-colors relative" onClick={() => coverRef.current?.click()}>
-          {form.coverImage
-            ? <img src={form.coverImage} className="w-full h-full object-cover" alt="cover" />
-            : <div className="text-center"><Upload className="w-6 h-6 text-gray-300 mx-auto mb-1" /><p className="text-xs text-gray-400">Click to upload cover image</p></div>
-          }
-        </div>
-        <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile('coverImage', f) }} />
+      <Field label="Short description" hint="What makes your business special?">
+        <textarea
+          rows={3}
+          value={form.description}
+          onChange={(e) => patch({ description: e.target.value })}
+          className={`${INPUT} resize-none min-h-[80px]`}
+          placeholder="We offer authentic Mongolian experiences…"
+        />
       </Field>
 
-      {/* Website */}
-      <Field label="Website" hint="Optional">
-        <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-400/10">
-          <span className="px-3 border-r border-gray-200 bg-gray-50 text-gray-400 h-full flex items-center py-2.5"><Globe className="w-4 h-4" /></span>
-          <input type="url" value={form.website} onChange={e => patch({ website: e.target.value })} className="flex-1 px-3 py-2.5 text-sm text-gray-900 focus:outline-none" placeholder="https://yourbusiness.mn" />
-        </div>
+      <Field label="City or location" required>
+        <input
+          required
+          value={form.location}
+          onChange={(e) => patch({ location: e.target.value })}
+          className={INPUT}
+          placeholder="e.g. Ulaanbaatar"
+        />
       </Field>
 
-      {/* Languages */}
-      <Field label="Languages Spoken">
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          {form.languages.map(l => (
-            <span key={l} className="flex items-center gap-1 text-xs bg-green-50 text-green-700 px-2.5 py-1 rounded-full font-semibold">
-              {l}
-              <button type="button" onClick={() => removeLang(l)}><X className="w-3 h-3" /></button>
-            </span>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <select value={langInput} onChange={e => setLangInput(e.target.value)} className={`${INPUT} flex-1`}>
-            <option value="">Select language…</option>
-            {LANGUAGE_OPTIONS.filter(l => !form.languages.includes(l)).map(l => <option key={l} value={l}>{l}</option>)}
-          </select>
-          <button type="button" onClick={() => addLang(langInput)} disabled={!langInput}
-            className="px-3 py-2.5 bg-green-500 hover:bg-green-600 disabled:bg-gray-200 text-white rounded-xl transition-colors">
-            <Plus className="w-4 h-4" />
-          </button>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Field label="Email" required>
+          <input
+            required
+            type="email"
+            value={form.email}
+            onChange={(e) => patch({ email: e.target.value })}
+            className={INPUT}
+            placeholder="info@yourbusiness.mn"
+          />
+        </Field>
+        <Field label="Phone" required>
+          <input
+            required
+            type="tel"
+            value={form.phone}
+            onChange={(e) => patch({ phone: e.target.value })}
+            className={INPUT}
+            placeholder="+976 9900 0000"
+          />
+        </Field>
+      </div>
+
+      <Field label="Website" hint="Optional — add later if you prefer">
+        <input
+          type="url"
+          value={form.website}
+          onChange={(e) => patch({ website: e.target.value })}
+          className={INPUT}
+          placeholder="https://yourbusiness.mn"
+        />
       </Field>
 
-      <div className="pt-2 flex items-center justify-between">
-        <button type="button" onClick={onBack} className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors">
+      <p className="text-xs text-gray-500">You can add a logo and more details in your dashboard after setup.</p>
+
+      <div className="pt-2 flex flex-col-reverse sm:flex-row gap-3 sm:justify-between">
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex items-center justify-center gap-2 py-3 px-4 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors touch-manipulation"
+        >
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
-        <button type="submit" disabled={saving} className="flex items-center gap-2 px-6 py-2.5 bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white font-bold text-sm rounded-xl transition-colors">
-          {saving ? <><Loader2 className="w-4 h-4 animate-spin" />Setting up…</> : 'Finish Setup 🎉'}
+        <button
+          type="submit"
+          disabled={!canProceed}
+          className="w-full sm:w-auto flex items-center justify-center gap-2 py-3.5 px-6 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold text-base rounded-xl transition-colors touch-manipulation"
+        >
+          Next step <ArrowRight className="w-4 h-4" />
         </button>
       </div>
     </form>
+  )
+}
+
+// ── Step 3: Review & submit ───────────────────────────────────────────────────
+function StepReview({
+  data,
+  onFinish,
+  onBack,
+  saving,
+}: {
+  data: OnboardingState
+  onFinish: (p: Partial<OnboardingState>) => void
+  onBack: () => void
+  saving: boolean
+}) {
+  const typeLabel =
+    data.providerTypes.length === 3
+      ? 'Tours, accommodation & transport'
+      : data.providerTypes.includes('tour_operator')
+        ? 'Tours & experiences'
+        : data.providerTypes.includes('accommodation')
+          ? 'Accommodation'
+          : 'Transport & drivers'
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sm:p-8 space-y-6">
+      <div>
+        <h2 className="text-lg font-bold text-gray-900 mb-1">You&apos;re ready</h2>
+        <p className="text-sm text-gray-600">Here&apos;s what we&apos;ll set up. No commitment — you can edit anything later.</p>
+      </div>
+
+      <div className="space-y-4 rounded-xl bg-gray-50 p-4">
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Business</p>
+          <p className="font-semibold text-gray-900">{data.name || '—'}</p>
+          <p className="text-sm text-gray-600 mt-0.5">{typeLabel}</p>
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Location</p>
+          <p className="text-gray-900">{data.location || '—'}</p>
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Contact</p>
+          <p className="text-gray-900">{data.email || '—'}</p>
+          <p className="text-gray-900">{data.phone || '—'}</p>
+        </div>
+      </div>
+
+      <p className="text-sm text-gray-600">
+        We&apos;ll help you get your first customers. Once you submit, you&apos;ll land in your dashboard where you can add tours, rooms, or vehicles.
+      </p>
+
+      <div className="pt-2 flex flex-col-reverse sm:flex-row gap-3 sm:justify-between">
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={saving}
+          className="flex items-center justify-center gap-2 py-3 px-4 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors touch-manipulation disabled:opacity-50"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back
+        </button>
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => onFinish({})}
+          className="w-full sm:w-auto flex items-center justify-center gap-2 py-3.5 px-8 bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white font-semibold text-base rounded-xl transition-colors touch-manipulation"
+        >
+          {saving ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" /> Setting up…
+            </>
+          ) : (
+            <>Start receiving bookings</>
+          )}
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -302,17 +342,27 @@ export default function OnboardingPage() {
   const router = useRouter()
   const { data: session, status } = useSession()
   const token = session?.user?.accessToken
-  const [step, setStep]     = useState<1 | 2 | 3>(1)
-  const [data, setData]     = useState<OnboardingState>(DEFAULT_ONBOARDING)
+  const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [data, setData] = useState<OnboardingState>(DEFAULT_ONBOARDING)
   const [saving, setSaving] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [checkingProvider, setCheckingProvider] = useState(true)
 
-  function patch(p: Partial<OnboardingState>) { setData(prev => ({ ...prev, ...p })) }
+  function patch(p: Partial<OnboardingState>) {
+    setData((prev) => ({ ...prev, ...p }))
+  }
 
-  function handleStep1(p: Partial<OnboardingState>) { patch(p); setStep(2) }
-  function handleStep2(p: Partial<OnboardingState>) { patch(p); setStep(3) }
-  function handleBack()  { setStep(prev => (prev - 1) as 1 | 2 | 3) }
+  function handleStep1(p: Partial<OnboardingState>) {
+    patch(p)
+    setStep(2)
+  }
+  function handleStep2(p: Partial<OnboardingState>) {
+    patch(p)
+    setStep(3)
+  }
+  function handleBack() {
+    setStep((prev) => (prev - 1) as 1 | 2 | 3)
+  }
 
   function mapProviderTypes(providerTypes: ProviderType[]): 'hotel' | 'tour_operator' | 'car_rental' | 'multiple' {
     const sorted = [...providerTypes].sort().join(',')
@@ -323,14 +373,10 @@ export default function OnboardingPage() {
     throw new Error('Invalid service selection.')
   }
 
-  // Redirect unauthenticated users to login.
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/auth/login')
   }, [status, router])
 
-  // If user already has a provider profile, skip onboarding.
-  // Backend returns 404 when provider does not exist yet.
-  // Backend provider routes are role-protected; travelers may receive 403, which we ignore.
   useEffect(() => {
     let alive = true
     async function check() {
@@ -338,19 +384,16 @@ export default function OnboardingPage() {
         setCheckingProvider(false)
         return
       }
-
       const freshToken = await getFreshAccessToken()
       if (!freshToken || !alive) {
         setCheckingProvider(false)
         return
       }
-
       setCheckingProvider(true)
       try {
         await apiClient.get('/provider/profile', freshToken, { cache: 'no-store' })
         if (alive) router.push('/dashboard/business')
       } catch (err: unknown) {
-        // Ignore "no provider profile" and "not a provider role yet".
         if (err instanceof ApiError && (err.status === 404 || err.status === 403)) return
         if (err instanceof ApiError && err.status === 401) {
           if (alive) router.push('/auth/login')
@@ -362,13 +405,15 @@ export default function OnboardingPage() {
       }
     }
     check()
-    return () => { alive = false }
+    return () => {
+      alive = false
+    }
   }, [status, token, router])
 
   if (status === 'loading' || checkingProvider) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-green-500 border-t-transparent" />
       </div>
     )
   }
@@ -381,7 +426,6 @@ export default function OnboardingPage() {
     setSaving(true)
     setSubmitError(null)
 
-    // Fetch fresh token right before submit to avoid stale token after long idle
     const freshToken = await getFreshAccessToken()
     if (!freshToken) {
       setSubmitError('Session expired. Please log in again.')
@@ -393,8 +437,8 @@ export default function OnboardingPage() {
     let businessType: 'hotel' | 'tour_operator' | 'car_rental' | 'multiple'
     try {
       businessType = mapProviderTypes(final.providerTypes)
-    } catch (e) {
-      setSubmitError('Invalid service selection. Please restart onboarding.')
+    } catch {
+      setSubmitError('Please go back and select what you offer.')
       setSaving(false)
       return
     }
@@ -405,7 +449,7 @@ export default function OnboardingPage() {
         {
           businessName: final.name,
           businessType,
-          description: final.description,
+          description: final.description || undefined,
           contactEmail: final.email,
           contactPhone: final.phone,
           city: final.location,
@@ -413,14 +457,13 @@ export default function OnboardingPage() {
         },
         freshToken,
       )
-
       router.push('/dashboard/business')
     } catch (err: unknown) {
       if (err instanceof ApiError && err.status === 401) {
         setSubmitError('Session expired. Please log in again.')
         router.push('/auth/login')
       } else {
-        setSubmitError(err instanceof Error ? err.message : 'Failed to complete onboarding.')
+        setSubmitError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
       }
     } finally {
       setSaving(false)
@@ -435,9 +478,9 @@ export default function OnboardingPage() {
         </div>
       )}
 
-      {step === 1 && <StepBusinessInfo data={data} onNext={handleStep1} />}
-      {step === 2 && <StepServiceType data={data} onNext={handleStep2} onBack={handleBack} />}
-      {step === 3 && <StepProfileSetup data={data} onFinish={handleFinish} onBack={handleBack} saving={saving} />}
+      {step === 1 && <StepBusinessType data={data} onNext={handleStep1} />}
+      {step === 2 && <StepBasicInfo data={data} onNext={handleStep2} onBack={handleBack} />}
+      {step === 3 && <StepReview data={data} onFinish={handleFinish} onBack={handleBack} saving={saving} />}
     </OnboardingLayout>
   )
 }

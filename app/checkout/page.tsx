@@ -85,11 +85,12 @@ function CheckoutContent() {
         const departures = await fetchTourDepartures(backendTour.id)
         if (departures.length === 0) throw new Error('No available departures for this tour.')
 
-        const selectedDate = date // expected: YYYY-MM-DD
+        // Prefer depId from URL (exact selection); else resolve by date
         const departureMatch =
-          departures.find(d => d.startDate?.startsWith(selectedDate)) ??
+          (depId && departures.find(d => d.id === depId)) ??
+          departures.find(d => d.startDate?.startsWith(date)) ??
           (() => {
-            const cutoff = new Date(selectedDate + 'T00:00:00')
+            const cutoff = new Date(date + 'T00:00:00')
             const after = departures
               .map(d => ({ d, dt: new Date(d.startDate) }))
               .filter(x => !Number.isNaN(x.dt.getTime()) && x.dt >= cutoff)
@@ -146,6 +147,10 @@ function CheckoutContent() {
           setApiError('Session expired. Please log in again.')
           await signOut({ redirect: false })
           router.push('/auth/login')
+        } else if (err instanceof ApiError && err.status === 409) {
+          setApiError(
+            err.message || 'Availability has changed. This departure no longer has enough seats. Please go back and select a different date or reduce your party size.',
+          )
         } else {
           setApiError(err instanceof Error ? err.message : 'Booking failed. Please try again.')
         }
@@ -236,9 +241,19 @@ function CheckoutContent() {
 
         {/* API error banner */}
         {apiError && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-            <p className="text-sm text-red-700">{apiError}</p>
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex flex-col gap-2">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700 flex-1">{apiError}</p>
+            </div>
+            {apiError.toLowerCase().includes('availability') || apiError.toLowerCase().includes('seat') ? (
+              <Link
+                href={slug ? `/tours/${slug}` : '/tours'}
+                className="text-sm font-semibold text-red-700 hover:text-red-800 underline ml-8"
+              >
+                Go back to tour to see current availability
+              </Link>
+            ) : null}
           </div>
         )}
 

@@ -40,6 +40,7 @@ export interface BackendBooking {
   provider?: { name: string; slug: string; logoUrl?: string | null } | null
 
   listingSnapshot?: any
+  cancelReason?: string | null
 
   // Included for tour bookings via BookingService.listMyBookings select()
   tourDeparture?: {
@@ -76,6 +77,14 @@ export async function createBooking(
   token: string,
 ): Promise<BackendBooking> {
   return apiClient.post<BackendBooking>('/bookings', payload, token)
+}
+
+export async function fetchBookingByCode(bookingCode: string, token: string): Promise<BackendBooking | null> {
+  try {
+    return await apiClient.get<BackendBooking>(`/bookings/${bookingCode}`, token)
+  } catch {
+    return null
+  }
 }
 
 export async function fetchMyBookings(token: string): Promise<BackendBooking[]> {

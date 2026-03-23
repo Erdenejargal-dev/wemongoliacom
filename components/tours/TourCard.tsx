@@ -9,7 +9,8 @@ interface TourCardProps {
   tour: Tour
 }
 
-const styleColors: Record<string, string> = {
+/** Only show style badge when backend provides real category/style data (not the default placeholder) */
+const STYLE_COLORS: Record<string, string> = {
   adventure:   'bg-orange-50 text-orange-600',
   cultural:    'bg-purple-50 text-purple-600',
   luxury:      'bg-yellow-50 text-yellow-600',
@@ -20,13 +21,14 @@ const styleColors: Record<string, string> = {
 
 export function TourCard({ tour }: TourCardProps) {
   const [saved, setSaved] = useState(false)
+  const hasRealStyle = tour.style && tour.style !== 'adventure' && STYLE_COLORS[tour.style]
 
   return (
     <Link href={`/tours/${tour.slug}`} className="group block bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden">
       {/* Image */}
       <div className="relative h-52 overflow-hidden bg-gray-100">
         <img
-          src={tour.images[0]}
+          src={tour.images?.[0] ?? 'https://images.unsplash.com/photo-1569949381669-ecf31ae8e613?w=800&auto=format&fit=crop'}
           alt={tour.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           loading="lazy"
@@ -42,12 +44,14 @@ export function TourCard({ tour }: TourCardProps) {
           <Heart className={`w-4 h-4 transition-colors ${saved ? 'fill-red-500 text-red-500' : 'text-gray-500'}`} />
         </button>
 
-        {/* Style badge */}
-        <div className="absolute top-3 left-3">
-          <span className={`text-[10px] font-semibold px-2 py-1 rounded-full capitalize ${styleColors[tour.style] ?? 'bg-gray-100 text-gray-600'}`}>
-            {tour.style}
-          </span>
-        </div>
+        {/* Style badge — only when backend provides real category data */}
+        {hasRealStyle && (
+          <div className="absolute top-3 left-3">
+            <span className={`text-[10px] font-semibold px-2 py-1 rounded-full capitalize ${STYLE_COLORS[tour.style]}`}>
+              {tour.style}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -68,10 +72,10 @@ export function TourCard({ tour }: TourCardProps) {
           {tour.shortDescription}
         </p>
 
-        {/* Meta row */}
+        {/* Meta row — duration and capacity are tour-level; exact dates on detail page */}
         <div className="flex items-center gap-3 text-xs text-gray-500 mb-3">
           <div className="flex items-center gap-1"><Clock className="w-3 h-3" />{tour.duration}</div>
-          <div className="flex items-center gap-1"><Users className="w-3 h-3" />Max {tour.maxGuests}</div>
+          <div className="flex items-center gap-1"><Users className="w-3 h-3" />Up to {tour.maxGuests} guests</div>
         </div>
 
         {/* Footer */}
@@ -82,10 +86,10 @@ export function TourCard({ tour }: TourCardProps) {
             <span className="text-sm font-semibold text-gray-900">{tour.rating}</span>
             <span className="text-xs text-gray-400">({tour.reviewCount})</span>
           </div>
-          {/* Price */}
+          {/* Price — base price per person; departure-specific prices on detail page */}
           <div className="text-right">
             <span className="text-lg font-bold text-gray-900">${tour.price}</span>
-            <span className="text-xs text-gray-400">/person</span>
+            <span className="text-xs text-gray-400">/person from</span>
           </div>
         </div>
       </div>

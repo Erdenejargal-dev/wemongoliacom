@@ -101,7 +101,7 @@ export default async function TourDetailPage({ params }: Props) {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Users className="w-4 h-4 text-gray-400" />
-                  Max {tour.maxGuests} guests
+                  Up to {tour.maxGuests} guests
                 </div>
               </div>
 
@@ -114,7 +114,7 @@ export default async function TourDetailPage({ params }: Props) {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {[
                   { icon: Clock, label: 'Duration', value: durationLabel || '—' },
-                  { icon: Users, label: 'Group Size', value: `Max ${tour.maxGuests} guests` },
+                  { icon: Users, label: 'Group Size', value: `Up to ${tour.maxGuests} guests` },
                   { icon: Zap, label: 'Experience', value: tour.experienceType ?? '—' },
                   { icon: Shield, label: 'Difficulty', value: difficulty },
                   { icon: Globe, label: 'Language', value: languagesLabel },

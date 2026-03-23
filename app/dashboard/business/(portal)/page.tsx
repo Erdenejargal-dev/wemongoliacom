@@ -7,12 +7,17 @@ import { useSession, signOut } from 'next-auth/react'
 import { Loader2 } from 'lucide-react'
 import { DashboardOverview } from '@/components/provider-dashboard/DashboardOverview'
 import { apiClient, ApiError } from '@/lib/api/client'
+import {
+  fetchProviderAnalytics,
+  fetchProviderBookings,
+} from '@/lib/api/provider'
 import { getFreshAccessToken } from '@/lib/auth-utils'
 import type { ProviderType } from '@/lib/provider-menu'
 
 type ProviderProfile = {
   id: string
   name: string
+  description?: string | null
   providerTypes: ProviderType[]
   status: 'draft' | 'active' | 'paused' | 'archived'
 }
@@ -23,6 +28,8 @@ export default function BusinessDashboardPage() {
   const token = session?.user?.accessToken
 
   const [provider, setProvider] = useState<ProviderProfile | null>(null)
+  const [analytics, setAnalytics] = useState<Awaited<ReturnType<typeof fetchProviderAnalytics>>>(null)
+  const [recentBookings, setRecentBookings] = useState<Awaited<ReturnType<typeof fetchProviderBookings>>['data']>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -37,9 +44,15 @@ export default function BusinessDashboardPage() {
       setLoading(true)
       setError(null)
       try {
-        const p = await apiClient.get<ProviderProfile>('/provider/profile', freshToken)
+        const [pRes, aRes, bRes] = await Promise.all([
+          apiClient.get<ProviderProfile>('/provider/profile', freshToken),
+          fetchProviderAnalytics(freshToken),
+          fetchProviderBookings(freshToken, { limit: 5 }),
+        ])
         if (!alive) return
-        setProvider(p)
+        setProvider(pRes)
+        setAnalytics(aRes)
+        setRecentBookings(bRes.data ?? [])
       } catch (e: unknown) {
         if (!alive) return
         if (e instanceof ApiError && e.status === 401) {
@@ -80,7 +93,8 @@ export default function BusinessDashboardPage() {
           If you haven&apos;t registered your business yet, go to{' '}
           <Link href="/onboarding" className="text-green-600 font-semibold underline">
             onboarding
-          </Link>.
+          </Link>
+          .
         </p>
       </div>
     )
@@ -105,8 +119,13 @@ export default function BusinessDashboardPage() {
           but some features may be limited until verification.
         </div>
       )}
-      <DashboardOverview providerName={provider.name} providerTypes={provider.providerTypes} />
+      <DashboardOverview
+        providerName={provider.name}
+        providerDescription={provider.description}
+        providerTypes={provider.providerTypes}
+        analytics={analytics}
+        recentBookings={recentBookings}
+      />
     </div>
   )
 }
-

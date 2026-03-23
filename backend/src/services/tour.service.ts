@@ -2,6 +2,25 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma'
 import { AppError } from '../middleware/error'
 
+/** Returns tour IDs that have at least one departure with remainingSeats >= minRequired. */
+async function getTourIdsWithRemainingSeats(
+  minRequired: number,
+  startFrom: Date,
+  maxDate: Date | null,
+): Promise<string[]> {
+  const rows = await prisma.$queryRaw<{ tour_id: string }[]>`
+    SELECT DISTINCT t.id as tour_id
+    FROM tours t
+    INNER JOIN tour_departures d ON d.tour_id = t.id
+    WHERE t.status = 'active'
+      AND d.status = 'scheduled'
+      AND d.start_date >= ${startFrom}
+      AND (d.available_seats - d.booked_seats) >= ${minRequired}
+      ${maxDate ? Prisma.sql`AND d.start_date <= ${maxDate}` : Prisma.empty}
+  `
+  return rows.map((r) => r.tour_id)
+}
+
 export interface TourListQuery {
   destinationId?: string
   category?:      string
@@ -77,17 +96,19 @@ export async function listTours(query: TourListQuery = {}) {
     if (query.maxDays !== undefined) (where.durationDays as any).lte = query.maxDays
   }
 
-  // Filter by departure availability
+  // Filter by departure availability (remainingSeats = availableSeats - bookedSeats)
   if (query.startDate || query.guests) {
-    const depWhere: Prisma.TourDepartureWhereInput = { status: 'scheduled' }
-    if (query.startDate) {
-      const d = new Date(query.startDate)
-      depWhere.startDate = { gte: d }
-    }
-    if (query.guests) {
-      depWhere.availableSeats = { gte: query.guests }
-    }
-    where.departures = { some: depWhere }
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+    const startFrom = query.startDate
+      ? (() => {
+          const d = new Date(query.startDate)
+          return d > now ? d : now
+        })()
+      : now
+    const minRequired = Math.max(1, query.guests ?? 0)
+    const tourIds = await getTourIdsWithRemainingSeats(minRequired, startFrom, null)
+    where.id = { in: tourIds }
   }
 
   const [tours, total] = await Promise.all([
@@ -120,7 +141,8 @@ export async function getTourBySlug(slug: string) {
       departures: {
         where:   { status: 'scheduled', startDate: { gte: new Date() } },
         orderBy: { startDate: 'asc' },
-        take:    10,
+        take:    20,
+        select:  { id: true, startDate: true, endDate: true, availableSeats: true, bookedSeats: true, priceOverride: true, currency: true, status: true },
       },
     },
   })
@@ -128,7 +150,12 @@ export async function getTourBySlug(slug: string) {
   if (!tour)               throw new AppError('Tour not found.', 404)
   if (tour.status !== 'active') throw new AppError('Tour not found.', 404)
 
-  return tour
+  // Only expose departures with at least 1 remaining seat (consistent with search)
+  const departures = tour.departures
+    .filter((d) => d.availableSeats - d.bookedSeats >= 1)
+    .slice(0, 10)
+
+  return { ...tour, departures }
 }
 
 export async function getTourDepartures(tourId: string) {
@@ -140,5 +167,6 @@ export async function getTourDepartures(tourId: string) {
     orderBy: { startDate: 'asc' },
   })
 
-  return departures
+  // Only return departures with at least 1 remaining seat
+  return departures.filter((d) => (d.availableSeats - d.bookedSeats) >= 1)
 }

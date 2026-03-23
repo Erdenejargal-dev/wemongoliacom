@@ -155,7 +155,7 @@ export default function DestinationsPage() {
         {/* ── Bottom CTA ───────────────────────── */}
         <section className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-8 text-center">
           <h3 className="text-xl font-bold text-white mb-2">Can&apos;t find what you&apos;re looking for?</h3>
-          <p className="text-white/80 text-sm mb-5">Browse all available tours across Mongolia and filter by your interests.</p>
+          <p className="text-white/80 text-sm mb-5">Browse tours with scheduled departures across Mongolia and filter by your interests.</p>
           <Link href="/tours"
             className="inline-flex items-center gap-2 bg-white text-green-700 font-bold text-sm px-6 py-3 rounded-xl hover:bg-green-50 transition-colors shadow-lg">
             <Compass className="w-4 h-4" />

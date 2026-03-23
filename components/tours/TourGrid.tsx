@@ -5,6 +5,11 @@ import { Compass } from 'lucide-react'
 interface TourGridProps {
   tours: Tour[]
   loading?: boolean
+  loadingMore?: boolean
+  error?: string | null
+  total?: number
+  onLoadMore?: () => void
+  onClearFilters?: () => void
 }
 
 function SkeletonCard() {
@@ -25,7 +30,25 @@ function SkeletonCard() {
   )
 }
 
-export function TourGrid({ tours, loading }: TourGridProps) {
+export function TourGrid({ tours, loading, loadingMore, error, total = 0, onLoadMore, onClearFilters }: TourGridProps) {
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-4">
+          <Compass className="w-8 h-8 text-red-400" />
+        </div>
+        <h3 className="text-base font-semibold text-gray-900 mb-1">Unable to load tours</h3>
+        <p className="text-sm text-gray-500 max-w-sm mb-4">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="text-sm font-medium text-green-600 hover:text-green-700 underline"
+        >
+          Try again
+        </button>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -41,16 +64,39 @@ export function TourGrid({ tours, loading }: TourGridProps) {
           <Compass className="w-8 h-8 text-gray-300" />
         </div>
         <h3 className="text-base font-semibold text-gray-900 mb-1">No tours found</h3>
-        <p className="text-sm text-gray-500 max-w-sm">
+        <p className="text-sm text-gray-500 max-w-sm mb-4">
           No tours match your current filters. Try adjusting your search or clearing some filters.
         </p>
+        {onClearFilters && (
+          <button
+            onClick={onClearFilters}
+            className="text-sm font-medium text-green-600 hover:text-green-700 underline"
+          >
+            Clear all filters
+          </button>
+        )}
       </div>
     )
   }
 
+  const hasMore = total > 0 && tours.length < total
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-      {tours.map(tour => <TourCard key={tour.id} tour={tour} />)}
+    <div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+        {tours.map(tour => <TourCard key={tour.id} tour={tour} />)}
+      </div>
+      {hasMore && onLoadMore && (
+        <div className="flex justify-center mt-8">
+          <button
+            onClick={onLoadMore}
+            disabled={loadingMore}
+            className="px-6 py-3 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+          >
+            {loadingMore ? 'Loading…' : `Load more (${tours.length} of ${total} shown)`}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

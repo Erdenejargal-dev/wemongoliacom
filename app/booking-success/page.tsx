@@ -1,9 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { CheckCircle2, CalendarDays, Users, MapPin, Clock, Copy, ChevronRight } from 'lucide-react'
+import { useSession } from 'next-auth/react'
+import { CheckCircle2, CalendarDays, Users, MapPin, Clock, Copy, ChevronRight, AlertTriangle, Compass } from 'lucide-react'
 import { getLastBooking, type Booking } from '@/lib/booking'
+import { fetchBookingByCode } from '@/lib/api/bookings'
+import { getFreshAccessToken } from '@/lib/auth-utils'
 
 function formatDate(dateStr: string) {
   if (!dateStr) return 'To be confirmed'
@@ -12,8 +15,29 @@ function formatDate(dateStr: string) {
 }
 
 export default function BookingSuccessPage() {
+  const { data: session } = useSession()
   const [booking] = useState<Booking | null>(() => getLastBooking())
   const [copied, setCopied] = useState(false)
+  const [expired, setExpired] = useState(false)
+  const [checking, setChecking] = useState(true)
+
+  useEffect(() => {
+    async function verify() {
+      if (!booking?.id || !session) {
+        setChecking(false)
+        return
+      }
+      const token = await getFreshAccessToken()
+      if (!token) {
+        setChecking(false)
+        return
+      }
+      const b = await fetchBookingByCode(booking.id, token)
+      setExpired(Boolean(b?.bookingStatus === 'cancelled'))
+      setChecking(false)
+    }
+    verify()
+  }, [booking?.id, session])
 
   function copyId() {
     if (!booking) return
@@ -30,6 +54,37 @@ export default function BookingSuccessPage() {
           <p className="text-gray-500 text-sm mb-4">No booking found.</p>
           <Link href="/tours" className="text-green-600 font-semibold text-sm hover:underline">Browse tours →</Link>
         </div>
+      </div>
+    )
+  }
+
+  if (expired) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="max-w-md text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 mb-4">
+            <AlertTriangle className="w-8 h-8 text-amber-600" />
+          </div>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">This booking has expired</h1>
+          <p className="text-gray-600 text-sm mb-6">
+            Pending bookings expire after 15 minutes if not confirmed. Your seats have been released. You can book again for the same or a different tour.
+          </p>
+          <Link
+            href={booking.tourSlug ? `/tours/${booking.tourSlug}` : '/tours'}
+            className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors shadow-md"
+          >
+            <Compass className="w-4 h-4" />
+            {booking.tourSlug ? 'Book this tour again' : 'Browse tours'}
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  if (checking && session) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-sm text-gray-500">Verifying booking…</p>
       </div>
     )
   }

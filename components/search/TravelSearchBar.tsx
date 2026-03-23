@@ -6,26 +6,36 @@ import { Search } from 'lucide-react'
 import { DestinationAutocomplete } from './DestinationAutocomplete'
 import { DateRangePicker } from './DateRangePicker'
 import { GuestSelector } from './GuestSelector'
+import type { SearchQuery } from '@/lib/search/types'
 
 interface TravelSearchBarProps {
   variant?: 'hero' | 'compact'
   initialDestination?: string
+  /** Current filters to preserve when searching (compact variant on /tours) */
+  currentFilters?: SearchQuery
+  /** Called when search is submitted (compact) — merge destination into filters and navigate */
+  onSearch?: (destination: string) => void
 }
 
-export function TravelSearchBar({ variant = 'hero', initialDestination = '' }: TravelSearchBarProps) {
+export function TravelSearchBar({ variant = 'hero', initialDestination = '', currentFilters, onSearch }: TravelSearchBarProps) {
   const router = useRouter()
   const [destination, setDestination] = useState(initialDestination)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [guests, setGuests] = useState({ adults: 1, children: 0 })
+  const [guests, setGuests] = useState(currentFilters?.guests ?? { adults: 1, children: 0 })
 
   const handleSearch = () => {
+    if (variant === 'compact' && currentFilters && onSearch) {
+      onSearch(destination)
+      return
+    }
+    // Hero variant: navigate with destination + guests + dates (params backend search uses)
     const params = new URLSearchParams()
     if (destination) params.set('destination', destination)
-    if (startDate) params.set('startDate', startDate)
-    if (endDate) params.set('endDate', endDate)
-    params.set('adults', String(guests.adults))
-    params.set('children', String(guests.children))
+    const guestCount = guests.adults + guests.children
+    if (guestCount > 1) params.set('guests', String(guestCount))
+    if (startDate) params.set('fromDate', startDate)
+    if (endDate) params.set('toDate', endDate)
     router.push(`/tours?${params.toString()}`)
   }
 

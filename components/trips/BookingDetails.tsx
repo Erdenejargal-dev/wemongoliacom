@@ -31,6 +31,9 @@ export function BookingDetails({ trip }: BookingDetailsProps) {
         <div className="bg-white rounded-xl border border-gray-100 p-4">
           <p className="text-xs font-bold text-gray-700 mb-3">Booking Information</p>
           <Row label="Booking ID" value={<span className="font-mono text-green-700">{trip.bookingId}</span>} />
+          {trip.status === 'Cancelled' && trip.cancelReason && (
+            <Row label="Reason" value={<span className="text-amber-700 text-left">{trip.cancelReason}</span>} />
+          )}
           <Row label="Listing" value={trip.listingTitle} />
           <Row label="Location" value={trip.location} />
           <Row label="Start Date" value={<span className="flex items-center gap-1 justify-end"><CalendarDays className="w-3 h-3 text-green-500" />{formatDate(trip.date)}</span>} />
