@@ -93,7 +93,7 @@ export function AuthModal({ defaultTab = 'login', trigger }: AuthModalProps) {
 
                 <TabsContent value='register' className='mt-0 space-y-4'>
                   <RegisterPanel
-                    onSuccess={() => setActiveTab('login')}
+                    onSuccess={() => setOpen(false)}
                     onSwitchToLogin={() => setActiveTab('login')}
                   />
                 </TabsContent>
@@ -283,6 +283,7 @@ function RegisterPanel({
   onSuccess: () => void
   onSwitchToLogin: () => void
 }) {
+  const router = useRouter()
   const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -318,11 +319,24 @@ function RegisterPanel({
         role: 'traveler',
       })
 
-      setSuccess(true)
-      setTimeout(() => {
-        setSuccess(false)
+      // Auto-login after successful registration
+      const loginResult = await signIn('credentials', {
+        email: formData.email,
+        password: formData.password,
+        redirect: false,
+      })
+
+      if (loginResult?.error) {
+        // Registration OK but auto-login failed — switch to login tab
+        setSuccess(true)
+        setTimeout(() => {
+          setSuccess(false)
+          onSwitchToLogin()
+        }, 1500)
+      } else {
+        router.refresh()
         onSuccess()
-      }, 1500)
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {

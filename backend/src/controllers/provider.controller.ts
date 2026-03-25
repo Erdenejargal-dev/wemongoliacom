@@ -40,6 +40,23 @@ export const cancelSchema = z.object({
   reason: z.string().max(500).optional(),
 })
 
+export const tourListQuerySchema = z.object({
+  status: z.enum(['draft', 'active', 'paused']).optional(),
+  page:   z.coerce.number().int().positive().optional(),
+  limit:  z.coerce.number().int().positive().max(50).optional(),
+})
+
+export const createTourSchema = z.object({
+  title:            z.string().trim().min(2).max(300),
+  shortDescription: z.string().trim().max(500).optional(),
+  description:      z.string().trim().max(10000).optional(),
+  durationDays:     z.number().int().positive().max(365).optional(),
+  basePrice:        z.number().positive(),
+  currency:         z.string().length(3).optional(),
+  destinationId:    z.string().optional(),
+  status:           z.enum(['draft', 'active', 'paused']).optional(),
+})
+
 // ─── Handlers ─────────────────────────────────────────────────────────────
 
 export async function getMyProfile(req: Request, res: Response, next: NextFunction) {
@@ -132,6 +149,26 @@ export async function replyToReview(req: Request, res: Response, next: NextFunct
       req.body.reply,
     )
     return ok(res, result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ─── Tours ────────────────────────────────────────────────────────────────
+
+export async function listTours(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await providerService.listProviderTours(req.user!.userId, req.query as any)
+    return ok(res, result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function createTour(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await providerService.createProviderTour(req.user!.userId, req.body)
+    return ok(res, result, 'Tour created successfully.')
   } catch (err) {
     next(err)
   }

@@ -1,7 +1,5 @@
 "use client";
 
-import Navbar from '@/components/layout/Navbar';
-import Footer from '@/components/sections/Footer';
 import { useState } from "react";
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination } from 'swiper/modules';
@@ -106,8 +104,6 @@ export default function ExploreExperiencePage() {
 
   return (
     <main className="min-h-screen">
-      <Navbar />
-
       {/* Hero Section */}
       <section className="relative h-[70vh] w-full overflow-hidden">
         <div
@@ -478,7 +474,6 @@ export default function ExploreExperiencePage() {
         </div>
       </section>
 
-      <Footer />
     </main>
   );
 }

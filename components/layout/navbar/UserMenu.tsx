@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { LogOut, LayoutDashboard, Heart, CalendarCheck, ChevronDown, Building2, Sparkles } from 'lucide-react'
+import { LogOut, LayoutDashboard, Heart, CalendarCheck, ChevronDown, Building2, Sparkles, Settings, MessageSquare } from 'lucide-react'
 import Link from 'next/link'
 import { signOut } from 'next-auth/react'
 
@@ -22,6 +22,22 @@ export function UserMenu({ name, email, role }: UserMenuProps) {
   }, [])
 
   const initials = name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'U'
+  const isProvider = role === 'provider_owner'
+  const isAdmin = role === 'admin'
+
+  const items = isProvider
+    ? [
+        { href: '/dashboard/business',          icon: Building2,     label: 'Business Portal' },
+        { href: '/dashboard/business/messages',  icon: MessageSquare, label: 'Messages' },
+        { href: '/dashboard/business/settings',  icon: Settings,      label: 'Business Settings' },
+      ]
+    : [
+        ...(isAdmin ? [{ href: '/dashboard/business', icon: Building2, label: 'Business Portal' }] : []),
+        { href: '/dashboard',       icon: LayoutDashboard, label: 'My Dashboard' },
+        { href: '/account/trips',   icon: CalendarCheck,   label: 'My Trips' },
+        { href: '/account',         icon: Heart,           label: 'Saved Trips' },
+        ...(!isAdmin ? [{ href: '/onboarding', icon: Sparkles, label: 'Become a Host' }] : []),
+      ]
 
   return (
     <div ref={ref} className="relative">
@@ -38,19 +54,12 @@ export function UserMenu({ name, email, role }: UserMenuProps) {
         <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 overflow-hidden">
           <div className="h-0.5 bg-gradient-to-r from-green-400 to-teal-400 absolute top-0 inset-x-0" />
 
-          {/* User info */}
           <div className="px-4 py-3 border-b border-gray-50">
             <p className="text-sm font-semibold text-gray-900 truncate">{name}</p>
             <p className="text-xs text-gray-400 truncate">{email}</p>
           </div>
 
-          {[
-            { href: '/dashboard', icon: LayoutDashboard, label: 'My Dashboard', show: true },
-            { href: '/account/trips', icon: CalendarCheck, label: 'My Trips', show: true },
-            { href: '/account', icon: Heart, label: 'Saved Trips', show: true },
-            { href: '/dashboard/business', icon: Building2, label: 'Business Portal', show: role === 'provider_owner' || role === 'admin' },
-            { href: '/onboarding', icon: Sparkles, label: 'Become a Host', show: role !== 'provider_owner' && role !== 'admin' },
-          ].filter(i => i.show).map(item => (
+          {items.map(item => (
             <Link key={item.label} href={item.href} onClick={() => setOpen(false)}
               className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
               <item.icon className="w-4 h-4 text-gray-400" />

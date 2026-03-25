@@ -1,9 +1,12 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 
 export default async function DashboardPage() {
   const session = await auth()
   const role = session?.user?.role
+
+  if (role === 'provider_owner') redirect('/dashboard/business')
 
   return (
     <div className="space-y-5">
@@ -29,8 +32,7 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      {/* Provider CTA is role-aware */}
-      {role === 'provider_owner' || role === 'admin' ? (
+      {role === 'admin' ? (
         <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
           <p className="text-sm font-semibold text-gray-900">Business Portal</p>
           <p className="text-xs text-gray-500 mt-1">Manage your listings, bookings, and messages.</p>

@@ -349,6 +349,106 @@ export async function replyToReviewByOwner(ownerUserId: string, reviewId: string
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Provider Tours — List & Create (Phase 3A)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ProviderTourQuery {
+  status?: string
+  page?:   number
+  limit?:  number
+}
+
+export interface CreateTourInput {
+  title:            string
+  shortDescription?: string
+  description?:     string
+  durationDays?:    number
+  basePrice:        number
+  currency?:        string
+  destinationId?:   string
+  status?:          'draft' | 'active' | 'paused'
+}
+
+const providerTourSelect = {
+  id:               true,
+  slug:             true,
+  title:            true,
+  shortDescription: true,
+  durationDays:     true,
+  basePrice:        true,
+  currency:         true,
+  status:           true,
+  ratingAverage:    true,
+  reviewsCount:     true,
+  createdAt:        true,
+  updatedAt:        true,
+  images:           { orderBy: { sortOrder: 'asc' as const }, take: 1, select: { imageUrl: true } },
+  destination:      { select: { id: true, name: true, slug: true } },
+} as const
+
+export async function listProviderTours(ownerUserId: string, query: ProviderTourQuery) {
+  const provider = await prisma.provider.findUnique({ where: { ownerUserId }, select: { id: true } })
+  if (!provider) throw new AppError('Provider not found.', 404)
+
+  const page  = Math.max(1, query.page  ?? 1)
+  const limit = Math.min(50, query.limit ?? 20)
+  const skip  = (page - 1) * limit
+
+  const where: Record<string, unknown> = { providerId: provider.id }
+  if (query.status) where.status = query.status
+
+  const [tours, total] = await Promise.all([
+    prisma.tour.findMany({
+      where,
+      select: providerTourSelect,
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
+    }),
+    prisma.tour.count({ where }),
+  ])
+
+  return {
+    data: tours,
+    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+  }
+}
+
+export async function createProviderTour(ownerUserId: string, input: CreateTourInput) {
+  const provider = await prisma.provider.findUnique({ where: { ownerUserId }, select: { id: true } })
+  if (!provider) throw new AppError('Provider not found.', 404)
+
+  if (input.destinationId) {
+    const dest = await prisma.destination.findUnique({ where: { id: input.destinationId }, select: { id: true } })
+    if (!dest) throw new AppError('Destination not found.', 400)
+  }
+
+  const slug = await uniqueSlug(input.title, async (s) => {
+    const exists = await prisma.tour.findUnique({ where: { slug: s } })
+    return !!exists
+  })
+  if (!slug) throw new AppError('Title must contain at least one letter or number.', 400)
+
+  const tour = await prisma.tour.create({
+    data: {
+      providerId:       provider.id,
+      slug,
+      title:            input.title,
+      shortDescription: input.shortDescription || null,
+      description:      input.description || null,
+      durationDays:     input.durationDays ?? 1,
+      basePrice:        input.basePrice,
+      currency:         input.currency ?? 'USD',
+      destinationId:    input.destinationId || null,
+      status:           input.status ?? 'draft',
+    },
+    select: providerTourSelect,
+  })
+
+  return tour
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Helper: load booking and assert it belongs to this provider
 // ─────────────────────────────────────────────────────────────────────────────
 

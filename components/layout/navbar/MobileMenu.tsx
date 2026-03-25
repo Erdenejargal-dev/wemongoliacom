@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, Search, MapPin, CalendarDays, Users } from 'lucide-react'
+import { ChevronDown, Search, MapPin, CalendarDays, Users, Building2, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { signOut } from 'next-auth/react'
 import type { Session } from 'next-auth'
@@ -9,6 +9,7 @@ import { navItems } from './mega-menu-data'
 import { AuthModal } from '@/components/AuthModal'
 import { Button } from '@/components/ui/button'
 import { ArrowRight } from 'lucide-react'
+import { isProviderOrAdmin } from '@/lib/navigation'
 
 interface MobileMenuProps {
   session: Session | null
@@ -85,10 +86,23 @@ export function MobileMenu({ session, onClose }: MobileMenuProps) {
       <div className="border-t border-gray-100 p-4 space-y-2">
         {session ? (
           <>
-            <Link href="/account/trips" onClick={onClose}
-              className="flex items-center gap-3 p-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-              <CalendarDays className="w-4 h-4 text-gray-400" /> My Trips
-            </Link>
+            {session.user?.role !== 'provider_owner' && (
+              <Link href="/account/trips" onClick={onClose}
+                className="flex items-center gap-3 p-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                <CalendarDays className="w-4 h-4 text-gray-400" /> My Trips
+              </Link>
+            )}
+            {isProviderOrAdmin(session.user?.role) ? (
+              <Link href="/dashboard/business" onClick={onClose}
+                className="flex items-center gap-3 p-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                <Building2 className="w-4 h-4 text-gray-400" /> Business Portal
+              </Link>
+            ) : (
+              <Link href="/onboarding" onClick={onClose}
+                className="flex items-center gap-3 p-3 rounded-xl text-sm font-medium text-green-700 hover:bg-green-50 transition-colors">
+                <Sparkles className="w-4 h-4 text-green-500" /> Become a Host
+              </Link>
+            )}
             <button onClick={() => { signOut(); onClose() }}
               className="flex items-center gap-3 w-full p-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
               Sign out
@@ -106,6 +120,10 @@ export function MobileMenu({ session, onClose }: MobileMenuProps) {
                 Get Started <ArrowRight className="w-4 h-4" />
               </Button>
             } />
+            <Link href="/auth/login?callbackUrl=%2Fonboarding" onClick={onClose}
+              className="w-full py-2.5 text-sm font-medium text-center text-green-700 border border-green-200 rounded-xl hover:bg-green-50 transition-colors">
+              Become a Host
+            </Link>
           </div>
         )}
       </div>

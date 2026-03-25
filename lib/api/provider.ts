@@ -232,3 +232,80 @@ export async function replyToProviderReview(
     return null
   }
 }
+
+// ── Provider Tours (Phase 3A) ───────────────────────────────────────────────
+
+export interface ProviderTour {
+  id:               string
+  slug:             string
+  title:            string
+  shortDescription: string | null
+  durationDays:     number | null
+  basePrice:        number
+  currency:         string
+  status:           string
+  ratingAverage:    number
+  reviewsCount:     number
+  createdAt:        string
+  updatedAt:        string
+  images:           { imageUrl: string }[]
+  destination:      { id: string; name: string; slug: string } | null
+}
+
+export interface CreateTourInput {
+  title:             string
+  shortDescription?: string
+  description?:      string
+  durationDays?:     number
+  basePrice:         number
+  currency?:         string
+  destinationId?:    string
+  status?:           'draft' | 'active' | 'paused'
+}
+
+export async function fetchProviderTours(
+  token: string,
+  params: { status?: string; page?: number; limit?: number } = {},
+): Promise<{ data: ProviderTour[]; total: number }> {
+  const qs = new URLSearchParams()
+  if (params.status) qs.set('status', params.status)
+  if (params.page)   qs.set('page', String(params.page))
+  if (params.limit)  qs.set('limit', String(params.limit))
+  const query = qs.toString() ? `?${qs}` : ''
+
+  const result = await apiClient.get<{
+    data: ProviderTour[]
+    pagination: { page: number; limit: number; total: number; pages: number }
+  }>(`/provider/tours${query}`, token)
+
+  return { data: result.data ?? [], total: result.pagination?.total ?? 0 }
+}
+
+export async function createProviderTour(
+  token: string,
+  input: CreateTourInput,
+): Promise<ProviderTour> {
+  return apiClient.post<ProviderTour>('/provider/tours', input, token)
+}
+
+// ── Destinations (for create-tour dropdown) ─────────────────────────────────
+
+export interface Destination {
+  id:   string
+  name: string
+  slug: string
+}
+
+export async function fetchDestinations(
+  token: string,
+): Promise<Destination[]> {
+  try {
+    const result = await apiClient.get<{
+      data: Destination[]
+      pagination: unknown
+    }>('/destinations?limit=100', token)
+    return result.data ?? []
+  } catch {
+    return []
+  }
+}

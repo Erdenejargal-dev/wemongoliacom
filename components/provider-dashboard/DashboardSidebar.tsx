@@ -4,13 +4,14 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { X, ChevronRight, LayoutDashboard, CalendarCheck, MessageSquare, Star, BarChart2, Settings } from 'lucide-react'
+import { X, ChevronRight, LayoutDashboard, Compass, CalendarCheck, MessageSquare, Star, BarChart2, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { apiClient } from '@/lib/api/client'
 import { buildProviderMenu, SECTION_LABELS, type ProviderType } from '@/lib/provider-menu'
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard,
+  Compass,
   CalendarCheck,
   MessageSquare,
   Star,
@@ -113,10 +114,7 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
         {/* Brand */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <Link href="/" className="flex items-center gap-2.5" onClick={onClose}>
-            <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center">
-              <span className="text-white text-xs font-bold">WM</span>
-            </div>
-            <span className="text-sm font-semibold text-gray-900">We Mongolia</span>
+            <img src="/wemongolia.svg" alt="WeMongolia" className="h-7 w-auto" />
           </Link>
           <button onClick={onClose} className="md:hidden p-1 rounded-lg hover:bg-gray-100">
             <X className="w-4 h-4" />

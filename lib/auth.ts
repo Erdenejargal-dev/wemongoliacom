@@ -95,7 +95,7 @@ export const authOptions: NextAuthConfig = {
   ],
 
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         const u = user as any
         token.id          = u.id
@@ -112,10 +112,13 @@ export const authOptions: NextAuthConfig = {
         }
       }
 
-      // If we have an expiry timestamp, refresh the access token when needed.
+      // Refresh the access token when:
+      // 1. useSession().update() is called (e.g. after onboarding promotes role)
+      // 2. The token is near expiry
       const expiresAt = token.accessTokenExpiresAt as number | undefined
       const now = Date.now()
-      if (expiresAt && token.accessToken && token.refreshToken && now >= expiresAt - 10_000) {
+      const needsRefresh = trigger === 'update' || (expiresAt && now >= expiresAt - 10_000)
+      if (needsRefresh && token.accessToken && token.refreshToken) {
         try {
           const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
             method: 'POST',

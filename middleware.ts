@@ -1,11 +1,26 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { auth } from "@/lib/auth"
+import { NextResponse } from "next/server"
 
-export function middleware(request: NextRequest) {
-  // For now, allow all requests - will implement auth checking with getServerSession later
-  return NextResponse.next();
-}
+/**
+ * Route guard: providers must not access traveler-only routes.
+ *
+ *   /dashboard (exact)  → traveler dashboard — redirect provider_owner to /dashboard/business
+ *   /account/*          → traveler account   — redirect provider_owner to /dashboard/business
+ *
+ * Admin users retain access to everything.
+ * Unauthenticated users pass through (pages handle their own auth).
+ */
+export default auth((req) => {
+  const role = req.auth?.user?.role
+
+  if (role === 'provider_owner') {
+    const path = req.nextUrl.pathname
+    if (path === '/dashboard' || path.startsWith('/account')) {
+      return NextResponse.redirect(new URL('/dashboard/business', req.nextUrl))
+    }
+  }
+})
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/auth/:path*"],
-};
+  matcher: ["/dashboard", "/account/:path*"],
+}

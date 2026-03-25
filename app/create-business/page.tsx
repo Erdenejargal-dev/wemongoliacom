@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
+import { auth } from '@/lib/auth'
+import { getHostCTAHref } from '@/lib/navigation'
 
 const BENEFITS = [
   { emoji: '🌍', title: 'Reach global travelers', desc: 'Connect with visitors from 50+ countries looking for authentic Mongolian experiences.' },
@@ -10,7 +12,10 @@ const BENEFITS = [
 
 const STEPS = ['Create your business profile', 'Select your service types', 'Start listing your services']
 
-export default function CreateBusinessPage() {
+export default async function CreateBusinessPage() {
+  const session = await auth()
+  const ctaHref = getHostCTAHref(session)
+  const signInHref = session ? '/' : '/auth/login?callbackUrl=%2Fonboarding'
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-green-950 flex flex-col">
       {/* Nav */}
@@ -21,7 +26,7 @@ export default function CreateBusinessPage() {
           </div>
           <span className="text-sm font-bold text-white">WeMongolia</span>
         </Link>
-        <Link href="/auth/login" className="text-xs text-white/60 hover:text-white transition-colors">Sign in</Link>
+        <Link href={signInHref} className="text-xs text-white/60 hover:text-white transition-colors">{session ? 'Home' : 'Sign in'}</Link>
       </header>
 
       <main className="flex-1 flex items-center justify-center px-4 py-16">
@@ -50,7 +55,7 @@ export default function CreateBusinessPage() {
                 ))}
               </div>
 
-              <Link href="/onboarding"
+              <Link href={ctaHref}
                 className="inline-flex items-center gap-2 px-7 py-3.5 bg-green-500 hover:bg-green-400 text-white font-bold text-sm rounded-xl transition-colors shadow-xl shadow-green-900/30">
                 Get Started Free <ArrowRight className="w-4 h-4" />
               </Link>

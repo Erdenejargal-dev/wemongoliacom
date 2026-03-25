@@ -1,18 +1,22 @@
 'use client'
 
-import { Bell, Search, Menu } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 
 interface DashboardHeaderProps {
   onMenuClick: () => void
-  title?: string
-  subtitle?: string
 }
 
-export function DashboardHeader({ onMenuClick, title, subtitle }: DashboardHeaderProps) {
+export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
+  const { data: session } = useSession()
+  const name = session?.user?.name ?? ''
+  const initials = name
+    ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    : 'B'
+
   return (
-    <header className="sticky top-0 z-20 bg-white border-b border-gray-100 px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
-      {/* Mobile hamburger */}
+    <header className="sticky top-0 z-20 bg-white/80 backdrop-blur-sm border-b border-gray-100 px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
       <button
         className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors shrink-0"
         onClick={onMenuClick}
@@ -20,42 +24,22 @@ export function DashboardHeader({ onMenuClick, title, subtitle }: DashboardHeade
         <Menu className="w-5 h-5 text-gray-600" />
       </button>
 
-      {/* Title (desktop) or search (desktop) */}
-      {title ? (
-        <div className="hidden md:block">
-          <p className="text-sm font-bold text-gray-900 leading-tight">{title}</p>
-          {subtitle && <p className="text-xs text-gray-400">{subtitle}</p>}
-        </div>
-      ) : (
-        <div className="hidden sm:flex items-center flex-1 max-w-sm">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search…"
-              className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900/10"
-            />
+      <div className="hidden md:flex items-center gap-2">
+        <img src="/wemongolia.svg" alt="WeMongolia" className="h-6 w-auto opacity-40" />
+        <span className="text-xs font-medium text-gray-400">Business Portal</span>
+      </div>
+
+      <div className="flex items-center gap-3 ml-auto">
+        <Link
+          href="/dashboard/business/settings"
+          className="flex items-center gap-2 p-1 pr-3 rounded-xl hover:bg-gray-50 transition-colors"
+        >
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-white text-xs font-bold">
+            {initials}
           </div>
-        </div>
-      )}
-
-      {/* Right actions */}
-      <div className="flex items-center gap-2 ml-auto">
-        {/* Search toggle mobile */}
-        <button className="sm:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors">
-          <Search className="w-4 h-4 text-gray-500" />
-        </button>
-
-        {/* Notifications */}
-        <button className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors">
-          <Bell className="w-5 h-5 text-gray-600" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-        </button>
-
-        {/* Profile */}
-        <Link href="/dashboard/business/settings"
-          className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold cursor-pointer hover:opacity-90 transition-opacity">
-          B
+          <span className="text-sm font-medium text-gray-700 hidden sm:block max-w-[120px] truncate">
+            {name || 'Settings'}
+          </span>
         </Link>
       </div>
     </header>

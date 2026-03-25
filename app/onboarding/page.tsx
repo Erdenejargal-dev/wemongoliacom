@@ -95,36 +95,36 @@ function StepBusinessType({ data, onNext }: { data: OnboardingState; onNext: (p:
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sm:p-8 space-y-6">
       <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-1">What do you offer?</h2>
-        <p className="text-sm text-gray-600">Choose the option that fits your business. You can add more later.</p>
+        <h2 className="text-lg font-bold text-gray-900 mb-1">Ямар үйлчилгээ санал болгох вэ?</h2>
+        <p className="text-sm text-gray-600">Бизнестээ тохирох сонголтыг сонгоорой. Дараа нь нэмж болно.</p>
       </div>
 
       <div className="space-y-3">
         <Card
           value="tour_operator"
-          title="Tours & experiences"
-          subtitle="Guided tours, excursions, and adventures"
+          title="Аялал, тур"
+          subtitle="Тур аялал, экскурс, адвенчер"
           badge="🗺️"
           colorClass="border-green-400 bg-green-50/50"
         />
         <Card
           value="hotel"
-          title="Accommodation"
-          subtitle="Hotels, ger camps, lodges"
+          title="Байршил, буудал"
+          subtitle="Зочид буудал, гэр буудал, лодж"
           badge="🏨"
           colorClass="border-blue-400 bg-blue-50/50"
         />
         <Card
           value="car_rental"
-          title="Transport & drivers"
-          subtitle="Vehicle rentals and driver services"
+          title="Тээвэр, жолооч"
+          subtitle="Автомашин түрээс, жолоочийн үйлчилгээ"
           badge="🚐"
           colorClass="border-orange-400 bg-orange-50/50"
         />
         <Card
           value="multiple"
-          title="All of the above"
-          subtitle="Tours, stays, and transport"
+          title="Бүгд"
+          subtitle="Аялал, байршил, тээвэр"
           badge="✨"
           colorClass="border-gray-800 bg-gray-50"
         />
@@ -137,7 +137,7 @@ function StepBusinessType({ data, onNext }: { data: OnboardingState; onNext: (p:
           onClick={() => combo && onNext({ providerTypes: toProviderTypes(combo) })}
           className="w-full flex items-center justify-center gap-2 py-3.5 px-6 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold text-base rounded-xl transition-colors touch-manipulation"
         >
-          Next step <ArrowRight className="w-4 h-4" />
+          Дараагийн алхам <ArrowRight className="w-4 h-4" />
         </button>
       </div>
     </div>
@@ -169,54 +169,54 @@ function StepBasicInfo({ data, onNext, onBack }: { data: OnboardingState; onNext
   return (
     <form onSubmit={handleNext} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sm:p-8 space-y-5">
       <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-1">Tell us about your business</h2>
-        <p className="text-sm text-gray-600">Travelers will see this on your profile. You can edit it anytime.</p>
+        <h2 className="text-lg font-bold text-gray-900 mb-1">Бизнесийнхээ талаар</h2>
+        <p className="text-sm text-gray-600">Аялагчид таны профайлыг харах болно. Хүссэн үедээ засварлах боломжтой.</p>
       </div>
 
-      <Field label="Business name" required>
+      <Field label="Бизнесийн нэр" required>
         <input
           required
           minLength={2}
           value={form.name}
           onChange={(e) => patch({ name: e.target.value })}
           className={INPUT}
-          placeholder="e.g. Gobi Adventure Tours"
+          placeholder="жнь. Говийн Адвенчер Турс"
           autoComplete="organization"
         />
       </Field>
 
-      <Field label="Short description" hint="What makes your business special?">
+      <Field label="Товч тайлбар" hint="Таны бизнесийг онцгой болгож буй зүйл юу вэ?">
         <textarea
           rows={3}
           value={form.description}
           onChange={(e) => patch({ description: e.target.value })}
           className={`${INPUT} resize-none min-h-[80px]`}
-          placeholder="We offer authentic Mongolian experiences…"
+          placeholder="Бид Монголын жинхэнэ мэдрэмжийг санал болгодог..."
         />
       </Field>
 
-      <Field label="City or location" required>
+      <Field label="Хот, байршил" required>
         <input
           required
           value={form.location}
           onChange={(e) => patch({ location: e.target.value })}
           className={INPUT}
-          placeholder="e.g. Ulaanbaatar"
+          placeholder="жнь. Улаанбаатар"
         />
       </Field>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field label="Email" required>
+        <Field label="Имэйл" required>
           <input
             required
             type="email"
             value={form.email}
             onChange={(e) => patch({ email: e.target.value })}
             className={INPUT}
-            placeholder="info@yourbusiness.mn"
+            placeholder="info@taniibusiness.mn"
           />
         </Field>
-        <Field label="Phone" required>
+        <Field label="Утас" required>
           <input
             required
             type="tel"
@@ -228,17 +228,17 @@ function StepBasicInfo({ data, onNext, onBack }: { data: OnboardingState; onNext
         </Field>
       </div>
 
-      <Field label="Website" hint="Optional — add later if you prefer">
+      <Field label="Вэбсайт" hint="Заавал биш — дараа нэмж болно">
         <input
           type="url"
           value={form.website}
           onChange={(e) => patch({ website: e.target.value })}
           className={INPUT}
-          placeholder="https://yourbusiness.mn"
+          placeholder="https://taniibusiness.mn"
         />
       </Field>
 
-      <p className="text-xs text-gray-500">You can add a logo and more details in your dashboard after setup.</p>
+      <p className="text-xs text-gray-500">Лого болон бусад мэдээллийг хяналтын самбараас нэмж болно.</p>
 
       <div className="pt-2 flex flex-col-reverse sm:flex-row gap-3 sm:justify-between">
         <button
@@ -246,14 +246,14 @@ function StepBasicInfo({ data, onNext, onBack }: { data: OnboardingState; onNext
           onClick={onBack}
           className="flex items-center justify-center gap-2 py-3 px-4 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors touch-manipulation"
         >
-          <ArrowLeft className="w-4 h-4" /> Back
+          <ArrowLeft className="w-4 h-4" /> Буцах
         </button>
         <button
           type="submit"
           disabled={!canProceed}
           className="w-full sm:w-auto flex items-center justify-center gap-2 py-3.5 px-6 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold text-base rounded-xl transition-colors touch-manipulation"
         >
-          Next step <ArrowRight className="w-4 h-4" />
+          Дараагийн алхам <ArrowRight className="w-4 h-4" />
         </button>
       </div>
     </form>
@@ -274,39 +274,39 @@ function StepReview({
 }) {
   const typeLabel =
     data.providerTypes.length === 3
-      ? 'Tours, accommodation & transport'
+      ? 'Аялал, байршил, тээвэр'
       : data.providerTypes.includes('tour_operator')
-        ? 'Tours & experiences'
+        ? 'Аялал, тур'
         : data.providerTypes.includes('accommodation')
-          ? 'Accommodation'
-          : 'Transport & drivers'
+          ? 'Байршил, буудал'
+          : 'Тээвэр, жолооч'
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sm:p-8 space-y-6">
       <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-1">You&apos;re ready</h2>
-        <p className="text-sm text-gray-600">Here&apos;s what we&apos;ll set up. No commitment — you can edit anything later.</p>
+        <h2 className="text-lg font-bold text-gray-900 mb-1">Бэлэн боллоо</h2>
+        <p className="text-sm text-gray-600">Доорх мэдээллээр бүртгэл үүсгэнэ. Хүссэн үедээ засварлах боломжтой.</p>
       </div>
 
       <div className="space-y-4 rounded-xl bg-gray-50 p-4">
         <div>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Business</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Бизнес</p>
           <p className="font-semibold text-gray-900">{data.name || '—'}</p>
           <p className="text-sm text-gray-600 mt-0.5">{typeLabel}</p>
         </div>
         <div>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Location</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Байршил</p>
           <p className="text-gray-900">{data.location || '—'}</p>
         </div>
         <div>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Contact</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Холбоо барих</p>
           <p className="text-gray-900">{data.email || '—'}</p>
           <p className="text-gray-900">{data.phone || '—'}</p>
         </div>
       </div>
 
       <p className="text-sm text-gray-600">
-        We&apos;ll help you get your first customers. Once you submit, you&apos;ll land in your dashboard where you can add tours, rooms, or vehicles.
+        Бид танд эхний үйлчлүүлэгчийг олоход тусална. Бүртгүүлсний дараа хяналтын самбараас тур, өрөө, тээврийн хэрэгсэл нэмж болно.
       </p>
 
       <div className="pt-2 flex flex-col-reverse sm:flex-row gap-3 sm:justify-between">
@@ -316,7 +316,7 @@ function StepReview({
           disabled={saving}
           className="flex items-center justify-center gap-2 py-3 px-4 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors touch-manipulation disabled:opacity-50"
         >
-          <ArrowLeft className="w-4 h-4" /> Back
+          <ArrowLeft className="w-4 h-4" /> Буцах
         </button>
         <button
           type="button"
@@ -326,10 +326,10 @@ function StepReview({
         >
           {saving ? (
             <>
-              <Loader2 className="w-5 h-5 animate-spin" /> Setting up…
+              <Loader2 className="w-5 h-5 animate-spin" /> Бүртгэж байна…
             </>
           ) : (
-            <>Start receiving bookings</>
+            <>Захиалга хүлээн авч эхлэх</>
           )}
         </button>
       </div>
@@ -340,7 +340,7 @@ function StepReview({
 // ── Main wizard ─────────────────────────────────────────────────────────────
 export default function OnboardingPage() {
   const router = useRouter()
-  const { data: session, status } = useSession()
+  const { data: session, status, update } = useSession()
   const token = session?.user?.accessToken
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [data, setData] = useState<OnboardingState>(DEFAULT_ONBOARDING)
@@ -374,7 +374,7 @@ export default function OnboardingPage() {
   }
 
   useEffect(() => {
-    if (status === 'unauthenticated') router.push('/auth/login')
+    if (status === 'unauthenticated') router.push('/auth/login?callbackUrl=%2Fonboarding')
   }, [status, router])
 
   useEffect(() => {
@@ -399,7 +399,7 @@ export default function OnboardingPage() {
           if (alive) router.push('/auth/login')
           return
         }
-        if (alive) setSubmitError(err instanceof Error ? err.message : 'Failed to verify provider profile.')
+        if (alive) setSubmitError(err instanceof Error ? err.message : 'Профайл шалгахад алдаа гарлаа.')
       } finally {
         if (alive) setCheckingProvider(false)
       }
@@ -428,7 +428,7 @@ export default function OnboardingPage() {
 
     const freshToken = await getFreshAccessToken()
     if (!freshToken) {
-      setSubmitError('Session expired. Please log in again.')
+      setSubmitError('Нэвтрэлт дууссан. Дахин нэвтэрнэ үү.')
       setSaving(false)
       router.push('/auth/login')
       return
@@ -438,7 +438,7 @@ export default function OnboardingPage() {
     try {
       businessType = mapProviderTypes(final.providerTypes)
     } catch {
-      setSubmitError('Please go back and select what you offer.')
+      setSubmitError('Буцаж очоод үйлчилгээний төрлөө сонгоно уу.')
       setSaving(false)
       return
     }
@@ -457,13 +457,14 @@ export default function OnboardingPage() {
         },
         freshToken,
       )
+      await update()
       router.push('/dashboard/business')
     } catch (err: unknown) {
       if (err instanceof ApiError && err.status === 401) {
-        setSubmitError('Session expired. Please log in again.')
+        setSubmitError('Нэвтрэлт дууссан. Дахин нэвтэрнэ үү.')
         router.push('/auth/login')
       } else {
-        setSubmitError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+        setSubmitError(err instanceof Error ? err.message : 'Алдаа гарлаа. Дахин оролдоно уу.')
       }
     } finally {
       setSaving(false)
