@@ -46,11 +46,7 @@ export function ProfileForm({ initial, accessToken, onSaved }: ProfileFormProps)
 
     try {
       const avatarUrl = form.avatar?.trim()
-      if (avatarUrl?.startsWith('blob:')) {
-        throw new Error('Avatar upload is not supported yet. Please paste a valid image URL.')
-      }
 
-      // Backend expects `avatarUrl`/`bio` keys; omit empty fields to satisfy Zod.
       const payload = {
         firstName: form.firstName.trim() || undefined,
         lastName: form.lastName.trim() || undefined,
@@ -98,7 +94,8 @@ export function ProfileForm({ initial, accessToken, onSaved }: ProfileFormProps)
         <UserAvatarUpload
           current={form.avatar}
           name={form.firstName}
-          onChange={url => patch({ avatar: url })}
+          token={accessToken}
+          onChange={(url) => patch({ avatar: url })}
         />
       </div>
 

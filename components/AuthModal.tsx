@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { EyeIcon, EyeOffIcon } from 'lucide-react'
@@ -151,38 +152,9 @@ function LoginPanel({
         </div>
       )}
 
-      <p className='text-muted-foreground text-sm'>
-        Login with{' '}
-        <a href='#' className='text-foreground font-medium hover:underline'>
-          Magic Link
-        </a>
-      </p>
+     
 
-      {/* Quick Login Buttons */}
-      <div className='flex flex-wrap gap-3'>
-        <Button
-          type='button'
-          variant='outline'
-          className='grow'
-          onClick={() => {
-            setEmail('user@wemongolia.com')
-            setPassword('user123')
-          }}
-        >
-          Login as User
-        </Button>
-        <Button
-          type='button'
-          variant='outline'
-          className='grow'
-          onClick={() => {
-            setEmail('admin@wemongolia.com')
-            setPassword('admin123')
-          }}
-        >
-          Login as Admin
-        </Button>
-      </div>
+      
 
       {/* Email */}
       <div className='space-y-1'>
@@ -242,9 +214,9 @@ function LoginPanel({
             Remember Me
           </Label>
         </div>
-        <a href='#' className='text-sm hover:underline'>
+        <Link href='/auth/forgot-password' className='text-sm hover:underline'>
           Forgot Password?
-        </a>
+        </Link>
       </div>
 
       <Button className='w-full' type='submit' disabled={isLoading}>

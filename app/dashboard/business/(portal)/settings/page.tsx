@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { Loader2, Save } from 'lucide-react'
 import { PageHeader } from '@/components/dashboard/ui/PageHeader'
+import { ImageUpload } from '@/components/ui/ImageUpload'
 import {
   fetchProviderProfile,
   updateProviderProfile,
@@ -13,6 +14,7 @@ import {
 } from '@/lib/api/provider'
 import { getFreshAccessToken } from '@/lib/auth-utils'
 import { ApiError } from '@/lib/api/client'
+import type { MediaAsset } from '@/lib/api/media'
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -25,7 +27,6 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  // Form state — mirrors editable profile fields
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [phone, setPhone] = useState('')
@@ -34,6 +35,8 @@ export default function SettingsPage() {
   const [address, setAddress] = useState('')
   const [city, setCity] = useState('')
   const [country, setCountry] = useState('')
+  const [logoUrl, setLogoUrl] = useState('')
+  const [coverImageUrl, setCoverImageUrl] = useState('')
 
   useEffect(() => {
     let alive = true
@@ -58,6 +61,8 @@ export default function SettingsPage() {
           setAddress(p.address ?? '')
           setCity(p.city ?? '')
           setCountry(p.country ?? '')
+          setLogoUrl(p.logoUrl ?? '')
+          setCoverImageUrl(p.coverImageUrl ?? '')
         }
       } catch (e: unknown) {
         if (!alive) return
@@ -96,6 +101,8 @@ export default function SettingsPage() {
         address: address.trim() || undefined,
         city: city.trim() || undefined,
         country: country.trim() || undefined,
+        logoUrl: logoUrl.trim() || undefined,
+        coverUrl: coverImageUrl.trim() || undefined,
       }
       const updated = await updateProviderProfile(freshToken, data)
       if (updated) {
@@ -113,6 +120,14 @@ export default function SettingsPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  function handleLogoUploaded(asset: MediaAsset) {
+    setLogoUrl(asset.secureUrl)
+  }
+
+  function handleCoverUploaded(asset: MediaAsset) {
+    setCoverImageUrl(asset.secureUrl)
   }
 
   if (loading) {
@@ -151,6 +166,32 @@ export default function SettingsPage() {
           Profile saved successfully.
         </div>
       )}
+
+      {/* Image uploads */}
+      <div className="max-w-xl space-y-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <ImageUpload
+            entity="provider"
+            token={token}
+            value={logoUrl || null}
+            onUploaded={handleLogoUploaded}
+            onRemoved={() => setLogoUrl('')}
+            label="Business Logo"
+            hint="Square image, 400×400 recommended"
+            previewClassName="h-32"
+          />
+          <ImageUpload
+            entity="provider"
+            token={token}
+            value={coverImageUrl || null}
+            onUploaded={handleCoverUploaded}
+            onRemoved={() => setCoverImageUrl('')}
+            label="Cover Image"
+            hint="16:9 landscape, 1200×675 recommended"
+            previewClassName="h-32"
+          />
+        </div>
+      </div>
 
       <form onSubmit={handleSubmit} className="max-w-xl space-y-5">
         <div>

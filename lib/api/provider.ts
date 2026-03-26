@@ -233,7 +233,7 @@ export async function replyToProviderReview(
   }
 }
 
-// ── Provider Tours (Phase 3A) ───────────────────────────────────────────────
+// ── Provider Tours ───────────────────────────────────────────────────────────
 
 export interface ProviderTour {
   id:               string
@@ -252,6 +252,46 @@ export interface ProviderTour {
   destination:      { id: string; name: string; slug: string } | null
 }
 
+export interface TourImage {
+  id:        string
+  imageUrl:  string
+  publicId:  string | null
+  altText:   string | null
+  sortOrder: number
+}
+
+export interface ReadinessResult {
+  ready:   boolean
+  missing: string[]
+}
+
+export interface ProviderTourDetail extends ProviderTour {
+  description:        string | null
+  category:           string | null
+  maxGuests:          number
+  minGuests:          number
+  meetingPoint:       string | null
+  cancellationPolicy: string | null
+  languages:          string[]
+  images:             TourImage[]
+  _count:             { departures: number; images: number }
+  readiness:          ReadinessResult
+}
+
+export interface TourDeparture {
+  id:             string
+  tourId:         string
+  startDate:      string
+  endDate:        string
+  availableSeats: number
+  bookedSeats:    number
+  priceOverride:  number | null
+  currency:       string
+  status:         string
+  createdAt:      string
+  updatedAt:      string
+}
+
 export interface CreateTourInput {
   title:             string
   shortDescription?: string
@@ -261,6 +301,17 @@ export interface CreateTourInput {
   currency?:         string
   destinationId?:    string
   status?:           'draft' | 'active' | 'paused'
+}
+
+export interface UpdateTourInput {
+  title?:             string
+  shortDescription?:  string
+  description?:       string
+  durationDays?:      number
+  basePrice?:         number
+  currency?:          string
+  destinationId?:     string | null
+  status?:            'draft' | 'active' | 'paused'
 }
 
 export async function fetchProviderTours(
@@ -281,11 +332,85 @@ export async function fetchProviderTours(
   return { data: result.data ?? [], total: result.pagination?.total ?? 0 }
 }
 
+export async function fetchProviderTour(
+  token: string,
+  tourId: string,
+): Promise<ProviderTourDetail> {
+  return apiClient.get<ProviderTourDetail>(`/provider/tours/${tourId}`, token)
+}
+
 export async function createProviderTour(
   token: string,
   input: CreateTourInput,
 ): Promise<ProviderTour> {
   return apiClient.post<ProviderTour>('/provider/tours', input, token)
+}
+
+export async function updateProviderTour(
+  token: string,
+  tourId: string,
+  input: UpdateTourInput,
+): Promise<ProviderTour> {
+  return apiClient.put<ProviderTour>(`/provider/tours/${tourId}`, input, token)
+}
+
+export async function archiveProviderTour(
+  token: string,
+  tourId: string,
+): Promise<ProviderTour> {
+  return apiClient.delete<ProviderTour>(`/provider/tours/${tourId}`, token)
+}
+
+// Tour images
+
+export async function addTourImages(
+  token: string,
+  tourId: string,
+  images: { imageUrl: string; publicId?: string; altText?: string; width?: number; height?: number; format?: string; bytes?: number }[],
+): Promise<TourImage[]> {
+  return apiClient.post<TourImage[]>(`/provider/tours/${tourId}/images`, { images }, token)
+}
+
+export async function removeTourImage(
+  token: string,
+  tourId: string,
+  imageId: string,
+): Promise<{ deleted: boolean; publicId: string | null }> {
+  return apiClient.delete<{ deleted: boolean; publicId: string | null }>(`/provider/tours/${tourId}/images/${imageId}`, token)
+}
+
+// Tour departures
+
+export async function fetchTourDepartures(
+  token: string,
+  tourId: string,
+): Promise<TourDeparture[]> {
+  return apiClient.get<TourDeparture[]>(`/provider/tours/${tourId}/departures`, token)
+}
+
+export async function createTourDeparture(
+  token: string,
+  tourId: string,
+  input: { startDate: string; endDate: string; availableSeats: number; priceOverride?: number; currency?: string },
+): Promise<TourDeparture> {
+  return apiClient.post<TourDeparture>(`/provider/tours/${tourId}/departures`, input, token)
+}
+
+export async function updateTourDeparture(
+  token: string,
+  tourId: string,
+  departureId: string,
+  input: { startDate?: string; endDate?: string; availableSeats?: number; priceOverride?: number | null; currency?: string; status?: 'scheduled' | 'cancelled' },
+): Promise<TourDeparture> {
+  return apiClient.put<TourDeparture>(`/provider/tours/${tourId}/departures/${departureId}`, input, token)
+}
+
+export async function deleteTourDeparture(
+  token: string,
+  tourId: string,
+  departureId: string,
+): Promise<{ deleted: boolean }> {
+  return apiClient.delete<{ deleted: boolean }>(`/provider/tours/${tourId}/departures/${departureId}`, token)
 }
 
 // ── Destinations (for create-tour dropdown) ─────────────────────────────────

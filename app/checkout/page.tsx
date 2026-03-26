@@ -1,15 +1,13 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
 import { ChevronLeft, Loader2, ChevronRight, Lock, AlertTriangle } from 'lucide-react'
 import { TravelerForm, type TravelerData } from '@/components/checkout/TravelerForm'
 import { BookingSummary } from '@/components/checkout/BookingSummary'
-import { getTourBySlug } from '@/lib/mock-data/tourDetails'
-import { mockTours } from '@/lib/mock-data/tours'
-import { fetchTourBySlug, fetchTourDepartures } from '@/lib/api/tours'
+import { fetchTourBySlug, type BackendTourDetail, type BackendDeparture } from '@/lib/api/tours'
 import {
   type Booking,
   generateBookingId,
@@ -29,26 +27,69 @@ function CheckoutContent() {
   const router    = useRouter()
   const { data: session } = useSession()
 
-  // Read URL params passed from TourBookingCard
   const slug      = params.get('slug')     ?? ''
   const tourId    = params.get('tourId')   ?? ''
-  const depId     = params.get('depId')    ?? ''   // backend departure ID (optional)
+  const depId     = params.get('depId')    ?? ''
   const guests    = Math.max(1, Number(params.get('guests') ?? 1))
   const date      = params.get('date')     ?? ''
+  const urlTotal  = params.get('total')    ?? ''
 
-  // Resolve tour data — prefer full detail, fallback to list entry
-  const detail   = getTourBySlug(slug)
-  const listTour = mockTours.find(t => t.id === tourId || t.slug === slug)
-  const tourTitle    = detail?.title    ?? listTour?.title    ?? 'Mongolia Tour'
-  const tourLocation = detail?.location ?? listTour?.location ?? 'Mongolia'
-  const tourDuration = detail?.duration ?? listTour?.duration ?? ''
-  const tourImage    = detail?.images[0] ?? listTour?.images[0]
-  const price        = detail?.price    ?? listTour?.price    ?? 0
+  const [tour, setTour]         = useState<BackendTourDetail | null>(null)
+  const [departure, setDeparture] = useState<BackendDeparture | null>(null)
+  const [loading, setLoading]   = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const [traveler,    setTraveler]    = useState<TravelerData>(EMPTY_TRAVELER)
   const [errors,      setErrors]      = useState<Partial<Record<keyof TravelerData, string>>>({})
   const [submitting,  setSubmitting]  = useState(false)
   const [apiError,    setApiError]    = useState<string | null>(null)
+
+  // Load real tour data from backend on mount
+  useEffect(() => {
+    let alive = true
+    async function load() {
+      if (!slug) {
+        setLoadError('Missing tour information. Please go back and try again.')
+        setLoading(false)
+        return
+      }
+      try {
+        const t = await fetchTourBySlug(slug)
+        if (!alive) return
+        if (!t) { setLoadError('Tour not found.'); return }
+
+        setTour(t)
+
+        // Match the departure from the URL
+        const deps = t.departures ?? []
+        const match = depId
+          ? deps.find(d => d.id === depId)
+          : deps.find(d => d.startDate?.startsWith(date))
+        setDeparture(match ?? null)
+      } catch {
+        if (alive) setLoadError('Failed to load tour details.')
+      } finally {
+        if (alive) setLoading(false)
+      }
+    }
+    load()
+    return () => { alive = false }
+  }, [slug, depId, date])
+
+  // Computed pricing
+  const pricePerPerson = departure?.priceOverride ?? tour?.basePrice ?? 0
+  const subtotal   = pricePerPerson * guests
+  const serviceFee = calcServiceFee(subtotal)
+  const total      = subtotal + serviceFee
+
+  const tourTitle    = tour?.title ?? 'Mongolia Tour'
+  const tourLocation = tour?.destination?.name ?? 'Mongolia'
+  const tourDuration = tour?.durationDays ? `${tour.durationDays} day${tour.durationDays > 1 ? 's' : ''}` : ''
+  const tourImage    = tour?.images?.[0]?.imageUrl
+
+  const remainingSeats = departure
+    ? departure.availableSeats - (departure.bookedSeats ?? 0)
+    : null
 
   function validate(): boolean {
     const e: Partial<Record<keyof TravelerData, string>> = {}
@@ -68,44 +109,19 @@ function CheckoutContent() {
     setSubmitting(true)
     setApiError(null)
 
-    const subtotal   = price * guests
-    const serviceFee = calcServiceFee(subtotal)
-
-    // ── Attempt backend booking ──────────────────────────────────────────
     const token = session ? await getFreshAccessToken() : null
-    if (token) {
+    if (token && tour && departure) {
       try {
-        if (!slug || !date) throw new Error('Missing tour slug or travel date.')
-
-        // Resolve Prisma IDs from the backend using the tour slug + date.
-        // This fixes bookings that would otherwise use mock tour ids.
-        const backendTour = await fetchTourBySlug(slug)
-        if (!backendTour) throw new Error('Tour not found.')
-
-        const departures = await fetchTourDepartures(backendTour.id)
-        if (departures.length === 0) throw new Error('No available departures for this tour.')
-
-        // Prefer depId from URL (exact selection); else resolve by date
-        const departureMatch =
-          (depId && departures.find(d => d.id === depId)) ??
-          departures.find(d => d.startDate?.startsWith(date)) ??
-          (() => {
-            const cutoff = new Date(date + 'T00:00:00')
-            const after = departures
-              .map(d => ({ d, dt: new Date(d.startDate) }))
-              .filter(x => !Number.isNaN(x.dt.getTime()) && x.dt >= cutoff)
-              .sort((a, b) => a.dt.getTime() - b.dt.getTime())
-            return after[0]?.d
-          })()
-
-        if (!departureMatch) throw new Error('No available departure for the selected date.')
+        if (remainingSeats !== null && guests > remainingSeats) {
+          throw new Error(`Only ${remainingSeats} seat(s) remaining. Please reduce your party size.`)
+        }
 
         const backendBooking = await createBooking(
           {
             listingType:      'tour',
-            listingId:        backendTour.id,
-            tourDepartureId:  departureMatch.id,
-            startDate:        selectedDate,
+            listingId:        tour.id,
+            tourDepartureId:  departure.id,
+            startDate:        departure.startDate,
             guests,
             adults:           guests,
             children:         0,
@@ -118,17 +134,16 @@ function CheckoutContent() {
           token,
         )
 
-        // Also persist to localStorage for the success page display
         const booking: Booking = {
           id:             backendBooking.bookingCode,
-          tourId:         backendTour.id,
+          tourId:         tour.id,
           tourSlug:       slug,
-          tourTitle:      backendTour.title,
-          tourLocation:   backendTour.destination?.name ?? tourLocation,
-          tourDuration:   backendTour.durationDays ? `${backendTour.durationDays} day${backendTour.durationDays > 1 ? 's' : ''}` : tourDuration,
-          date,
+          tourTitle:      tour.title,
+          tourLocation,
+          tourDuration,
+          date:           departure.startDate.slice(0, 10),
           guests,
-          pricePerPerson: price,
+          pricePerPerson,
           subtotal:       backendBooking.subtotal,
           serviceFee:     backendBooking.serviceFee,
           total:          backendBooking.totalAmount,
@@ -159,30 +174,37 @@ function CheckoutContent() {
       }
     }
 
-    // ── Fallback: no auth / no tourId — save locally only ──────────────
-    await new Promise(r => setTimeout(r, 900))
-    const booking: Booking = {
-      id:             generateBookingId(),
-      tourId,
-      tourSlug:       slug,
-      tourTitle,
-      tourLocation,
-      tourDuration,
-      date,
-      guests,
-      pricePerPerson: price,
-      subtotal,
-      serviceFee,
-      total:          subtotal + serviceFee,
-      travelerName:   traveler.name,
-      email:          traveler.email,
-      phone:          traveler.phone,
-      country:        traveler.country,
-      specialRequests: traveler.specialRequests,
-      createdAt:      new Date().toISOString(),
+    // Fallback for unauthenticated users or missing departure
+    if (!token) {
+      setApiError('Please sign in to complete your booking.')
+      setSubmitting(false)
+      return
     }
-    saveBooking(booking)
-    router.push('/booking-success')
+    if (!departure) {
+      setApiError('No departure selected. Please go back to the tour page and select a departure date.')
+      setSubmitting(false)
+      return
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-green-500" />
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+        <AlertTriangle className="w-8 h-8 text-amber-500" />
+        <p className="text-sm text-gray-600">{loadError}</p>
+        <Link href="/tours" className="text-sm font-semibold text-green-600 hover:text-green-700">
+          Browse tours
+        </Link>
+      </div>
+    )
   }
 
   return (
@@ -225,15 +247,43 @@ function CheckoutContent() {
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-        {/* Auth notice — shown when not logged in */}
+        {/* Auth notice */}
         {!session && (
           <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-amber-800">Sign in to save your booking</p>
+              <p className="text-sm font-semibold text-amber-800">Sign in to complete your booking</p>
               <p className="text-xs text-amber-700 mt-0.5">
-                You can continue as a guest, but your booking won&apos;t be synced to your account.{' '}
-                <Link href="/auth/login" className="underline hover:no-underline">Sign in</Link>
+                You need an account to book tours on WeMongolia.{' '}
+                <Link href={`/auth/login?callbackUrl=${encodeURIComponent(`/checkout?${params.toString()}`)}`} className="underline hover:no-underline font-semibold">Sign in</Link>
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* No departure warning */}
+        {!departure && tour && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800">No departure selected</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                The selected date may no longer be available.{' '}
+                <Link href={`/tours/${slug}`} className="underline hover:no-underline font-semibold">Go back to select a departure</Link>
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Seats warning */}
+        {departure && remainingSeats !== null && guests > remainingSeats && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-red-800">Not enough seats</p>
+              <p className="text-xs text-red-700 mt-0.5">
+                Only {remainingSeats} seat{remainingSeats !== 1 ? 's' : ''} remaining for this departure. Please{' '}
+                <Link href={`/tours/${slug}`} className="underline hover:no-underline font-semibold">go back and adjust</Link>.
               </p>
             </div>
           </div>
@@ -246,21 +296,21 @@ function CheckoutContent() {
               <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
               <p className="text-sm text-red-700 flex-1">{apiError}</p>
             </div>
-            {apiError.toLowerCase().includes('availability') || apiError.toLowerCase().includes('seat') ? (
+            {(apiError.toLowerCase().includes('availability') || apiError.toLowerCase().includes('seat')) && (
               <Link
                 href={slug ? `/tours/${slug}` : '/tours'}
                 className="text-sm font-semibold text-red-700 hover:text-red-800 underline ml-8"
               >
                 Go back to tour to see current availability
               </Link>
-            ) : null}
+            )}
           </div>
         )}
 
         <form onSubmit={handleSubmit} noValidate>
           <div className="flex flex-col lg:flex-row gap-8">
 
-            {/* ── Left: Form ─────────────────────── */}
+            {/* Left: Form */}
             <div className="flex-1 min-w-0 space-y-5">
               <TravelerForm
                 data={traveler}
@@ -270,7 +320,7 @@ function CheckoutContent() {
 
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || !session || !departure || (remainingSeats !== null && guests > remainingSeats)}
                 className="w-full py-4 bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white font-bold text-sm rounded-2xl transition-colors shadow-sm shadow-green-200 flex items-center justify-center gap-2 active:scale-[0.99]"
               >
                 {submitting ? (
@@ -288,13 +338,11 @@ function CheckoutContent() {
               </button>
 
               <p className="text-center text-xs text-gray-400">
-                {session
-                  ? 'Your booking will be saved to your account.'
-                  : 'Your card will not be charged until we confirm availability.'}
+                Your card will not be charged until the provider confirms availability.
               </p>
             </div>
 
-            {/* ── Right: Summary ─────────────────── */}
+            {/* Right: Summary */}
             <div className="w-full lg:w-[360px] shrink-0">
               <div className="lg:sticky lg:top-24">
                 <BookingSummary
@@ -302,9 +350,9 @@ function CheckoutContent() {
                   tourLocation={tourLocation}
                   tourDuration={tourDuration}
                   tourImage={tourImage}
-                  date={date}
+                  date={departure ? departure.startDate.slice(0, 10) : date}
                   guests={guests}
-                  pricePerPerson={price}
+                  pricePerPerson={pricePerPerson}
                   slug={slug}
                 />
               </div>

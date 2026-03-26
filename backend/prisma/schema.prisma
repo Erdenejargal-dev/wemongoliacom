@@ -128,6 +128,8 @@ enum AccommodationType {
   lodge
   guesthouse
   resort
+  hostel
+  homestay
 }
 
 // ─────────────────────────────────────────────
@@ -135,15 +137,16 @@ enum AccommodationType {
 // ─────────────────────────────────────────────
 
 model User {
-  id            String   @id @default(cuid())
-  firstName     String
-  lastName      String
-  email         String   @unique
-  passwordHash  String
-  phone         String?
-  country       String?
-  avatarUrl     String?
-  bio           String?
+  id              String   @id @default(cuid())
+  firstName       String
+  lastName        String
+  email           String   @unique
+  passwordHash    String
+  phone           String?
+  country         String?
+  avatarUrl       String?
+  avatarPublicId  String?
+  bio             String?
   role          UserRole @default(traveler)
   isVerified    Boolean  @default(false)
   createdAt     DateTime @default(now())
@@ -157,9 +160,28 @@ model User {
   reviews             Review[]
   wishlistItems       WishlistItem[]
   notifications       Notification[]
+  passwordResetTokens PasswordResetToken[]
 
   @@index([email])
   @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: PasswordResetToken
+// ─────────────────────────────────────────────
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 // ─────────────────────────────────────────────
@@ -167,18 +189,20 @@ model User {
 // ─────────────────────────────────────────────
 
 model ProviderOnboarding {
-  id            String           @id @default(cuid())
-  ownerUserId   String           @unique
-  businessName  String?
-  description   String?
-  location      String?
-  phone         String?
-  email         String?
-  website       String?
-  languages     String[]
-  providerTypes ProviderType[]
-  logoUrl       String?
-  coverImageUrl String?
+  id              String           @id @default(cuid())
+  ownerUserId     String           @unique
+  businessName    String?
+  description     String?
+  location        String?
+  phone           String?
+  email           String?
+  website         String?
+  languages       String[]
+  providerTypes   ProviderType[]
+  logoUrl         String?
+  logoPublicId    String?
+  coverImageUrl   String?
+  coverPublicId   String?
   stepCompleted Int              @default(0)
   status        OnboardingStatus @default(draft)
   createdAt     DateTime         @default(now())
@@ -201,7 +225,9 @@ model Provider {
   slug              String         @unique
   description       String?
   logoUrl           String?
+  logoPublicId      String?
   coverImageUrl     String?
+  coverPublicId     String?
   email             String?
   phone             String?
   website           String?
@@ -244,8 +270,9 @@ model Destination {
   region           String?
   shortDescription String?
   description      String?
-  heroImageUrl     String?
-  gallery          String[]
+  heroImageUrl       String?
+  heroImagePublicId  String?
+  gallery            String[]
   highlights       String[]
   activities       String[]
   tips             String[]
@@ -320,7 +347,12 @@ model TourImage {
   id        String  @id @default(cuid())
   tourId    String
   imageUrl  String
+  publicId  String?
   altText   String?
+  width     Int?
+  height    Int?
+  format    String?
+  bytes     Int?
   sortOrder Int     @default(0)
 
   tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
@@ -434,10 +466,16 @@ model Vehicle {
 }
 
 model VehicleImage {
-  id        String @id @default(cuid())
+  id        String  @id @default(cuid())
   vehicleId String
   imageUrl  String
-  sortOrder Int    @default(0)
+  publicId  String?
+  altText   String?
+  width     Int?
+  height    Int?
+  format    String?
+  bytes     Int?
+  sortOrder Int     @default(0)
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
@@ -480,6 +518,11 @@ model Accommodation {
   name               String
   description        String?
   accommodationType  AccommodationType @default(ger_camp)
+  address            String?
+  city               String?
+  region             String?
+  latitude           Float?
+  longitude          Float?
   checkInTime        String?
   checkOutTime       String?
   amenities          String[]
@@ -504,10 +547,16 @@ model Accommodation {
 }
 
 model AccommodationImage {
-  id              String @id @default(cuid())
+  id              String  @id @default(cuid())
   accommodationId String
   imageUrl        String
-  sortOrder       Int    @default(0)
+  publicId        String?
+  altText         String?
+  width           Int?
+  height          Int?
+  format          String?
+  bytes           Int?
+  sortOrder       Int     @default(0)
 
   accommodation Accommodation @relation(fields: [accommodationId], references: [id], onDelete: Cascade)
 

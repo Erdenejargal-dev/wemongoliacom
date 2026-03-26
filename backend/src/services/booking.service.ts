@@ -52,16 +52,15 @@ export interface CreateBookingInput {
  * Expires stale pending tour bookings (unpaid or authorized, never confirmed).
  * Releases seats so capacity stays accurate. Safe to call repeatedly.
  */
-export async function expireStalePendingTourBookings(maxAgeMinutes: number = 15): Promise<number> {
+export async function expireStalePendingBookings(maxAgeMinutes: number = 15): Promise<number> {
   const cutoff = new Date(Date.now() - maxAgeMinutes * 60 * 1000)
   const stale = await prisma.booking.findMany({
     where: {
-      listingType:   'tour',
       bookingStatus: 'pending',
       paymentStatus: { in: ['unpaid', 'authorized'] },
       createdAt:     { lt: cutoff },
     },
-    select: { id: true, bookingCode: true, tourDepartureId: true, guests: true },
+    select: { id: true, bookingCode: true, listingType: true, tourDepartureId: true, roomTypeId: true, startDate: true, endDate: true, guests: true },
   })
 
   let expired = 0
@@ -76,11 +75,14 @@ export async function expireStalePendingTourBookings(maxAgeMinutes: number = 15)
             cancelReason:  'Expired: booking was not confirmed within the time limit.',
           },
         })
-        if (b.tourDepartureId && b.guests > 0) {
+        if (b.listingType === 'tour' && b.tourDepartureId && b.guests > 0) {
           await tx.tourDeparture.update({
             where: { id: b.tourDepartureId },
             data:  { bookedSeats: { decrement: b.guests } },
           })
+        }
+        if (b.listingType === 'accommodation' && b.roomTypeId && b.startDate && b.endDate) {
+          await releaseRoomAvailability(tx, b.roomTypeId, b.startDate, b.endDate)
         }
       })
       expired++
@@ -90,6 +92,9 @@ export async function expireStalePendingTourBookings(maxAgeMinutes: number = 15)
   }
   return expired
 }
+
+/** @deprecated Use expireStalePendingBookings instead */
+export const expireStalePendingTourBookings = expireStalePendingBookings
 
 async function checkTourDeparture(departureId: string, guests: number) {
   const dep = await prisma.tourDeparture.findUnique({ where: { id: departureId } })
@@ -165,6 +170,35 @@ async function createVehicleBlock(tx: any, vehicleId: string, bookingId: string,
   })
 }
 
+/**
+ * Releases 1 booked unit per night when an accommodation booking is cancelled.
+ * Decrements bookedUnits (floor at 0) and re-increments availableUnits.
+ * Only touches existing RoomAvailability records (if no record exists the
+ * night was never explicitly tracked, so no adjustment is needed).
+ */
+export async function releaseRoomAvailabilityForCancel(tx: any, roomTypeId: string, checkIn: Date, checkOut: Date) {
+  return releaseRoomAvailability(tx, roomTypeId, checkIn, checkOut)
+}
+
+async function releaseRoomAvailability(tx: any, roomTypeId: string, checkIn: Date, checkOut: Date) {
+  const nights = eachNight(checkIn, checkOut)
+  for (const night of nights) {
+    const avail = await tx.roomAvailability.findUnique({
+      where: { roomTypeId_date: { roomTypeId, date: night } },
+    })
+    if (avail && avail.bookedUnits > 0) {
+      await tx.roomAvailability.update({
+        where: { id: avail.id },
+        data: {
+          bookedUnits:    { decrement: 1 },
+          availableUnits: { increment: 1 },
+          status: avail.bookedUnits - 1 === 0 && avail.status === 'sold_out' ? 'available' : undefined,
+        },
+      })
+    }
+  }
+}
+
 async function upsertRoomAvailability(tx: any, roomTypeId: string, roomType: any, checkIn: Date, checkOut: Date) {
   const nights = eachNight(checkIn, checkOut)
   for (const night of nights) {
@@ -225,6 +259,10 @@ export async function createBooking(input: CreateBookingInput) {
     startDate       = dep.startDate
     endDate         = dep.endDate
     tourDepartureId = dep.id
+    const destination = tour.destinationId
+      ? await prisma.destination.findUnique({ where: { id: tour.destinationId }, select: { name: true, slug: true } })
+      : null
+
     listingSnapshot = {
       type:        'tour',
       title:       tour.title,
@@ -234,6 +272,8 @@ export async function createBooking(input: CreateBookingInput) {
       startDate:   dep.startDate.toISOString(),
       endDate:     dep.endDate.toISOString(),
       guests,
+      destination: destination?.name ?? null,
+      durationDays: tour.durationDays,
     }
 
   } else if (listingType === 'vehicle') {
@@ -360,6 +400,10 @@ export async function createBooking(input: CreateBookingInput) {
 
     return b
   })
+
+  void import('./email.service')
+    .then(({ notifyBookingCreated }) => notifyBookingCreated(booking.bookingCode))
+    .catch((err) => console.error('[email] notifyBookingCreated schedule failed:', err))
 
   return booking
 }
@@ -504,8 +548,16 @@ export async function cancelBooking(bookingCode: string, userId: string, reason?
       })
     }
 
+    if (booking.listingType === 'accommodation' && booking.roomTypeId && booking.startDate && booking.endDate) {
+      await releaseRoomAvailability(tx, booking.roomTypeId, booking.startDate, booking.endDate)
+    }
+
     return b
   })
+
+  void import('./email.service')
+    .then(({ notifyBookingCancelledByTraveler }) => notifyBookingCancelledByTraveler(bookingCode))
+    .catch((err) => console.error('[email] notifyBookingCancelledByTraveler schedule failed:', err))
 
   return updated
 }

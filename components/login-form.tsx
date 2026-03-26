@@ -133,16 +133,7 @@ export function LoginForm({
       <div className="flex min-h-svh flex-col bg-white lg:relative">
         <div className="h-1 bg-gradient-to-r from-[#1db681] to-[#4466b0] lg:hidden" />
 
-        {/* Logo — absolutely positioned on desktop for true centering */}
-        <div className="px-6 pt-6 sm:px-10 lg:absolute lg:left-16 lg:top-8 xl:left-20">
-          <Link href="/" className="inline-block">
-            <img
-              src="/wemongolia.svg"
-              alt="WeMongolia"
-              className="h-7 w-auto sm:h-8"
-            />
-          </Link>
-        </div>
+       
 
         {/* Form — vertically centered in the full panel */}
         <div className="flex flex-1 flex-col justify-center px-6 py-10 sm:px-10 lg:px-16 xl:px-20">
@@ -192,13 +183,12 @@ export function LoginForm({
                   >
                     {t.passwordLabel}
                   </label>
-                  <button
-                    type="button"
+                  <Link
+                    href="/auth/forgot-password"
                     className="text-[13px] font-medium text-gray-400 transition-colors hover:text-gray-600"
-                    tabIndex={-1}
                   >
                     {t.forgotPassword}
-                  </button>
+                  </Link>
                 </div>
                 <div className="relative">
                   <Input

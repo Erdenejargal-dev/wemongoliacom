@@ -6,9 +6,13 @@ import {
   login,
   refresh,
   getMe,
+  forgotPassword,
+  resetPassword,
   registerSchema,
   loginSchema,
   refreshSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
 } from '../controllers/auth.controller'
 
 const router = Router()
@@ -18,6 +22,10 @@ router.post('/register', validate(registerSchema), register)
 
 // POST /auth/login
 router.post('/login', validate(loginSchema), login)
+
+// Password reset (public)
+router.post('/forgot-password', validate(forgotPasswordSchema), forgotPassword)
+router.post('/reset-password', validate(resetPasswordSchema), resetPassword)
 
 // GET /auth/me  (protected)
 router.get('/me', authenticate, getMe)

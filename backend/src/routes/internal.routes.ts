@@ -6,6 +6,7 @@
 
 import { Router, Request, Response } from 'express'
 import { env } from '../config/env'
+import { sendSmtpTest } from '../services/email.service'
 import { expireStalePendingTourBookings } from '../services/booking.service'
 
 const router = Router()
@@ -46,6 +47,28 @@ router.post('/jobs/expire-stale-bookings', validateCronSecret, async (_req, res)
   } catch (err) {
     console.error('[expiry-job] Error:', err)
     res.status(500).json({ success: false, error: 'Expiry job failed.' })
+  }
+})
+
+/**
+ * POST /internal/dev/test-email
+ * Sends a single test message. Remove or tighten when no longer needed.
+ * Body: { "to": "optional@example.com" } — defaults to SMTP_USER inbox.
+ */
+router.post('/dev/test-email', validateCronSecret, async (req, res) => {
+  try {
+    const to = typeof req.body?.to === 'string' && req.body.to.trim()
+      ? req.body.to.trim()
+      : env.SMTP_USER?.trim()
+    if (!to) {
+      res.status(400).json({ success: false, error: 'No recipient (set body.to or SMTP_USER).' })
+      return
+    }
+    await sendSmtpTest(to)
+    res.json({ success: true, to })
+  } catch (err) {
+    console.error('[dev/test-email]', err)
+    res.status(500).json({ success: false, error: 'Test email failed.' })
   }
 })
 

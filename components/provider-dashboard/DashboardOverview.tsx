@@ -174,7 +174,7 @@ export function DashboardOverview({
             <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center group-hover:bg-green-100 transition-colors">
               <Plus className="w-5 h-5 text-green-600" />
             </div>
-            <span className="text-xs font-semibold text-gray-700">Add Listing</span>
+            <span className="text-xs font-semibold text-gray-700">Add Tour</span>
           </Link>
           <Link
             href="/dashboard/business/bookings"

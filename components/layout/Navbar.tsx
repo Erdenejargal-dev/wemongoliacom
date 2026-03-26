@@ -120,7 +120,7 @@ export default function Navbar() {
             {!session && !isLoading && (
               <Link href="/auth/login?callbackUrl=%2Fonboarding"
                 className="hidden md:block text-xs font-medium text-gray-500 hover:text-gray-700 ml-2 border-l border-gray-200 pl-3 transition-colors whitespace-nowrap">
-                Become a Host
+                Харилцагч болох 
               </Link>
             )}
 

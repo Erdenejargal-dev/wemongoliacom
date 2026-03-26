@@ -14,6 +14,15 @@ import {
   replyToReview,
   listTours,
   createTour,
+  getTour,
+  updateTour,
+  archiveTour,
+  addTourImages,
+  removeTourImage,
+  listDepartures,
+  createDeparture,
+  updateDeparture,
+  deleteDeparture,
   updateProfileSchema,
   bookingListQuerySchema,
   cancelSchema,
@@ -21,7 +30,12 @@ import {
   reviewReplySchema,
   tourListQuerySchema,
   createTourSchema,
+  updateTourSchema,
+  addTourImagesSchema,
+  createDepartureSchema,
+  updateDepartureSchema,
 } from '../controllers/provider.controller'
+import accommodationRoutes from './provider-accommodation.routes'
 
 const router = Router()
 
@@ -46,7 +60,23 @@ router.get('/reviews', validate(reviewListQuerySchema, 'query'), listReviews)
 router.patch('/reviews/:id/reply', validate(reviewReplySchema), replyToReview)
 
 // Tours
-router.get('/tours',  validate(tourListQuerySchema, 'query'), listTours)
-router.post('/tours', validate(createTourSchema), createTour)
+router.get('/tours',           validate(tourListQuerySchema, 'query'), listTours)
+router.post('/tours',          validate(createTourSchema), createTour)
+router.get('/tours/:tourId',   getTour)
+router.put('/tours/:tourId',   validate(updateTourSchema), updateTour)
+router.delete('/tours/:tourId', archiveTour)
+
+// Tour images
+router.post('/tours/:tourId/images',            validate(addTourImagesSchema), addTourImages)
+router.delete('/tours/:tourId/images/:imageId', removeTourImage)
+
+// Tour departures
+router.get('/tours/:tourId/departures',                listDepartures)
+router.post('/tours/:tourId/departures',               validate(createDepartureSchema), createDeparture)
+router.put('/tours/:tourId/departures/:departureId',   validate(updateDepartureSchema), updateDeparture)
+router.delete('/tours/:tourId/departures/:departureId', deleteDeparture)
+
+// Accommodations (sub-router with own controller)
+router.use('/accommodations', accommodationRoutes)
 
 export default router

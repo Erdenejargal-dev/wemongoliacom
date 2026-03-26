@@ -48,6 +48,11 @@ export async function register(input: RegisterInput) {
   })
 
   const tokens = buildTokens(user.id, user.role)
+
+  void import('./email.service')
+    .then((m) => m.notifyWelcomeAfterRegistration(user.email, user.firstName))
+    .catch((err) => console.error('[email] notifyWelcomeAfterRegistration schedule failed:', err))
+
   return { user, ...tokens }
 }
 

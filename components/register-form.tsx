@@ -165,16 +165,7 @@ export function RegisterForm({
       <div className="flex min-h-svh flex-col bg-white lg:relative">
         <div className="h-1 bg-gradient-to-r from-[#4466b0] to-[#1db681] lg:hidden" />
 
-        <div className="px-6 pt-6 sm:px-10 lg:absolute lg:left-16 lg:top-8 xl:left-20">
-          <Link href="/" className="inline-block">
-            <img
-              src="/wemongolia.svg"
-              alt="WeMongolia"
-              className="h-7 w-auto sm:h-8"
-            />
-          </Link>
-        </div>
-
+     
         <div className="flex flex-1 flex-col justify-center px-6 py-10 sm:px-10 lg:px-16 xl:px-20">
           <div className="mx-auto w-full max-w-[420px]">
             <div className="mb-8">

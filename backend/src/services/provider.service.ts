@@ -171,8 +171,19 @@ export async function cancelBookingByProvider(bookingCode: string, ownerUserId: 
       })
     }
 
+    if (booking.listingType === 'accommodation' && booking.roomTypeId && booking.startDate && booking.endDate) {
+      const { releaseRoomAvailabilityForCancel } = await import('./booking.service')
+      await releaseRoomAvailabilityForCancel(tx, booking.roomTypeId, booking.startDate, booking.endDate)
+    }
+
     return b
   })
+    .then((updated) => {
+      void import('./email.service')
+        .then(({ notifyBookingCancelledByProvider }) => notifyBookingCancelledByProvider(bookingCode))
+        .catch((err) => console.error('[email] notifyBookingCancelledByProvider schedule failed:', err))
+      return updated
+    })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -429,6 +440,17 @@ export async function createProviderTour(ownerUserId: string, input: CreateTourI
   })
   if (!slug) throw new AppError('Title must contain at least one letter or number.', 400)
 
+  const status = input.status ?? 'draft'
+  if (status === 'active') {
+    validateTourReadiness({
+      title: input.title,
+      description: input.description || null,
+      basePrice: input.basePrice,
+      imageCount: 0,
+      departureCount: 0,
+    })
+  }
+
   const tour = await prisma.tour.create({
     data: {
       providerId:       provider.id,
@@ -440,11 +462,357 @@ export async function createProviderTour(ownerUserId: string, input: CreateTourI
       basePrice:        input.basePrice,
       currency:         input.currency ?? 'USD',
       destinationId:    input.destinationId || null,
-      status:           input.status ?? 'draft',
+      status,
     },
     select: providerTourSelect,
   })
 
+  return tour
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Update tour (provider action)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface UpdateTourInput {
+  title?:            string
+  shortDescription?: string
+  description?:      string
+  durationDays?:     number
+  basePrice?:        number
+  currency?:         string
+  destinationId?:    string | null
+  status?:           'draft' | 'active' | 'paused'
+}
+
+export async function updateProviderTour(ownerUserId: string, tourId: string, input: UpdateTourInput) {
+  const tour = await getProviderTour(tourId, ownerUserId)
+
+  if (input.destinationId) {
+    const dest = await prisma.destination.findUnique({ where: { id: input.destinationId }, select: { id: true } })
+    if (!dest) throw new AppError('Destination not found.', 400)
+  }
+
+  let slug = tour.slug
+  if (input.title && input.title !== tour.title) {
+    slug = await uniqueSlug(input.title, async (s) => {
+      const existing = await prisma.tour.findUnique({ where: { slug: s } })
+      return !!existing && existing.id !== tourId
+    })
+    if (!slug) throw new AppError('Title must contain at least one letter or number.', 400)
+  }
+
+  const targetStatus = input.status ?? tour.status
+  if (targetStatus === 'active') {
+    const [imageCount, departureCount] = await Promise.all([
+      prisma.tourImage.count({ where: { tourId } }),
+      prisma.tourDeparture.count({ where: { tourId, status: 'scheduled', startDate: { gte: new Date() } } }),
+    ])
+    validateTourReadiness({
+      title: input.title ?? tour.title,
+      description: input.description !== undefined ? (input.description || null) : tour.description,
+      basePrice: input.basePrice ?? tour.basePrice,
+      imageCount,
+      departureCount,
+    })
+  }
+
+  return prisma.tour.update({
+    where: { id: tourId },
+    data: {
+      slug,
+      ...(input.title !== undefined && { title: input.title }),
+      ...(input.shortDescription !== undefined && { shortDescription: input.shortDescription || null }),
+      ...(input.description !== undefined && { description: input.description || null }),
+      ...(input.durationDays !== undefined && { durationDays: input.durationDays }),
+      ...(input.basePrice !== undefined && { basePrice: input.basePrice }),
+      ...(input.currency !== undefined && { currency: input.currency }),
+      ...(input.destinationId !== undefined && { destinationId: input.destinationId || null }),
+      ...(input.status !== undefined && { status: input.status }),
+    },
+    select: providerTourSelect,
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Archive (soft-delete) tour
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function archiveProviderTour(ownerUserId: string, tourId: string) {
+  await getProviderTour(tourId, ownerUserId)
+
+  return prisma.tour.update({
+    where: { id: tourId },
+    data: { status: 'archived' },
+    select: providerTourSelect,
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Get single tour for provider
+// ─────────────────────────────────────────────────────────────────────────────
+
+const providerTourDetailSelect = {
+  id:                 true,
+  providerId:         true,
+  slug:               true,
+  title:              true,
+  shortDescription:   true,
+  description:        true,
+  category:           true,
+  durationDays:       true,
+  maxGuests:          true,
+  minGuests:          true,
+  meetingPoint:       true,
+  cancellationPolicy: true,
+  languages:          true,
+  basePrice:          true,
+  currency:           true,
+  status:             true,
+  ratingAverage:      true,
+  reviewsCount:       true,
+  createdAt:          true,
+  updatedAt:          true,
+  destination:        { select: { id: true, name: true, slug: true } },
+  images:             { orderBy: { sortOrder: 'asc' as const }, select: { id: true, imageUrl: true, publicId: true, altText: true, sortOrder: true } },
+  _count:             { select: { departures: true, images: true } },
+} as const
+
+export async function getProviderTourDetail(ownerUserId: string, tourId: string) {
+  const provider = await prisma.provider.findUnique({ where: { ownerUserId }, select: { id: true } })
+  if (!provider) throw new AppError('Provider not found.', 404)
+
+  const tour = await prisma.tour.findUnique({
+    where: { id: tourId },
+    select: providerTourDetailSelect,
+  })
+  if (!tour) throw new AppError('Tour not found.', 404)
+  if (tour.providerId !== provider.id) throw new AppError('Forbidden.', 403)
+
+  const departureCount = await prisma.tourDeparture.count({
+    where: { tourId, status: 'scheduled', startDate: { gte: new Date() } },
+  })
+
+  const readiness = checkTourReadiness({
+    title: tour.title,
+    description: tour.description,
+    basePrice: tour.basePrice,
+    imageCount: tour._count.images,
+    departureCount,
+  })
+
+  return { ...tour, readiness }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tour images — add & remove
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function addTourImages(
+  ownerUserId: string,
+  tourId: string,
+  images: { imageUrl: string; publicId?: string; altText?: string; width?: number; height?: number; format?: string; bytes?: number }[],
+) {
+  await getProviderTour(tourId, ownerUserId)
+
+  const maxSort = await prisma.tourImage.findFirst({
+    where: { tourId },
+    orderBy: { sortOrder: 'desc' },
+    select: { sortOrder: true },
+  })
+  let nextSort = (maxSort?.sortOrder ?? -1) + 1
+
+  const created = await prisma.$transaction(
+    images.map(img =>
+      prisma.tourImage.create({
+        data: {
+          tourId,
+          imageUrl:  img.imageUrl,
+          publicId:  img.publicId ?? null,
+          altText:   img.altText ?? null,
+          width:     img.width ?? null,
+          height:    img.height ?? null,
+          format:    img.format ?? null,
+          bytes:     img.bytes ?? null,
+          sortOrder: nextSort++,
+        },
+      }),
+    ),
+  )
+
+  return created
+}
+
+export async function removeTourImage(ownerUserId: string, tourId: string, imageId: string) {
+  await getProviderTour(tourId, ownerUserId)
+
+  const image = await prisma.tourImage.findUnique({ where: { id: imageId } })
+  if (!image || image.tourId !== tourId) throw new AppError('Image not found.', 404)
+
+  await prisma.tourImage.delete({ where: { id: imageId } })
+
+  return { deleted: true, publicId: image.publicId }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tour departures — CRUD
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface CreateDepartureInput {
+  startDate:      string
+  endDate:        string
+  availableSeats: number
+  priceOverride?: number
+  currency?:      string
+}
+
+export interface UpdateDepartureInput {
+  startDate?:      string
+  endDate?:        string
+  availableSeats?: number
+  priceOverride?:  number | null
+  currency?:       string
+  status?:         'scheduled' | 'cancelled'
+}
+
+const departureSelect = {
+  id:             true,
+  tourId:         true,
+  startDate:      true,
+  endDate:        true,
+  availableSeats: true,
+  bookedSeats:    true,
+  priceOverride:  true,
+  currency:       true,
+  status:         true,
+  createdAt:      true,
+  updatedAt:      true,
+} as const
+
+export async function listTourDepartures(ownerUserId: string, tourId: string) {
+  await getProviderTour(tourId, ownerUserId)
+
+  return prisma.tourDeparture.findMany({
+    where: { tourId },
+    select: departureSelect,
+    orderBy: { startDate: 'asc' },
+  })
+}
+
+export async function createTourDeparture(ownerUserId: string, tourId: string, input: CreateDepartureInput) {
+  await getProviderTour(tourId, ownerUserId)
+
+  const start = new Date(input.startDate)
+  const end = new Date(input.endDate)
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) throw new AppError('Invalid date.', 400)
+  if (end <= start) throw new AppError('End date must be after start date.', 400)
+
+  return prisma.tourDeparture.create({
+    data: {
+      tourId,
+      startDate:      start,
+      endDate:        end,
+      availableSeats: input.availableSeats,
+      priceOverride:  input.priceOverride ?? null,
+      currency:       input.currency ?? 'USD',
+      status:         'scheduled',
+    },
+    select: departureSelect,
+  })
+}
+
+export async function updateTourDeparture(ownerUserId: string, tourId: string, departureId: string, input: UpdateDepartureInput) {
+  await getProviderTour(tourId, ownerUserId)
+
+  const dep = await prisma.tourDeparture.findUnique({ where: { id: departureId } })
+  if (!dep || dep.tourId !== tourId) throw new AppError('Departure not found.', 404)
+
+  if (input.availableSeats !== undefined && input.availableSeats < dep.bookedSeats) {
+    throw new AppError(
+      `Cannot reduce available seats to ${input.availableSeats}. There are already ${dep.bookedSeats} booked seat(s).`,
+      400,
+    )
+  }
+
+  const data: Record<string, unknown> = {}
+  if (input.startDate) data.startDate = new Date(input.startDate)
+  if (input.endDate) data.endDate = new Date(input.endDate)
+  if (input.availableSeats !== undefined) data.availableSeats = input.availableSeats
+  if (input.priceOverride !== undefined) data.priceOverride = input.priceOverride
+  if (input.currency !== undefined) data.currency = input.currency
+  if (input.status !== undefined) data.status = input.status
+
+  return prisma.tourDeparture.update({
+    where: { id: departureId },
+    data,
+    select: departureSelect,
+  })
+}
+
+export async function deleteTourDeparture(ownerUserId: string, tourId: string, departureId: string) {
+  await getProviderTour(tourId, ownerUserId)
+
+  const dep = await prisma.tourDeparture.findUnique({
+    where: { id: departureId },
+    include: { bookings: { where: { bookingStatus: { in: ['pending', 'confirmed'] } }, select: { id: true }, take: 1 } },
+  })
+  if (!dep || dep.tourId !== tourId) throw new AppError('Departure not found.', 404)
+  if (dep.bookings.length > 0) throw new AppError('Cannot delete a departure with active bookings. Cancel it instead.', 400)
+
+  await prisma.tourDeparture.delete({ where: { id: departureId } })
+  return { deleted: true }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Publish readiness
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface ReadinessInput {
+  title:          string
+  description:    string | null
+  basePrice:      number
+  imageCount:     number
+  departureCount: number
+}
+
+export interface ReadinessResult {
+  ready: boolean
+  missing: string[]
+}
+
+export function checkTourReadiness(input: ReadinessInput): ReadinessResult {
+  const missing: string[] = []
+
+  if (!input.title || input.title.trim().length < 2) missing.push('Title must be at least 2 characters')
+  if (!input.description || input.description.trim().length < 50) missing.push('Description must be at least 50 characters')
+  if (input.basePrice <= 0) missing.push('Price must be greater than 0')
+  if (input.imageCount < 1) missing.push('At least 1 image is required')
+  if (input.departureCount < 1) missing.push('At least 1 upcoming departure is required')
+
+  return { ready: missing.length === 0, missing }
+}
+
+function validateTourReadiness(input: ReadinessInput) {
+  const result = checkTourReadiness(input)
+  if (!result.ready) {
+    throw new AppError(`Tour is not ready to publish: ${result.missing.join('; ')}`, 400)
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper: load tour and assert it belongs to this provider
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function getProviderTour(tourId: string, ownerUserId: string) {
+  const provider = await prisma.provider.findUnique({ where: { ownerUserId }, select: { id: true } })
+  if (!provider) throw new AppError('Provider not found.', 404)
+
+  const tour = await prisma.tour.findUnique({
+    where: { id: tourId },
+    select: { id: true, slug: true, title: true, description: true, basePrice: true, status: true, providerId: true },
+  })
+  if (!tour) throw new AppError('Tour not found.', 404)
+  if (tour.providerId !== provider.id) throw new AppError('Forbidden.', 403)
   return tour
 }
 
