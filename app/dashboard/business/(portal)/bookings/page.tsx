@@ -19,6 +19,14 @@ import {
 import { getFreshAccessToken } from '@/lib/auth-utils'
 import { ApiError } from '@/lib/api/client'
 
+type StatusFilter = 'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled'
+
+const STATUS_VALUES: StatusFilter[] = ['all', 'pending', 'confirmed', 'completed', 'cancelled']
+
+function isStatusFilter(v: string): v is StatusFilter {
+  return (STATUS_VALUES as string[]).includes(v)
+}
+
 export default function BookingsPage() {
   const { data: session } = useSession()
   const searchParams = useSearchParams()
@@ -29,7 +37,7 @@ export default function BookingsPage() {
   const [loading,       setLoading]       = useState(true)
   const [error,         setError]         = useState<string | null>(null)
   const [search,        setSearch]        = useState('')
-  const [statusFilter,  setStatusFilter]  = useState<'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled'>('all')
+  const [statusFilter,  setStatusFilter]  = useState<StatusFilter>('all')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   const token = session?.user?.accessToken
@@ -38,7 +46,7 @@ export default function BookingsPage() {
   // Sync URL ?status= to filter when present
   useEffect(() => {
     const v = statusParam?.toLowerCase()
-    if (['pending', 'confirmed', 'completed', 'cancelled'].includes(v ?? '')) setStatusFilter(v as any)
+    if (v && isStatusFilter(v)) setStatusFilter(v)
   }, [statusParam])
 
   // ── Fetch bookings ────────────────────────────────────────────────────
@@ -275,7 +283,9 @@ export default function BookingsPage() {
           {
             label: 'Status',
             value: statusFilter,
-            onChange: setStatusFilter,
+            onChange: (v: string) => {
+              if (isStatusFilter(v)) setStatusFilter(v)
+            },
             options: [
               { label: 'All Status',   value: 'all'       },
               { label: 'Pending',      value: 'pending'   },
