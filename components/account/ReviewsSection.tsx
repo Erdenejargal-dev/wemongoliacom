@@ -132,7 +132,7 @@ export function ReviewsSection({ initialReviews, accessToken, onReviewsChange }:
         <MessageSquare className="w-10 h-10 text-gray-300 mx-auto mb-3" />
         <p className="text-gray-500 font-medium text-sm mb-1">No reviews yet</p>
         <p className="text-gray-400 text-xs mb-4">Reviews you write after tours will appear here.</p>
-        <Link href="/tours" className="text-sm text-green-600 hover:text-green-700 font-semibold underline">Find a Tour</Link>
+        <Link href="/tours" className="text-sm text-brand-600 hover:text-brand-700 font-semibold underline">Find a Tour</Link>
       </div>
     )
   }
@@ -141,7 +141,7 @@ export function ReviewsSection({ initialReviews, accessToken, onReviewsChange }:
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-gray-900">My Reviews ({reviews.length})</h3>
-        {saved && <span className="flex items-center gap-1 text-xs text-green-600 font-medium"><CheckCircle2 className="w-3.5 h-3.5" />Review updated</span>}
+        {saved && <span className="flex items-center gap-1 text-xs text-brand-600 font-medium"><CheckCircle2 className="w-3.5 h-3.5" />Review updated</span>}
       </div>
       {actionError && (
         <p className="text-sm text-red-600 font-medium bg-red-50 border border-red-100 rounded-xl px-4 py-3">
@@ -163,8 +163,8 @@ export function ReviewsSection({ initialReviews, accessToken, onReviewsChange }:
             </div>
             <div className="flex items-start gap-1 shrink-0">
               <button onClick={() => startEdit(review)}
-                className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-green-100 flex items-center justify-center transition-colors">
-                <Pencil className="w-3.5 h-3.5 text-gray-500 hover:text-green-600" />
+                className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-brand-100 flex items-center justify-center transition-colors">
+                <Pencil className="w-3.5 h-3.5 text-gray-500 hover:text-brand-600" />
               </button>
               <button onClick={() => deleteReview(review.id)}
                 className="w-7 h-7 rounded-lg bg-gray-100 hover:bg-red-100 flex items-center justify-center transition-colors">
@@ -185,10 +185,10 @@ export function ReviewsSection({ initialReviews, accessToken, onReviewsChange }:
                   ))}
                 </div>
                 <textarea value={editText} onChange={e => setEditText(e.target.value)} rows={3}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-green-400 focus:ring-2 focus:ring-green-400/10 resize-none" />
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-400/10 resize-none" />
                 <div className="flex gap-2">
                   <button onClick={saveEdit}
-                    className="px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded-lg transition-colors">
+                    className="px-3 py-1.5 bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold rounded-lg transition-colors">
                     Save
                   </button>
                   <button onClick={() => setEditing(null)}

@@ -30,6 +30,9 @@ export interface ProviderProfile {
   reviewsCount?: number
   totalGuestsHosted?: number
   isVerified?: boolean
+  verificationStatus?: 'unverified' | 'pending_review' | 'verified' | 'rejected'
+  rejectionReason?:    string | null
+  reviewedAt?:         string | null
   status?: string
   createdAt?: string
   updatedAt?: string
@@ -105,6 +108,12 @@ export interface ProviderAnalytics {
 }
 
 // ── API functions ──────────────────────────────────────────────────────────
+
+export async function submitProviderForVerification(
+  token: string,
+): Promise<{ id: string; name: string; verificationStatus: string }> {
+  return apiClient.post('/provider/verify/submit', {}, token)
+}
 
 export async function fetchProviderProfile(token: string): Promise<ProviderProfile | null> {
   try {

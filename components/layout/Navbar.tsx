@@ -12,6 +12,7 @@ import { UserMenu } from './navbar/UserMenu'
 import { MobileMenu } from './navbar/MobileMenu'
 import { navItems } from './navbar/mega-menu-data'
 import { cn } from '@/lib/utils'
+import { WeMongoliaLogo } from '@/components/brand/WeMongoliaLogo'
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -26,7 +27,7 @@ export default function Navbar() {
 
           {/* ── LEFT: Logo ────────────────────────────── */}
           <Link href="/" className="flex items-center gap-2.5 shrink-0">
-            <img src="/wemongolia.svg" alt="We Mongolia" className="h-9 w-auto" />
+            <WeMongoliaLogo className="h-9 w-auto" fetchPriority="high" />
           </Link>
 
           {/* ── CENTER: Main Nav (desktop) ─────────────── */}
@@ -108,7 +109,7 @@ export default function Navbar() {
                   </button>
                 } />
                 <AuthModal defaultTab="register" trigger={
-                  <Button className="bg-green-500 hover:bg-green-600 text-white rounded-xl px-4 py-1.5 text-sm font-medium flex items-center gap-1.5 h-auto">
+                  <Button className="bg-brand-500 hover:bg-brand-600 text-white rounded-xl px-4 py-1.5 text-sm font-medium flex items-center gap-1.5 h-auto">
                     Get Started
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Button>

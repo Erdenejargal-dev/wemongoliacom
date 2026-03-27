@@ -1,6 +1,33 @@
 import { escapeHtml } from '../utils/email-format'
+import { env } from '../config/env'
 
 const SUPPORT = 'info@wemongolia.com'
+
+function emailLogoAbsoluteUrl(): string {
+  const override = env.EMAIL_LOGO_URL
+  if (override) return override
+  const base = env.PUBLIC_APP_URL.replace(/\/$/, '')
+  return `${base}/brand/wemongolia.png`
+}
+
+function emailHomeUrl(): string {
+  return `${env.PUBLIC_APP_URL.replace(/\/$/, '')}/`
+}
+
+/** Table-based header: PNG logo + absolute URL for broad client support; alt text when images are blocked. */
+function emailBrandHeaderHtml(): string {
+  const logoUrl = escapeHtml(emailLogoAbsoluteUrl())
+  const homeUrl = escapeHtml(emailHomeUrl())
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 4px 0;">
+  <tr>
+    <td>
+      <a href="${homeUrl}" style="text-decoration:none;border:0;display:inline-block;">
+        <img src="${logoUrl}" alt="WeMongolia" width="168" style="display:block;border:0;outline:none;text-decoration:none;width:168px;max-width:100%;height:auto;" />
+      </a>
+    </td>
+  </tr>
+</table>`
+}
 
 export function wrapEmailHtml(title: string, bodyHtml: string): string {
   const safeTitle = escapeHtml(title)
@@ -18,7 +45,7 @@ export function wrapEmailHtml(title: string, bodyHtml: string): string {
         <table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:12px;border:1px solid #e4e4e7;overflow:hidden;">
           <tr>
             <td style="padding:24px 28px 8px 28px;">
-              <p style="margin:0;font-size:15px;font-weight:600;color:#16a34a;letter-spacing:-0.02em;">WeMongolia</p>
+              ${emailBrandHeaderHtml()}
               <h1 style="margin:12px 0 0 0;font-size:20px;font-weight:600;color:#18181b;line-height:1.3;">${safeTitle}</h1>
             </td>
           </tr>
@@ -29,7 +56,7 @@ export function wrapEmailHtml(title: string, bodyHtml: string): string {
           </tr>
           <tr>
             <td style="padding:16px 28px 24px 28px;border-top:1px solid #f4f4f5;font-size:12px;line-height:1.5;color:#71717a;">
-              Questions? Contact us at <a href="mailto:${SUPPORT}" style="color:#16a34a;text-decoration:none;">${SUPPORT}</a>
+              Questions? Contact us at <a href="mailto:${SUPPORT}" style="color:#0285C9;text-decoration:none;">${SUPPORT}</a>
             </td>
           </tr>
         </table>

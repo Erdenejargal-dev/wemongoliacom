@@ -36,7 +36,7 @@ export default async function DashboardPage() {
         <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
           <p className="text-sm font-semibold text-gray-900">Business Portal</p>
           <p className="text-xs text-gray-500 mt-1">Manage your listings, bookings, and messages.</p>
-          <Link href="/dashboard/business" className="inline-block mt-3 text-sm font-semibold text-green-600 hover:text-green-700 underline">
+          <Link href="/dashboard/business" className="inline-block mt-3 text-sm font-semibold text-brand-600 hover:text-brand-700 underline">
             Go to Business Portal →
           </Link>
         </div>
@@ -44,7 +44,7 @@ export default async function DashboardPage() {
         <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
           <p className="text-sm font-semibold text-gray-900">Become a Host</p>
           <p className="text-xs text-gray-500 mt-1">Register your business and start listing tours, cars, or accommodation.</p>
-          <Link href="/onboarding" className="inline-block mt-3 text-sm font-semibold text-green-600 hover:text-green-700 underline">
+          <Link href="/onboarding" className="inline-block mt-3 text-sm font-semibold text-brand-600 hover:text-brand-700 underline">
             Start onboarding →
           </Link>
         </div>

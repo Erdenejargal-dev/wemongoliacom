@@ -17,14 +17,35 @@ export const setRoleSchema = z.object({
 })
 
 export const providerListQuerySchema = z.object({
-  search: z.string().optional(),
-  status: z.enum(['pending', 'active', 'suspended', 'rejected']).optional(),
-  page:   z.coerce.number().int().positive().optional(),
-  limit:  z.coerce.number().int().positive().max(100).optional(),
+  search:             z.string().optional(),
+  verificationStatus: z.enum(['unverified', 'pending_review', 'verified', 'rejected']).optional(),
+  page:               z.coerce.number().int().positive().optional(),
+  limit:              z.coerce.number().int().positive().max(100).optional(),
 })
 
 export const setProviderStatusSchema = z.object({
-  status: z.enum(['pending', 'active', 'suspended', 'rejected']),
+  status: z.enum(['draft', 'active', 'paused', 'archived']),
+})
+
+export const setVerificationStatusSchema = z.object({
+  verificationStatus: z.enum(['unverified', 'pending_review', 'verified', 'rejected']),
+  rejectionReason:    z.string().max(1000).trim().optional(),
+}).superRefine((data, ctx) => {
+  if (data.verificationStatus === 'rejected' && !data.rejectionReason?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Rejection reason is required when rejecting a provider.',
+      path: ['rejectionReason'],
+    })
+  }
+})
+
+export const bookingListQuerySchema = z.object({
+  search:      z.string().optional(),
+  status:      z.enum(['pending', 'confirmed', 'cancelled', 'completed']).optional(),
+  listingType: z.enum(['tour', 'vehicle', 'accommodation']).optional(),
+  page:        z.coerce.number().int().positive().optional(),
+  limit:       z.coerce.number().int().positive().max(100).optional(),
 })
 
 // ─── User handlers ────────────────────────────────────────────────────────
@@ -79,6 +100,39 @@ export async function getProvider(req: Request, res: Response, next: NextFunctio
 export async function setProviderStatus(req: Request, res: Response, next: NextFunction) {
   try {
     const result = await adminService.setProviderStatus(String(req.params.providerId), req.body.status)
+    return ok(res, result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function setProviderVerificationStatus(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await adminService.setProviderVerificationStatus(
+      String(req.params.providerId),
+      req.body.verificationStatus,
+      req.body.rejectionReason ?? null,
+    )
+    return ok(res, result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ─── Booking handlers ─────────────────────────────────────────────────────
+
+export async function listBookings(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await adminService.listBookings(req.query as any)
+    return ok(res, result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function getBooking(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await adminService.getAdminBooking(String(req.params.bookingId))
     return ok(res, result)
   } catch (err) {
     next(err)

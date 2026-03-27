@@ -47,7 +47,7 @@ export default function HostsPage() {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-gray-900/50 to-gray-900/90" />
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-          <div className="flex items-center justify-center gap-2 text-green-400 text-xs font-bold uppercase tracking-widest mb-4">
+          <div className="flex items-center justify-center gap-2 text-brand-400 text-xs font-bold uppercase tracking-widest mb-4">
             <Users className="w-3.5 h-3.5" />
             Verified Operators
           </div>
@@ -66,7 +66,7 @@ export default function HostsPage() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search by name or location…"
-              className="w-full pl-11 pr-10 py-3.5 bg-white rounded-2xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400/30 shadow-xl"
+              className="w-full pl-11 pr-10 py-3.5 bg-white rounded-2xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400/30 shadow-xl"
             />
             {search && (
               <button onClick={() => setSearch('')}
@@ -84,7 +84,7 @@ export default function HostsPage() {
         {!hasFilters && (
           <section>
             <div className="flex items-center gap-2 mb-6">
-              <span className="w-1 h-5 rounded-full bg-green-500 inline-block" />
+              <span className="w-1 h-5 rounded-full bg-brand-500 inline-block" />
               <h2 className="text-lg font-bold text-gray-900">Featured Operators</h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
@@ -132,7 +132,7 @@ export default function HostsPage() {
               <p className="text-gray-500 font-medium text-sm mb-1">No hosts found</p>
               <p className="text-gray-400 text-xs">Try adjusting your search or filter</p>
               <button onClick={() => { setSearch(''); setType('All') }}
-                className="mt-4 text-sm text-green-600 hover:text-green-700 font-semibold underline transition-colors">
+                className="mt-4 text-sm text-brand-600 hover:text-brand-700 font-semibold underline transition-colors">
                 Clear filters
               </button>
             </div>
@@ -140,11 +140,11 @@ export default function HostsPage() {
         </section>
 
         {/* ── CTA ──────────────────────────────── */}
-        <section className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-8 text-center">
+        <section className="bg-gradient-to-r from-brand-500 to-brand-600 rounded-2xl p-8 text-center">
           <h3 className="text-xl font-bold text-white mb-2">Are you a local guide or operator?</h3>
           <p className="text-white/80 text-sm mb-5">Join the platform and connect with travelers from around the world.</p>
           <Link href="/onboarding"
-            className="inline-flex items-center gap-2 bg-white text-green-700 font-bold text-sm px-6 py-3 rounded-xl hover:bg-green-50 transition-colors shadow-lg">
+            className="inline-flex items-center gap-2 bg-white text-brand-700 font-bold text-sm px-6 py-3 rounded-xl hover:bg-brand-50 transition-colors shadow-lg">
             <Users className="w-4 h-4" />
             Register as a Host
           </Link>

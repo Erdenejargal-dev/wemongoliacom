@@ -190,7 +190,7 @@ function CheckoutContent() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-green-500" />
+        <Loader2 className="w-6 h-6 animate-spin text-brand-500" />
       </div>
     )
   }
@@ -200,7 +200,7 @@ function CheckoutContent() {
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
         <AlertTriangle className="w-8 h-8 text-amber-500" />
         <p className="text-sm text-gray-600">{loadError}</p>
-        <Link href="/tours" className="text-sm font-semibold text-green-600 hover:text-green-700">
+        <Link href="/tours" className="text-sm font-semibold text-brand-600 hover:text-brand-700">
           Browse tours
         </Link>
       </div>
@@ -228,13 +228,13 @@ function CheckoutContent() {
       {/* Progress steps */}
       <div className="bg-white border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-3 text-xs">
-          <span className="flex items-center gap-1.5 text-green-600 font-semibold">
-            <span className="w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] font-bold">1</span>
+          <span className="flex items-center gap-1.5 text-brand-600 font-semibold">
+            <span className="w-5 h-5 rounded-full bg-brand-500 text-white flex items-center justify-center text-[10px] font-bold">1</span>
             Tour details
           </span>
           <ChevronRight className="w-3 h-3 text-gray-300" />
-          <span className="flex items-center gap-1.5 text-green-600 font-semibold">
-            <span className="w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] font-bold">2</span>
+          <span className="flex items-center gap-1.5 text-brand-600 font-semibold">
+            <span className="w-5 h-5 rounded-full bg-brand-500 text-white flex items-center justify-center text-[10px] font-bold">2</span>
             Checkout
           </span>
           <ChevronRight className="w-3 h-3 text-gray-300" />
@@ -321,7 +321,7 @@ function CheckoutContent() {
               <button
                 type="submit"
                 disabled={submitting || !session || !departure || (remainingSeats !== null && guests > remainingSeats)}
-                className="w-full py-4 bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white font-bold text-sm rounded-2xl transition-colors shadow-sm shadow-green-200 flex items-center justify-center gap-2 active:scale-[0.99]"
+                className="w-full py-4 bg-brand-500 hover:bg-brand-600 disabled:bg-brand-300 text-white font-bold text-sm rounded-2xl transition-colors shadow-sm shadow-brand-200 flex items-center justify-center gap-2 active:scale-[0.99]"
               >
                 {submitting ? (
                   <>
@@ -369,7 +369,7 @@ export default function CheckoutPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-green-500" />
+        <Loader2 className="w-6 h-6 animate-spin text-brand-500" />
       </div>
     }>
       <CheckoutContent />

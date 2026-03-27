@@ -38,7 +38,7 @@ export function mapBackendBookingToTripCard(booking: BackendBooking): Trip | nul
     if (!tourSlug || !tourTitle) return null
 
     const location = tour?.destination?.name ?? 'Mongolia'
-    const image = tour?.images?.[0]?.imageUrl ?? '/wemongolia.svg'
+    const image = tour?.images?.[0]?.imageUrl ?? '/brand/wemongolia.svg'
     const durationDays = tour?.durationDays ?? computeDurationDays(booking.startDate, booking.endDate)
 
     return {
@@ -68,7 +68,7 @@ export function mapBackendBookingToTripCard(booking: BackendBooking): Trip | nul
     if (!listingSlug || !listingTitle) return null
 
     const location = vehicle?.destination?.name ?? 'Mongolia'
-    const image = vehicle?.images?.[0]?.imageUrl ?? '/wemongolia.svg'
+    const image = vehicle?.images?.[0]?.imageUrl ?? '/brand/wemongolia.svg'
     const durationDays = typeof snap?.days === 'number' ? snap.days : computeDurationDays(booking.startDate, booking.endDate)
 
     return {
@@ -98,7 +98,7 @@ export function mapBackendBookingToTripCard(booking: BackendBooking): Trip | nul
   if (!listingSlug || !listingTitle) return null
 
   const location = acc?.destination?.name ?? 'Mongolia'
-  const image = acc?.images?.[0]?.imageUrl ?? '/wemongolia.svg'
+  const image = acc?.images?.[0]?.imageUrl ?? '/brand/wemongolia.svg'
   const durationDays = typeof snap?.nights === 'number' ? snap.nights : computeDurationDays(booking.startDate, booking.endDate)
 
   return {

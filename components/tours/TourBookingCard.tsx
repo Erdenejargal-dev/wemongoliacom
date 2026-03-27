@@ -112,23 +112,23 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
                   onClick={() => setSelectedDepId(dep.id)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all ${
                     isSelected
-                      ? 'border-green-400 bg-green-50/50 ring-2 ring-green-400/20'
+                      ? 'border-brand-400 bg-brand-50/50 ring-2 ring-brand-400/20'
                       : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
-                  <CalendarDays className={`w-4 h-4 shrink-0 ${isSelected ? 'text-green-600' : 'text-gray-400'}`} />
+                  <CalendarDays className={`w-4 h-4 shrink-0 ${isSelected ? 'text-brand-600' : 'text-gray-400'}`} />
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium ${isSelected ? 'text-green-900' : 'text-gray-900'}`}>
+                    <p className={`text-sm font-medium ${isSelected ? 'text-brand-900' : 'text-gray-900'}`}>
                       {fmtDate(dep.startDate)} — {fmtDate(dep.endDate ?? dep.startDate)}
                     </p>
                     <p className="text-[11px] text-gray-500">
                       {seats} seat{seats !== 1 ? 's' : ''} left
                       {seats <= 4 && seats > 0 && <span className="text-amber-600 ml-1">· Selling fast</span>}
-                      {hasOverride && <span className="text-green-600 ml-1">· ${dep.priceOverride}/person</span>}
+                      {hasOverride && <span className="text-brand-600 ml-1">· ${dep.priceOverride}/person</span>}
                     </p>
                   </div>
                   <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                    isSelected ? 'border-green-500 bg-green-500' : 'border-gray-300'
+                    isSelected ? 'border-brand-500 bg-brand-500' : 'border-gray-300'
                   }`}>
                     {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                   </div>
@@ -148,8 +148,8 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
 
       {/* Selected date summary */}
       {selectedDeparture && (
-        <div className="px-3 py-2 bg-green-50 border border-green-100 rounded-xl mb-4">
-          <p className="text-xs text-green-800 font-medium">
+        <div className="px-3 py-2 bg-brand-50 border border-brand-100 rounded-xl mb-4">
+          <p className="text-xs text-brand-800 font-medium">
             {fmtDateFull(selectedDeparture.startDate)} — {fmtDateFull(selectedDeparture.endDate ?? selectedDeparture.startDate)}
           </p>
         </div>
@@ -162,7 +162,7 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
         </label>
         <div className="flex items-center justify-between border border-gray-200 rounded-xl px-4 py-3">
           <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-green-500" />
+            <Users className="w-4 h-4 text-brand-500" />
             <span className="text-sm text-gray-700">{guests} guest{guests !== 1 ? 's' : ''}</span>
           </div>
           <div className="flex items-center gap-3">
@@ -205,7 +205,7 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
       <button
         onClick={handleReserve}
         disabled={!canReserve}
-        className="w-full py-3.5 bg-green-500 hover:bg-green-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold text-sm rounded-xl transition-colors shadow-sm shadow-green-200 flex items-center justify-center gap-2 active:scale-[0.98]"
+        className="w-full py-3.5 bg-brand-500 hover:bg-brand-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold text-sm rounded-xl transition-colors shadow-sm shadow-brand-200 flex items-center justify-center gap-2 active:scale-[0.98]"
       >
         {canReserve ? (
           <>Reserve Tour <ChevronRight className="w-4 h-4" /></>
@@ -219,11 +219,11 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
       {/* Trust badges */}
       <div className="mt-4 space-y-2">
         <div className="flex items-center gap-2 text-xs text-gray-500">
-          <Shield className="w-3.5 h-3.5 text-green-500 shrink-0" />
+          <Shield className="w-3.5 h-3.5 text-brand-500 shrink-0" />
           Free cancellation up to 7 days before tour
         </div>
         <div className="flex items-center gap-2 text-xs text-gray-500">
-          <Clock className="w-3.5 h-3.5 text-green-500 shrink-0" />
+          <Clock className="w-3.5 h-3.5 text-brand-500 shrink-0" />
           Confirmation after provider review
         </div>
       </div>

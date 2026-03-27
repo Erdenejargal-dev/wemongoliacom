@@ -44,7 +44,7 @@ export function TravelSearchBar({ variant = 'hero', initialDestination = '', cur
       <div className="flex items-center gap-2 bg-white rounded-xl border border-gray-200 shadow-sm p-1.5">
         <DestinationAutocomplete value={destination} onChange={setDestination} className="flex-1 min-w-0" />
         <button onClick={handleSearch}
-          className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded-lg transition-colors shrink-0">
+          className="flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-lg transition-colors shrink-0">
           <Search className="w-4 h-4" />
           Search
         </button>
@@ -71,7 +71,7 @@ export function TravelSearchBar({ variant = 'hero', initialDestination = '', cur
         {/* Search button */}
         <button
           onClick={handleSearch}
-          className="flex items-center justify-center gap-2 w-full py-3 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-green-200 active:scale-[0.98]"
+          className="flex items-center justify-center gap-2 w-full py-3 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-brand-200 active:scale-[0.98]"
         >
           <Search className="w-4 h-4" />
           Search Tours

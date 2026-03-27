@@ -19,9 +19,9 @@ export default function TravelSectionNew() {
           className="text-3xl sm:text-4xl md:text-5xl font-black mb-8 sm:mb-10 md:mb-12"
         >
           <span className="text-gray-900">WE MON</span>
-          <span className="text-green-500">GO</span>
+          <span className="text-brand-500">GO</span>
           <span className="text-gray-900">LIA</span>
-          <span className="text-green-500 ml-2 sm:ml-4">EXPERIENCES</span>
+          <span className="text-brand-500 ml-2 sm:ml-4">EXPERIENCES</span>
         </motion.h2>
 
         {/* Main Feature Card */}
@@ -51,7 +51,7 @@ export default function TravelSectionNew() {
             >
               <h3 className="text-lg font-black mb-3">
                 <span className="text-gray-900">MON</span>
-                <span className="text-green-500">GO</span>
+                <span className="text-brand-500">GO</span>
                 <span className="text-gray-900">LIA</span>
                 <span className="text-gray-900 ml-2">WHERE THERE&apos;S MORE THAN MEETS THE EYE</span>
               </h3>
@@ -75,7 +75,7 @@ export default function TravelSectionNew() {
             >
               <h3 className="text-lg font-black mb-2">
                 <span className="text-white">MON</span>
-                <span className="text-green-800">GO</span>
+                <span className="text-brand-800">GO</span>
                 <span className="text-white">LIA</span>
                 <span className="text-white ml-2">BEYOND EVERYDAY ADVENTURE</span>
               </h3>
@@ -158,7 +158,7 @@ export default function TravelSectionNew() {
               <h4 className="font-black text-sm">
                 THE TRAVEL PACKAGES YOU NEED TO<br />
                 <span className="text-gray-900">MON</span>
-                <span className="text-green-500">GO</span>
+                <span className="text-brand-500">GO</span>
                 <span className="text-gray-900">LIA</span>
               </h4>
               <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
@@ -183,7 +183,7 @@ export default function TravelSectionNew() {
               <h4 className="font-black text-sm">
                 GET YOUR VISA TO<br />
                 <span className="text-gray-900">MON</span>
-                <span className="text-green-500">GO</span>
+                <span className="text-brand-500">GO</span>
                 <span className="text-gray-900">LIA</span>
               </h4>
               <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">

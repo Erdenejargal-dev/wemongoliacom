@@ -69,11 +69,11 @@ export function SecuritySettings({ accessToken: _accessToken }: { accessToken: s
       </div>
       <div className="flex items-center gap-3 mt-5 pt-5 border-t border-gray-50">
         <button type="submit" disabled={saving || !form.current || !form.next}
-          className="px-5 py-2.5 bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white font-bold text-sm rounded-xl transition-colors flex items-center gap-2">
+          className="px-5 py-2.5 bg-brand-500 hover:bg-brand-600 disabled:bg-brand-300 text-white font-bold text-sm rounded-xl transition-colors flex items-center gap-2">
           {saving ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Updating…</> : 'Update Password'}
         </button>
         {result === 'success' && (
-          <span className="flex items-center gap-1.5 text-sm text-green-600 font-medium">
+          <span className="flex items-center gap-1.5 text-sm text-brand-600 font-medium">
             <CheckCircle2 className="w-4 h-4" />Password updated!
           </span>
         )}
@@ -94,7 +94,7 @@ function PasswordField({ label, value, show, onChange, onToggle, error }: {
   return (
     <div>
       <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1.5">{label}</label>
-      <div className={`flex items-center border rounded-xl px-3 py-2.5 transition-all ${error ? 'border-red-300' : 'border-gray-200 focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-400/10'}`}>
+      <div className={`flex items-center border rounded-xl px-3 py-2.5 transition-all ${error ? 'border-red-300' : 'border-gray-200 focus-within:border-brand-400 focus-within:ring-2 focus-within:ring-brand-400/10'}`}>
         <input type={show ? 'text' : 'password'} required value={value} onChange={e => onChange(e.target.value)}
           className="flex-1 text-sm text-gray-900 bg-transparent focus:outline-none" />
         <button type="button" onClick={onToggle} className="text-gray-400 hover:text-gray-600 transition-colors ml-2">

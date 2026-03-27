@@ -16,7 +16,7 @@ const STYLE_COLORS: Record<string, string> = {
   luxury:      'bg-yellow-50 text-yellow-600',
   budget:      'bg-blue-50 text-blue-600',
   photography: 'bg-pink-50 text-pink-600',
-  trekking:    'bg-green-50 text-green-600',
+  trekking:    'bg-brand-50 text-brand-600',
 }
 
 export function TourCard({ tour }: TourCardProps) {
@@ -63,7 +63,7 @@ export function TourCard({ tour }: TourCardProps) {
         </div>
 
         {/* Title */}
-        <h3 className="text-sm font-semibold text-gray-900 leading-snug mb-2 line-clamp-2 group-hover:text-green-700 transition-colors">
+        <h3 className="text-sm font-semibold text-gray-900 leading-snug mb-2 line-clamp-2 group-hover:text-brand-700 transition-colors">
           {tour.title}
         </h3>
 

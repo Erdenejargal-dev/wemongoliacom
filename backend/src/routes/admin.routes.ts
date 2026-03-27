@@ -9,11 +9,16 @@ import {
   listProviders,
   getProvider,
   setProviderStatus,
+  setProviderVerificationStatus,
+  listBookings,
+  getBooking,
   getPlatformAnalytics,
   userListQuerySchema,
   setRoleSchema,
   providerListQuerySchema,
   setProviderStatusSchema,
+  setVerificationStatusSchema,
+  bookingListQuerySchema,
 } from '../controllers/admin.controller'
 
 const router = Router()
@@ -25,13 +30,18 @@ router.use(authenticate, requireRole('admin'))
 router.get('/analytics', getPlatformAnalytics)
 
 // ── Users ──────────────────────────────────────────────────────────────────
-router.get('/users',              validate(userListQuerySchema, 'query'), listUsers)
-router.get('/users/:userId',      getUser)
-router.patch('/users/:userId/role', validate(setRoleSchema), setUserRole)
+router.get('/users',                  validate(userListQuerySchema, 'query'), listUsers)
+router.get('/users/:userId',          getUser)
+router.patch('/users/:userId/role',   validate(setRoleSchema), setUserRole)
 
 // ── Providers ──────────────────────────────────────────────────────────────
-router.get('/providers',                      validate(providerListQuerySchema, 'query'), listProviders)
-router.get('/providers/:providerId',          getProvider)
-router.patch('/providers/:providerId/status', validate(setProviderStatusSchema), setProviderStatus)
+router.get('/providers',                            validate(providerListQuerySchema, 'query'), listProviders)
+router.get('/providers/:providerId',                getProvider)
+router.patch('/providers/:providerId/status',       validate(setProviderStatusSchema), setProviderStatus)
+router.patch('/providers/:providerId/verify',       validate(setVerificationStatusSchema), setProviderVerificationStatus)
+
+// ── Bookings ───────────────────────────────────────────────────────────────
+router.get('/bookings',               validate(bookingListQuerySchema, 'query'), listBookings)
+router.get('/bookings/:bookingId',    getBooking)
 
 export default router

@@ -3,13 +3,13 @@ import { PROVIDER_TYPE_META } from '@/lib/mock-data/provider'
 import { Check } from 'lucide-react'
 
 const borderColor: Record<string, string> = {
-  green:  'border-green-400 bg-green-50/50',
+  brand:  'border-brand-400 bg-brand-50/50',
   blue:   'border-blue-400 bg-blue-50/50',
   orange: 'border-orange-400 bg-orange-50/50',
 }
 
 const checkColor: Record<string, string> = {
-  green:  'bg-green-500',
+  brand:  'bg-brand-500',
   blue:   'bg-blue-500',
   orange: 'bg-orange-500',
 }

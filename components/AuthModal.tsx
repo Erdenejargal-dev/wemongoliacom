@@ -20,16 +20,8 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
 
-import LogoSvg from '@/assets/svg/logo'
 import AuthBackgroundShape from '@/assets/svg/auth-background-shape'
-
-/* ── Logo Component ──────────────────────────────────────────────── */
-const WeMongoliaLogo = ({ className }: { className?: string }) => (
-  <div className={`flex items-center gap-2.5 ${className ?? ''}`}>
-    <LogoSvg className='size-8' />
-    <span className='text-xl font-semibold'>We Mongolia</span>
-  </div>
-)
+import { WeMongoliaLogo } from '@/components/brand/WeMongoliaLogo'
 
 /* ── Auth Modal ──────────────────────────────────────────────────── */
 interface AuthModalProps {
@@ -61,7 +53,9 @@ export function AuthModal({ defaultTab = 'login', trigger }: AuthModalProps) {
           <Tabs value={activeTab} onValueChange={setActiveTab} className='w-full z-10'>
             <Card className='w-full border-none shadow-none' style={{ backgroundColor: '#ffffff' }}>
               <CardHeader className='gap-5 pb-4'>
-                <WeMongoliaLogo />
+                <Link href="/" className="inline-block">
+                  <WeMongoliaLogo className="h-8 w-auto" />
+                </Link>
                 <div>
                   <CardTitle className='mb-1 text-2xl'>
                     {activeTab === 'login' ? 'Sign in to We Mongolia' : 'Create an account'}
@@ -324,8 +318,8 @@ function RegisterPanel({
         </div>
       )}
       {success && (
-        <div className='p-3 bg-green-50 border border-green-200 rounded-lg'>
-          <p className='text-sm text-green-700'>Account created! Switching to sign in…</p>
+        <div className='p-3 bg-brand-50 border border-brand-200 rounded-lg'>
+          <p className='text-sm text-brand-700'>Account created! Switching to sign in…</p>
         </div>
       )}
 

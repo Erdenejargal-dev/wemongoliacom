@@ -129,7 +129,7 @@ export function MultiImageUpload({
           `}
         >
           {uploading ? (
-            <Loader2 className="w-5 h-5 text-green-600 animate-spin" />
+            <Loader2 className="w-5 h-5 text-brand-600 animate-spin" />
           ) : (
             <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
               <ImageIcon className="w-4 h-4 text-gray-400" />

@@ -11,8 +11,8 @@ export function ActivitiesList({ activities }: ActivitiesListProps) {
       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {activities.map((activity, i) => (
           <li key={i} className="flex items-start gap-3 group">
-            <div className="w-6 h-6 rounded-full bg-green-50 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-green-100 transition-colors">
-              <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+            <div className="w-6 h-6 rounded-full bg-brand-50 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-brand-100 transition-colors">
+              <CheckCircle2 className="w-3.5 h-3.5 text-brand-500" />
             </div>
             <span className="text-sm text-gray-700 leading-relaxed">{activity}</span>
           </li>

@@ -24,7 +24,7 @@ export function AccountSidebar({ user, active, onSelect }: AccountSidebarProps) 
       {/* User card */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-3">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 shrink-0 ring-2 ring-green-100">
+          <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-200 shrink-0 ring-2 ring-brand-100">
             <img src={user.avatar} alt={user.firstName} className="w-full h-full object-cover" />
           </div>
           <div className="min-w-0">
@@ -41,18 +41,18 @@ export function AccountSidebar({ user, active, onSelect }: AccountSidebarProps) 
           <button
             key={item.id}
             onClick={() => onSelect(item.id)}
-            className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${i > 0 ? 'border-t border-gray-50' : ''} ${active === item.id ? 'bg-green-50' : 'hover:bg-gray-50'}`}
+            className={`w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors ${i > 0 ? 'border-t border-gray-50' : ''} ${active === item.id ? 'bg-brand-50' : 'hover:bg-gray-50'}`}
           >
             <div className="flex items-center gap-3">
-              <span className={`p-1.5 rounded-lg ${active === item.id ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
+              <span className={`p-1.5 rounded-lg ${active === item.id ? 'bg-brand-100 text-brand-600' : 'bg-gray-100 text-gray-500'}`}>
                 {item.icon}
               </span>
               <div>
-                <p className={`text-sm font-semibold ${active === item.id ? 'text-green-700' : 'text-gray-900'}`}>{item.label}</p>
+                <p className={`text-sm font-semibold ${active === item.id ? 'text-brand-700' : 'text-gray-900'}`}>{item.label}</p>
                 <p className="text-xs text-gray-400">{item.desc}</p>
               </div>
             </div>
-            <ChevronRight className={`w-3.5 h-3.5 transition-colors ${active === item.id ? 'text-green-500' : 'text-gray-300'}`} />
+            <ChevronRight className={`w-3.5 h-3.5 transition-colors ${active === item.id ? 'text-brand-500' : 'text-gray-300'}`} />
           </button>
         ))}
       </div>

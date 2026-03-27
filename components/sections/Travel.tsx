@@ -27,10 +27,10 @@ export default function Travel() {
           className="text-4xl md:text-6xl font-bold mb-12 tracking-wider"
         >
           <span className="text-gray-600">MON</span>
-          <span className="text-green-500">GO</span>
+          <span className="text-brand-500">GO</span>
           <span className="text-gray-600">LIA</span>
           {' '}
-          <span className="text-green-500">TRAVEL</span>
+          <span className="text-brand-500">TRAVEL</span>
         </motion.h2>
 
         {/* Main Image */}

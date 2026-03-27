@@ -32,7 +32,7 @@ export function MegaMenu({ sections }: MegaMenuProps) {
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
         style={{ minWidth: `${sections.length * 220}px`, maxWidth: '780px' }}>
         {/* Top accent bar */}
-        <div className="h-1 bg-gradient-to-r from-green-400 via-emerald-500 to-teal-400" />
+        <div className="h-1 bg-gradient-to-r from-brand-400 via-brand-500 to-brand-400" />
 
         <div className={`grid p-6 gap-8`}
           style={{ gridTemplateColumns: `repeat(${sections.length}, 1fr)` }}>
@@ -41,7 +41,7 @@ export function MegaMenu({ sections }: MegaMenuProps) {
             return (
               <div key={section.title}>
                 <div className="flex items-center gap-2 mb-3">
-                  <SectionIcon className="w-3.5 h-3.5 text-green-500" />
+                  <SectionIcon className="w-3.5 h-3.5 text-brand-500" />
                   <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{section.title}</p>
                 </div>
                 <ul className="space-y-1">
@@ -52,12 +52,12 @@ export function MegaMenu({ sections }: MegaMenuProps) {
                         <Link href={item.href}
                           className="group/item flex items-start gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors">
                           {ItemIcon && (
-                            <div className="w-7 h-7 rounded-lg bg-green-50 flex items-center justify-center shrink-0 mt-0.5 group-hover/item:bg-green-100 transition-colors">
-                              <ItemIcon className="w-3.5 h-3.5 text-green-600" />
+                            <div className="w-7 h-7 rounded-lg bg-brand-50 flex items-center justify-center shrink-0 mt-0.5 group-hover/item:bg-brand-100 transition-colors">
+                              <ItemIcon className="w-3.5 h-3.5 text-brand-600" />
                             </div>
                           )}
                           <div>
-                            <p className="text-sm font-medium text-gray-800 group-hover/item:text-green-700 transition-colors leading-tight">
+                            <p className="text-sm font-medium text-gray-800 group-hover/item:text-brand-700 transition-colors leading-tight">
                               {item.label}
                             </p>
                             {item.description && (

@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/auth'
 import { requireRole } from '../middleware/role'
 import { validate } from '../middleware/validate'
 import {
+  submitVerification,
   getMyProfile,
   updateMyProfile,
   listBookings,
@@ -41,6 +42,9 @@ const router = Router()
 
 // All provider routes require auth + provider_owner role
 router.use(authenticate, requireRole('provider_owner', 'admin'))
+
+// Verification — provider self-submits for admin review
+router.post('/verify/submit', submitVerification)
 
 // Profile
 router.get('/profile',   getMyProfile)

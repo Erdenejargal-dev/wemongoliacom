@@ -22,7 +22,7 @@ function EmptyState({ status }: { status: string }) {
         <>
           <p className="text-gray-400 text-xs mt-1 mb-3">You haven&apos;t booked any upcoming trips yet.</p>
           <Link href="/tours"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-green-600 hover:text-green-700 bg-green-50 hover:bg-green-100 px-4 py-2 rounded-xl transition-colors">
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 px-4 py-2 rounded-xl transition-colors">
             <Compass className="w-3.5 h-3.5" />Explore Tours
           </Link>
         </>
@@ -33,7 +33,7 @@ function EmptyState({ status }: { status: string }) {
 
 interface Section { label: string; status: TripStatus; accent: string }
 const SECTIONS: Section[] = [
-  { label: 'Upcoming Trips',  status: 'Upcoming',  accent: 'text-green-600 bg-green-50 border-green-100' },
+  { label: 'Upcoming Trips',  status: 'Upcoming',  accent: 'text-brand-600 bg-brand-50 border-brand-100' },
   { label: 'Past Trips',      status: 'Completed', accent: 'text-blue-600 bg-blue-50 border-blue-100'   },
   { label: 'Cancelled Trips', status: 'Cancelled', accent: 'text-red-500 bg-red-50 border-red-100'      },
 ]
@@ -114,7 +114,7 @@ export default function TripsPage() {
       <div className="bg-white border-b border-gray-100">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center gap-2 mb-1">
-            <MapPin className="w-4 h-4 text-green-500" />
+            <MapPin className="w-4 h-4 text-brand-500" />
             <h1 className="text-lg font-bold text-gray-900">My Trips</h1>
           </div>
           <p className="text-xs text-gray-500">View and manage your upcoming and past travel experiences.</p>
@@ -147,7 +147,7 @@ export default function TripsPage() {
             <p className="text-gray-500 font-semibold text-base mb-1">You haven&apos;t booked any trips yet</p>
             <p className="text-gray-400 text-sm mb-5">Explore Mongolia&apos;s best tours and start your adventure.</p>
             <Link href="/tours"
-              className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors shadow-md">
+              className="inline-flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors shadow-md">
               <Compass className="w-4 h-4" />Explore Tours
             </Link>
           </div>
@@ -156,7 +156,7 @@ export default function TripsPage() {
         {SECTIONS.map(s => (
           <section key={s.status}>
             <div className="flex items-center gap-2 mb-4">
-              <span className="w-1 h-5 rounded-full bg-green-500 inline-block" />
+              <span className="w-1 h-5 rounded-full bg-brand-500 inline-block" />
               <h2 className="text-sm font-bold text-gray-900">{s.label}</h2>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${s.accent}`}>
                 {grouped[s.status].length}

@@ -118,7 +118,7 @@ export default function ExploreExperiencePage() {
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <h1 className="text-[60px] sm:text-[100px] md:text-[140px] lg:text-[180px] font-black leading-none tracking-tight">
             <span className="text-white">MON</span>
-            <span className="text-green-500">GO</span>
+            <span className="text-brand-500">GO</span>
             <span className="text-white">LIA</span>
           </h1>
           <p className="text-white text-sm md:text-lg tracking-[0.3em] mt-2">

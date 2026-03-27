@@ -43,7 +43,7 @@ export const PROVIDER_TYPE_META: Record<ProviderType, {
     label: 'Tours & Experiences',
     description: 'Offer guided tours, excursions, cultural experiences, and outdoor adventures.',
     icon: '🗺️',
-    color: 'green',
+    color: 'brand',
     menuItems: [
       { label: 'Dashboard',    href: '/host/dashboard',           icon: 'LayoutDashboard' },
       { label: 'Create Tour',  href: '/host/tours/create',        icon: 'Plus' },

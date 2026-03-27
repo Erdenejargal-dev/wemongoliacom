@@ -48,15 +48,15 @@ export function HostHero({ host }: HostHeroProps) {
               </div>
 
               <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 mb-3">
-                <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-green-500" />{host.location}</span>
+                <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-brand-500" />{host.location}</span>
                 {host.website && (
                   <a href={host.website} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-1 hover:text-green-600 transition-colors">
-                    <Globe className="w-3.5 h-3.5 text-green-500" />Website
+                    className="flex items-center gap-1 hover:text-brand-600 transition-colors">
+                    <Globe className="w-3.5 h-3.5 text-brand-500" />Website
                   </a>
                 )}
-                <a href={`mailto:${host.email}`} className="flex items-center gap-1 hover:text-green-600 transition-colors">
-                  <Mail className="w-3.5 h-3.5 text-green-500" />{host.email}
+                <a href={`mailto:${host.email}`} className="flex items-center gap-1 hover:text-brand-600 transition-colors">
+                  <Mail className="w-3.5 h-3.5 text-brand-500" />{host.email}
                 </a>
               </div>
 

@@ -31,7 +31,7 @@ export function ChatHeader({ conversation, onBack }: ChatHeaderProps) {
       {/* View tour button */}
       <Link
         href={`/tours/${conversation.tourSlug}`}
-        className="flex items-center gap-1.5 text-xs font-semibold text-green-600 hover:text-green-700 bg-green-50 hover:bg-green-100 px-3 py-1.5 rounded-xl transition-colors shrink-0"
+        className="flex items-center gap-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-xl transition-colors shrink-0"
       >
         <ExternalLink className="w-3.5 h-3.5" />
         View Tour

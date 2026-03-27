@@ -9,6 +9,7 @@ import {
 import type { ProviderType } from '@/lib/mock-data/provider'
 import { PROVIDER_TYPE_META } from '@/lib/mock-data/provider'
 import { useState } from 'react'
+import { WeMongoliaLogo } from '@/components/brand/WeMongoliaLogo'
 
 const ICON_MAP: Record<string, React.ReactNode> = {
   LayoutDashboard: <LayoutDashboard className="w-4 h-4" />,
@@ -51,11 +52,11 @@ export function HostSidebarNavigation({ providerName, providerTypes }: HostSideb
     <aside className="w-64 shrink-0 bg-white border-r border-gray-100 flex flex-col h-full">
       {/* Brand */}
       <div className="px-5 py-5 border-b border-gray-100">
-        <Link href="/" className="flex items-center gap-2 mb-3">
-          <div className="w-7 h-7 bg-green-500 rounded-lg flex items-center justify-center">
-            <span className="text-white text-xs font-bold">W</span>
-          </div>
-          <span className="text-xs font-bold text-gray-900">WeMongolia Host</span>
+        <Link href="/" className="flex items-center gap-2 mb-3 min-w-0">
+          <WeMongoliaLogo className="h-6 w-auto max-w-[120px] shrink-0" />
+          <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500 leading-tight">
+            Host
+          </span>
         </Link>
         <p className="text-xs font-semibold text-gray-900 truncate">{providerName}</p>
         <div className="flex flex-wrap gap-1 mt-1">
@@ -109,8 +110,8 @@ export function HostSidebarNavigation({ providerName, providerTypes }: HostSideb
 function NavItem({ item, active }: { item: { label: string; href: string; icon: string }; active: boolean }) {
   return (
     <Link href={item.href}
-      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${active ? 'bg-green-50 text-green-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}>
-      <span className={active ? 'text-green-600' : 'text-gray-400'}>{ICON_MAP[item.icon] ?? <LayoutDashboard className="w-4 h-4" />}</span>
+      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors ${active ? 'bg-brand-50 text-brand-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}>
+      <span className={active ? 'text-brand-600' : 'text-gray-400'}>{ICON_MAP[item.icon] ?? <LayoutDashboard className="w-4 h-4" />}</span>
       {item.label}
     </Link>
   )

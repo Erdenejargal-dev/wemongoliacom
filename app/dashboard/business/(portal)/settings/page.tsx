@@ -133,7 +133,7 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-5 h-5 text-green-500 animate-spin" />
+        <Loader2 className="w-5 h-5 text-brand-500 animate-spin" />
       </div>
     )
   }
@@ -162,7 +162,7 @@ export default function SettingsPage() {
         </div>
       )}
       {success && (
-        <div className="px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
+        <div className="px-4 py-3 bg-brand-50 border border-brand-200 rounded-xl text-sm text-brand-700">
           Profile saved successfully.
         </div>
       )}
@@ -206,7 +206,7 @@ export default function SettingsPage() {
             required
             minLength={2}
             maxLength={200}
-            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
+            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
             placeholder="e.g. Gobi Adventure Tours"
           />
         </div>
@@ -221,7 +221,7 @@ export default function SettingsPage() {
             onChange={e => setDescription(e.target.value)}
             rows={4}
             maxLength={5000}
-            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none resize-none"
+            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none resize-none"
             placeholder="Tell travelers about your business..."
           />
         </div>
@@ -237,7 +237,7 @@ export default function SettingsPage() {
               value={phone}
               onChange={e => setPhone(e.target.value)}
               maxLength={30}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
               placeholder="+976..."
             />
           </div>
@@ -250,7 +250,7 @@ export default function SettingsPage() {
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
               placeholder="contact@example.com"
             />
           </div>
@@ -265,7 +265,7 @@ export default function SettingsPage() {
             type="url"
             value={website}
             onChange={e => setWebsite(e.target.value)}
-            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
+            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
             placeholder="https://yoursite.com"
           />
         </div>
@@ -280,7 +280,7 @@ export default function SettingsPage() {
             value={address}
             onChange={e => setAddress(e.target.value)}
             maxLength={300}
-            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
+            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
             placeholder="Street, building..."
           />
         </div>
@@ -296,7 +296,7 @@ export default function SettingsPage() {
               value={city}
               onChange={e => setCity(e.target.value)}
               maxLength={100}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
               placeholder="Ulaanbaatar"
             />
           </div>
@@ -310,7 +310,7 @@ export default function SettingsPage() {
               value={country}
               onChange={e => setCountry(e.target.value)}
               maxLength={100}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
               placeholder="Mongolia"
             />
           </div>

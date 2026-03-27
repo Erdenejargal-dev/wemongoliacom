@@ -37,7 +37,7 @@ function Field({ label, required, icon, error, children }: FieldProps) {
       <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1.5">
         {label}{required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
-      <div className={`flex items-center gap-2 border rounded-xl px-3 py-2.5 transition-all ${error ? 'border-red-300 bg-red-50/30' : 'border-gray-200 focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-400/10'}`}>
+      <div className={`flex items-center gap-2 border rounded-xl px-3 py-2.5 transition-all ${error ? 'border-red-300 bg-red-50/30' : 'border-gray-200 focus-within:border-brand-400 focus-within:ring-2 focus-within:ring-brand-400/10'}`}>
         <span className="text-gray-400 shrink-0">{icon}</span>
         {children}
       </div>
@@ -105,7 +105,7 @@ export function TravelerForm({ data, onChange, errors }: TravelerFormProps) {
           <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1.5">
             Special Requests <span className="text-gray-400 font-normal normal-case">(optional)</span>
           </label>
-          <div className="flex gap-2 border border-gray-200 rounded-xl px-3 py-2.5 focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-400/10 transition-all">
+          <div className="flex gap-2 border border-gray-200 rounded-xl px-3 py-2.5 focus-within:border-brand-400 focus-within:ring-2 focus-within:ring-brand-400/10 transition-all">
             <MessageSquare className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
             <textarea
               value={data.specialRequests}

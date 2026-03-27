@@ -40,11 +40,11 @@ export function HostReviews({ reviews, rating, reviewsCount }: HostReviewsProps)
       {/* Reviews */}
       <div className="space-y-5">
         {reviews.map(review => (
-          <div key={review.id} className="relative border border-gray-100 rounded-2xl p-5 hover:border-green-100 hover:bg-green-50/30 transition-colors">
+          <div key={review.id} className="relative border border-gray-100 rounded-2xl p-5 hover:border-brand-100 hover:bg-brand-50/30 transition-colors">
             <Quote className="absolute top-4 right-4 w-6 h-6 text-gray-100" />
             <div className="flex items-start gap-3 mb-3">
               {/* Avatar initials */}
-              <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center text-xs font-bold text-green-700 shrink-0">
+              <div className="w-9 h-9 rounded-full bg-brand-100 flex items-center justify-center text-xs font-bold text-brand-700 shrink-0">
                 {review.author.split(' ').map(n => n[0]).join('').slice(0, 2)}
               </div>
               <div className="flex-1 min-w-0">

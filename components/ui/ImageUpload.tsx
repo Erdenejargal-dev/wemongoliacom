@@ -103,7 +103,7 @@ export function ImageUpload({
           />
           {uploading && (
             <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
-              <Loader2 className="w-6 h-6 text-green-600 animate-spin" />
+              <Loader2 className="w-6 h-6 text-brand-600 animate-spin" />
             </div>
           )}
           {!uploading && (
@@ -139,14 +139,14 @@ export function ImageUpload({
             w-full rounded-xl border-2 border-dashed transition-colors cursor-pointer
             flex flex-col items-center justify-center gap-2 py-8 px-4
             ${dragOver
-              ? 'border-green-400 bg-green-50'
+              ? 'border-brand-400 bg-brand-50'
               : 'border-gray-200 hover:border-gray-300 bg-gray-50/50 hover:bg-gray-50'
             }
             ${uploading ? 'opacity-60 pointer-events-none' : ''}
           `}
         >
           {uploading ? (
-            <Loader2 className="w-6 h-6 text-green-600 animate-spin" />
+            <Loader2 className="w-6 h-6 text-brand-600 animate-spin" />
           ) : (
             <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
               <ImageIcon className="w-5 h-5 text-gray-400" />

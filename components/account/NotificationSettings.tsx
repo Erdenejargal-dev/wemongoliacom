@@ -31,7 +31,7 @@ export function NotificationSettings() {
               disabled
               aria-disabled="true"
               className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors duration-200 focus:outline-none ${
-                t.defaultOn ? 'bg-green-500' : 'bg-gray-200'
+                t.defaultOn ? 'bg-brand-500' : 'bg-gray-200'
               } opacity-70 cursor-not-allowed`}
             >
               <span
@@ -45,7 +45,7 @@ export function NotificationSettings() {
       </div>
 
       <div className="flex items-center gap-2 mt-5 pt-5 border-t border-gray-50 text-xs text-gray-500">
-        <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+        <CheckCircle2 className="w-3.5 h-3.5 text-brand-600" />
         Preferences save action will be enabled when backend support is added.
       </div>
     </div>

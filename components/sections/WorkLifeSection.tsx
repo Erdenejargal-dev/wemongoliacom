@@ -137,7 +137,7 @@ export default function WorkLifeSection() {
           className="text-2xl sm:text-3xl md:text-4xl font-black mb-4 sm:mb-6"
         >
           <span className="text-gray-900">WE MON</span>
-          <span className="text-green-500">GO</span>
+          <span className="text-brand-500">GO</span>
           <span className="text-gray-900">LIA</span>
           <br className="sm:hidden" />
           <span className="text-red-500 ml-2">TRAVEL WITH CONFIDENCE & PROTECTION</span>

@@ -28,7 +28,7 @@ export function ReviewCard({ review, onReply }: ReviewCardProps) {
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
       <div className="flex items-start gap-4">
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white text-sm font-semibold shrink-0">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-400 to-blue-500 flex items-center justify-center text-white text-sm font-semibold shrink-0">
           {initials}
         </div>
         <div className="flex-1 min-w-0">
@@ -45,9 +45,9 @@ export function ReviewCard({ review, onReply }: ReviewCardProps) {
           <p className="text-sm text-gray-600 mt-2 leading-relaxed">{review.text}</p>
 
           {review.replied && review.reply && (
-            <div className="mt-3 pl-3 border-l-2 border-green-200 bg-green-50 rounded-r-lg py-2 pr-3">
-              <p className="text-xs font-medium text-green-700 mb-1">Your reply</p>
-              <p className="text-xs text-green-600">{review.reply}</p>
+            <div className="mt-3 pl-3 border-l-2 border-brand-200 bg-brand-50 rounded-r-lg py-2 pr-3">
+              <p className="text-xs font-medium text-brand-700 mb-1">Your reply</p>
+              <p className="text-xs text-brand-600">{review.reply}</p>
             </div>
           )}
 

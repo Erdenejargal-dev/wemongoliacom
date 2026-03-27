@@ -23,7 +23,7 @@ export default async function TourDetailPage({ params }: Props) {
 
   const difficulty = tour.difficulty ?? '—'
   const difficultyColor = ({
-    Easy: 'bg-green-50 text-green-700',
+    Easy: 'bg-brand-50 text-brand-700',
     Moderate: 'bg-yellow-50 text-yellow-700',
     Challenging: 'bg-orange-50 text-orange-700',
     Extreme: 'bg-red-50 text-red-700',
@@ -87,7 +87,7 @@ export default async function TourDetailPage({ params }: Props) {
 
               <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-4">
                 <div className="flex items-center gap-1.5">
-                  <MapPin className="w-4 h-4 text-green-500" />
+                  <MapPin className="w-4 h-4 text-brand-500" />
                   {tour.destination?.name ?? 'Mongolia'}
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -121,8 +121,8 @@ export default async function TourDetailPage({ params }: Props) {
                   { icon: MapPin, label: 'Pickup', value: tour.pickupIncluded ? 'Included' : 'Not included' },
                 ].map(item => (
                   <div key={item.label} className="flex items-start gap-3 p-3 rounded-xl bg-gray-50">
-                    <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center shrink-0 mt-0.5">
-                      <item.icon className="w-4 h-4 text-green-600" />
+                    <div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center shrink-0 mt-0.5">
+                      <item.icon className="w-4 h-4 text-brand-600" />
                     </div>
                     <div>
                       <p className="text-xs text-gray-500 font-medium">{item.label}</p>
@@ -159,12 +159,12 @@ export default async function TourDetailPage({ params }: Props) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <p className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-500" /> Included
+                    <CheckCircle2 className="w-4 h-4 text-brand-500" /> Included
                   </p>
                   <ul className="space-y-2">
                     {included.length > 0 ? included.map((item, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0 mt-0.5" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-brand-500 shrink-0 mt-0.5" />
                         {item}
                       </li>
                     )) : (

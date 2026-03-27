@@ -3,6 +3,63 @@ import { AppError } from '../middleware/error'
 import { uniqueSlug } from '../utils/slug'
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Verification submission (provider self-service)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Provider explicitly submits themselves for admin verification review.
+ * Allowed only when verificationStatus is 'unverified' or 'rejected'.
+ * Sets verificationStatus → 'pending_review'.
+ * Admins are then responsible for reviewing and calling setProviderVerificationStatus.
+ */
+export async function submitForVerification(ownerUserId: string) {
+  const provider = await prisma.provider.findUnique({
+    where: { ownerUserId },
+    select: {
+      id:                 true,
+      verificationStatus: true,
+      name:               true,
+      email:              true,
+      providerTypes:      true,
+      owner: { select: { email: true, firstName: true, lastName: true } },
+    },
+  })
+  if (!provider) throw new AppError('Provider profile not found.', 404)
+
+  if (!['unverified', 'rejected'].includes(provider.verificationStatus)) {
+    throw new AppError(
+      `Cannot submit for review: current verification status is "${provider.verificationStatus}". ` +
+      'Only unverified or rejected providers can submit.',
+      400,
+    )
+  }
+
+  const updated = await prisma.provider.update({
+    where: { ownerUserId },
+    data: {
+      verificationStatus: 'pending_review',
+      rejectionReason:    null,  // Clear previous rejection reason on resubmit
+    },
+    select: { id: true, name: true, verificationStatus: true },
+  })
+
+  // Fire emails after successful DB update — never block the response
+  void import('./email.service')
+    .then(({ notifyVerificationSubmitted }) =>
+      notifyVerificationSubmitted({
+        providerEmail: provider.email,
+        ownerEmail:    provider.owner.email,
+        ownerName:     `${provider.owner.firstName} ${provider.owner.lastName}`.trim() || 'Provider',
+        businessName:  provider.name,
+        providerTypes: provider.providerTypes.map(String),
+      }),
+    )
+    .catch(err => console.error('[email] notifyVerificationSubmitted failed:', err))
+
+  return updated
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Get provider for the authenticated owner
 // ─────────────────────────────────────────────────────────────────────────────
 

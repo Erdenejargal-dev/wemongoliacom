@@ -1,7 +1,10 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { LogOut, LayoutDashboard, Heart, CalendarCheck, ChevronDown, Building2, Sparkles, Settings, MessageSquare } from 'lucide-react'
+import {
+  LogOut, LayoutDashboard, Heart, CalendarCheck, ChevronDown,
+  Building2, Sparkles, Settings, MessageSquare, ShieldCheck,
+} from 'lucide-react'
 import Link from 'next/link'
 import { signOut } from 'next-auth/react'
 
@@ -16,60 +19,91 @@ export function UserMenu({ name, email, role }: UserMenuProps) {
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const initials = name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'U'
-  const isProvider = role === 'provider_owner'
-  const isAdmin = role === 'admin'
+  const initials = name
+    ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    : 'U'
 
-  const items = isProvider
+  const isProvider = role === 'provider_owner'
+  const isAdmin    = role === 'admin'
+
+  // Admin: only show admin-relevant links — no traveler noise, no misleading business portal
+  const items = isAdmin
     ? [
-        { href: '/dashboard/business',          icon: Building2,     label: 'Business Portal' },
-        { href: '/dashboard/business/messages',  icon: MessageSquare, label: 'Messages' },
-        { href: '/dashboard/business/settings',  icon: Settings,      label: 'Business Settings' },
+        { href: '/admin',           icon: ShieldCheck,     label: 'Admin Console' },
+        { href: '/account',         icon: LayoutDashboard, label: 'My Account' },
+      ]
+    : isProvider
+    ? [
+        { href: '/dashboard/business',         icon: Building2,     label: 'Business Portal' },
+        { href: '/dashboard/business/messages', icon: MessageSquare, label: 'Messages' },
+        { href: '/dashboard/business/settings', icon: Settings,      label: 'Business Settings' },
       ]
     : [
-        ...(isAdmin ? [{ href: '/dashboard/business', icon: Building2, label: 'Business Portal' }] : []),
-        { href: '/dashboard',       icon: LayoutDashboard, label: 'My Dashboard' },
-        { href: '/account/trips',   icon: CalendarCheck,   label: 'My Trips' },
-        { href: '/account',         icon: Heart,           label: 'Saved Trips' },
-        ...(!isAdmin ? [{ href: '/onboarding', icon: Sparkles, label: 'Become a Host' }] : []),
+        { href: '/dashboard',     icon: LayoutDashboard, label: 'My Dashboard' },
+        { href: '/account/trips', icon: CalendarCheck,   label: 'My Trips' },
+        { href: '/account',       icon: Heart,           label: 'Saved Trips' },
+        { href: '/onboarding',    icon: Sparkles,        label: 'Become a Host' },
       ]
 
   return (
     <div ref={ref} className="relative">
-      <button onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-2 p-1 rounded-xl hover:bg-gray-50 transition-colors border border-gray-200 pr-3">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-white text-xs font-bold">
-          {initials}
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-2 p-1 rounded-xl hover:bg-gray-50 transition-colors border border-gray-200 pr-3"
+      >
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold ${
+          isAdmin
+            ? 'bg-amber-500'
+            : 'bg-gradient-to-br from-brand-400 to-brand-600'
+        }`}>
+          {isAdmin ? <ShieldCheck className="w-4 h-4" /> : initials}
         </div>
-        <span className="text-sm font-medium text-gray-700 max-w-[100px] truncate hidden sm:block">{name}</span>
+        <span className="text-sm font-medium text-gray-700 max-w-[100px] truncate hidden sm:block">
+          {name}
+        </span>
         <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
         <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 overflow-hidden">
-          <div className="h-0.5 bg-gradient-to-r from-green-400 to-teal-400 absolute top-0 inset-x-0" />
+          <div className={`h-0.5 absolute top-0 inset-x-0 ${isAdmin ? 'bg-amber-400' : 'bg-gradient-to-r from-brand-400 to-brand-400'}`} />
 
           <div className="px-4 py-3 border-b border-gray-50">
-            <p className="text-sm font-semibold text-gray-900 truncate">{name}</p>
+            <div className="flex items-center gap-2 mb-0.5">
+              <p className="text-sm font-semibold text-gray-900 truncate">{name}</p>
+              {isAdmin && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-200 shrink-0">
+                  ADMIN
+                </span>
+              )}
+            </div>
             <p className="text-xs text-gray-400 truncate">{email}</p>
           </div>
 
           {items.map(item => (
-            <Link key={item.label} href={item.href} onClick={() => setOpen(false)}
-              className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
-              <item.icon className="w-4 h-4 text-gray-400" />
+            <Link
+              key={item.label}
+              href={item.href}
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+            >
+              <item.icon className={`w-4 h-4 ${isAdmin && item.href === '/admin' ? 'text-amber-500' : 'text-gray-400'}`} />
               {item.label}
             </Link>
           ))}
 
           <div className="border-t border-gray-100 mt-1 pt-1">
-            <button onClick={() => { signOut(); setOpen(false) }}
-              className="flex items-center gap-3 px-4 py-2.5 w-full text-sm text-red-600 hover:bg-red-50 transition-colors">
+            <button
+              onClick={() => { signOut(); setOpen(false) }}
+              className="flex items-center gap-3 px-4 py-2.5 w-full text-sm text-red-600 hover:bg-red-50 transition-colors"
+            >
               <LogOut className="w-4 h-4" />
               Sign out
             </button>

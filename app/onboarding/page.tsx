@@ -23,7 +23,7 @@ function Field({ label, required, children, hint }: { label: string; required?: 
 }
 
 const INPUT =
-  'w-full border border-gray-200 rounded-xl px-4 py-3 text-base text-gray-900 placeholder-gray-400 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-colors min-h-[44px]'
+  'w-full border border-gray-200 rounded-xl px-4 py-3 text-base text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-colors min-h-[44px]'
 
 // ── Step 1: Business type ───────────────────────────────────────────────────
 function StepBusinessType({ data, onNext }: { data: OnboardingState; onNext: (p: Partial<OnboardingState>) => void }) {
@@ -77,7 +77,7 @@ function StepBusinessType({ data, onNext }: { data: OnboardingState; onNext: (p:
         aria-pressed={selected}
       >
         {selected && (
-          <div className="absolute top-4 right-4 w-6 h-6 rounded-full flex items-center justify-center bg-green-500">
+          <div className="absolute top-4 right-4 w-6 h-6 rounded-full flex items-center justify-center bg-brand-500">
             <Check className="w-3.5 h-3.5 text-white" />
           </div>
         )}
@@ -105,7 +105,7 @@ function StepBusinessType({ data, onNext }: { data: OnboardingState; onNext: (p:
           title="Аялал, тур"
           subtitle="Тур аялал, экскурс, адвенчер"
           badge="🗺️"
-          colorClass="border-green-400 bg-green-50/50"
+          colorClass="border-brand-400 bg-brand-50/50"
         />
         <Card
           value="hotel"
@@ -135,7 +135,7 @@ function StepBusinessType({ data, onNext }: { data: OnboardingState; onNext: (p:
           type="button"
           disabled={!combo}
           onClick={() => combo && onNext({ providerTypes: toProviderTypes(combo) })}
-          className="w-full flex items-center justify-center gap-2 py-3.5 px-6 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold text-base rounded-xl transition-colors touch-manipulation"
+          className="w-full flex items-center justify-center gap-2 py-3.5 px-6 bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold text-base rounded-xl transition-colors touch-manipulation"
         >
           Дараагийн алхам <ArrowRight className="w-4 h-4" />
         </button>
@@ -251,7 +251,7 @@ function StepBasicInfo({ data, onNext, onBack }: { data: OnboardingState; onNext
         <button
           type="submit"
           disabled={!canProceed}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 py-3.5 px-6 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold text-base rounded-xl transition-colors touch-manipulation"
+          className="w-full sm:w-auto flex items-center justify-center gap-2 py-3.5 px-6 bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold text-base rounded-xl transition-colors touch-manipulation"
         >
           Дараагийн алхам <ArrowRight className="w-4 h-4" />
         </button>
@@ -322,7 +322,7 @@ function StepReview({
           type="button"
           disabled={saving}
           onClick={() => onFinish({})}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 py-3.5 px-8 bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white font-semibold text-base rounded-xl transition-colors touch-manipulation"
+          className="w-full sm:w-auto flex items-center justify-center gap-2 py-3.5 px-8 bg-brand-500 hover:bg-brand-600 disabled:bg-brand-300 text-white font-semibold text-base rounded-xl transition-colors touch-manipulation"
         >
           {saving ? (
             <>
@@ -413,7 +413,7 @@ export default function OnboardingPage() {
   if (status === 'loading' || checkingProvider) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-2 border-green-500 border-t-transparent" />
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-brand-500 border-t-transparent" />
       </div>
     )
   }

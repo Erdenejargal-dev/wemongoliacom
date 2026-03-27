@@ -30,31 +30,31 @@ export function BookingDetails({ trip }: BookingDetailsProps) {
         {/* Booking info */}
         <div className="bg-white rounded-xl border border-gray-100 p-4">
           <p className="text-xs font-bold text-gray-700 mb-3">Booking Information</p>
-          <Row label="Booking ID" value={<span className="font-mono text-green-700">{trip.bookingId}</span>} />
+          <Row label="Booking ID" value={<span className="font-mono text-brand-700">{trip.bookingId}</span>} />
           {trip.status === 'Cancelled' && trip.cancelReason && (
             <Row label="Reason" value={<span className="text-amber-700 text-left">{trip.cancelReason}</span>} />
           )}
           <Row label="Listing" value={trip.listingTitle} />
           <Row label="Location" value={trip.location} />
-          <Row label="Start Date" value={<span className="flex items-center gap-1 justify-end"><CalendarDays className="w-3 h-3 text-green-500" />{formatDate(trip.date)}</span>} />
+          <Row label="Start Date" value={<span className="flex items-center gap-1 justify-end"><CalendarDays className="w-3 h-3 text-brand-500" />{formatDate(trip.date)}</span>} />
           <Row
             label="Duration"
             value={`${trip.durationDays} ${trip.durationUnit}${trip.durationDays !== 1 ? 's' : ''}`}
           />
-          <Row label="Guests" value={<span className="flex items-center gap-1 justify-end"><Users className="w-3 h-3 text-green-500" />{trip.guests} guest{trip.guests !== 1 ? 's' : ''}</span>} />
-          <Row label="Price Paid" value={<span className="flex items-center gap-1 justify-end text-green-700"><Receipt className="w-3 h-3" />${trip.price.toLocaleString()}</span>} />
+          <Row label="Guests" value={<span className="flex items-center gap-1 justify-end"><Users className="w-3 h-3 text-brand-500" />{trip.guests} guest{trip.guests !== 1 ? 's' : ''}</span>} />
+          <Row label="Price Paid" value={<span className="flex items-center gap-1 justify-end text-brand-700"><Receipt className="w-3 h-3" />${trip.price.toLocaleString()}</span>} />
         </div>
 
         {/* Host info */}
         <div className="bg-white rounded-xl border border-gray-100 p-4">
           <p className="text-xs font-bold text-gray-700 mb-3">Provider</p>
           <div className="flex items-center gap-2.5 mb-4">
-            <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center">
-              <Building2 className="w-4 h-4 text-green-600" />
+            <div className="w-9 h-9 rounded-lg bg-brand-100 flex items-center justify-center">
+              <Building2 className="w-4 h-4 text-brand-600" />
             </div>
             <div>
               <p className="text-sm font-bold text-gray-900">{trip.hostName}</p>
-              <Link href={`/hosts/${trip.hostSlug}`} className="text-xs text-green-600 hover:text-green-700 font-medium transition-colors">
+              <Link href={`/hosts/${trip.hostSlug}`} className="text-xs text-brand-600 hover:text-brand-700 font-medium transition-colors">
                 View profile →
               </Link>
             </div>

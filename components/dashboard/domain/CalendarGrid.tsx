@@ -45,7 +45,7 @@ export function CalendarGrid() {
   ]
 
   const stateStyles: Record<DayState, string> = {
-    available: 'bg-green-50 text-green-700 hover:bg-green-100 border-green-200',
+    available: 'bg-brand-50 text-brand-700 hover:bg-brand-100 border-brand-200',
     booked:    'bg-blue-50 text-blue-700 border-blue-200 cursor-default',
     blocked:   'bg-red-50 text-red-600 border-red-200',
     empty:     '',

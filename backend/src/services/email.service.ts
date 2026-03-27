@@ -10,6 +10,12 @@ import {
   buildSmtpTest,
   type BookingEmailCommon,
 } from '../templates/booking-transactional'
+import {
+  buildVerificationSubmittedProvider,
+  buildVerificationSubmittedAdmin,
+  buildVerificationApproved,
+  buildVerificationRejected,
+} from '../templates/verification-emails'
 import { formatDateTime } from '../utils/email-format'
 
 // ── Payload types (public API for future callers) ───────────────────────────
@@ -111,6 +117,94 @@ export async function sendBookingCancelledToTraveler(to: string, payload: Bookin
 
 export async function sendBookingCancelledToProvider(to: string, payload: BookingCancelledProviderPayload): Promise<void> {
   await safeSend(to, () => buildBookingCancelledProvider(payload))
+}
+
+// ── Verification emails ──────────────────────────────────────────────────────
+
+const PLATFORM_ADMIN_EMAIL = 'info@wemongolia.com'
+
+/**
+ * Fire after provider submits for verification.
+ * Sends two emails:
+ *  1. Confirmation to provider (or owner if no provider email)
+ *  2. Alert to info@wemongolia.com
+ * Failures are logged only.
+ */
+export async function notifyVerificationSubmitted(params: {
+  providerEmail: string | null | undefined
+  ownerEmail:    string
+  ownerName:     string
+  businessName:  string
+  providerTypes: string[]
+}): Promise<void> {
+  if (!isSmtpConfigured()) return
+  const adminUrl = `${publicAppBase()}/admin/providers?verificationStatus=pending_review`
+  const to       = params.providerEmail?.trim() || params.ownerEmail.trim()
+
+  await Promise.all([
+    safeSend(to, () =>
+      buildVerificationSubmittedProvider({
+        ownerName:    params.ownerName,
+        businessName: params.businessName,
+        providerTypes: params.providerTypes,
+      }),
+    ),
+    safeSend(PLATFORM_ADMIN_EMAIL, () =>
+      buildVerificationSubmittedAdmin({
+        ownerName:    params.ownerName,
+        ownerEmail:   params.ownerEmail,
+        businessName: params.businessName,
+        providerTypes: params.providerTypes,
+        adminUrl,
+      }),
+    ),
+  ])
+}
+
+/**
+ * Fire after admin verifies a provider.
+ * Sends one email to the provider. Failures are logged only.
+ */
+export async function notifyVerificationApproved(params: {
+  providerEmail: string | null | undefined
+  ownerEmail:    string
+  ownerName:     string
+  businessName:  string
+}): Promise<void> {
+  if (!isSmtpConfigured()) return
+  const dashboardUrl = `${publicAppBase()}/dashboard/business`
+  const to = params.providerEmail?.trim() || params.ownerEmail.trim()
+  await safeSend(to, () =>
+    buildVerificationApproved({
+      ownerName:    params.ownerName,
+      businessName: params.businessName,
+      dashboardUrl,
+    }),
+  )
+}
+
+/**
+ * Fire after admin rejects a provider.
+ * Sends one email to the provider with the rejection reason. Failures are logged only.
+ */
+export async function notifyVerificationRejected(params: {
+  providerEmail:   string | null | undefined
+  ownerEmail:      string
+  ownerName:       string
+  businessName:    string
+  rejectionReason: string
+}): Promise<void> {
+  if (!isSmtpConfigured()) return
+  const profileSettingsUrl = `${publicAppBase()}/dashboard/business/settings`
+  const to = params.providerEmail?.trim() || params.ownerEmail.trim()
+  await safeSend(to, () =>
+    buildVerificationRejected({
+      ownerName:          params.ownerName,
+      businessName:       params.businessName,
+      rejectionReason:    params.rejectionReason,
+      profileSettingsUrl,
+    }),
+  )
 }
 
 /** Reserved for admin approval workflow — no email sent until product wires this. */

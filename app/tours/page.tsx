@@ -164,7 +164,7 @@ function ToursContent() {
                           onClick={() => { updateQueryAndUrl({ sortBy: opt.value }); setSortOpen(false) }}
                           className={`w-full text-left px-3 py-2.5 text-sm transition-colors ${
                             query.sortBy === opt.value
-                              ? 'bg-green-50 text-green-700 font-medium'
+                              ? 'bg-brand-50 text-brand-700 font-medium'
                               : 'text-gray-700 hover:bg-gray-50'
                           }`}>
                           {opt.label}

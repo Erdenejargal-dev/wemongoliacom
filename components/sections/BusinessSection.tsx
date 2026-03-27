@@ -3,7 +3,7 @@ import { Building2, Hotel, MapPin, Car, TrendingUp, Users, CheckCircle } from "l
 
 export default function BusinessSection() {
   return (
-    <section className="py-20 bg-gradient-to-br from-blue-50 via-white to-green-50">
+    <section className="py-20 bg-gradient-to-br from-blue-50 via-white to-brand-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-16">
@@ -64,23 +64,23 @@ export default function BusinessSection() {
             </p>
             <ul className="space-y-2">
               <li className="flex items-center gap-2 text-sm text-gray-700">
-                <CheckCircle className="w-4 h-4 text-green-500" />
+                <CheckCircle className="w-4 h-4 text-brand-500" />
                 Multiple room types
               </li>
               <li className="flex items-center gap-2 text-sm text-gray-700">
-                <CheckCircle className="w-4 h-4 text-green-500" />
+                <CheckCircle className="w-4 h-4 text-brand-500" />
                 Pricing management
               </li>
               <li className="flex items-center gap-2 text-sm text-gray-700">
-                <CheckCircle className="w-4 h-4 text-green-500" />
+                <CheckCircle className="w-4 h-4 text-brand-500" />
                 Photo galleries
               </li>
             </ul>
           </div>
 
           <div className="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition-shadow border border-gray-100">
-            <div className="w-14 h-14 bg-green-100 rounded-lg flex items-center justify-center mb-6">
-              <MapPin className="w-7 h-7 text-green-600" />
+            <div className="w-14 h-14 bg-brand-100 rounded-lg flex items-center justify-center mb-6">
+              <MapPin className="w-7 h-7 text-brand-600" />
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-3">Tours & Experiences</h3>
             <p className="text-gray-600 mb-4">
@@ -88,15 +88,15 @@ export default function BusinessSection() {
             </p>
             <ul className="space-y-2">
               <li className="flex items-center gap-2 text-sm text-gray-700">
-                <CheckCircle className="w-4 h-4 text-green-500" />
+                <CheckCircle className="w-4 h-4 text-brand-500" />
                 Day-by-day itineraries
               </li>
               <li className="flex items-center gap-2 text-sm text-gray-700">
-                <CheckCircle className="w-4 h-4 text-green-500" />
+                <CheckCircle className="w-4 h-4 text-brand-500" />
                 Group bookings
               </li>
               <li className="flex items-center gap-2 text-sm text-gray-700">
-                <CheckCircle className="w-4 h-4 text-green-500" />
+                <CheckCircle className="w-4 h-4 text-brand-500" />
                 Date management
               </li>
             </ul>
@@ -112,15 +112,15 @@ export default function BusinessSection() {
             </p>
             <ul className="space-y-2">
               <li className="flex items-center gap-2 text-sm text-gray-700">
-                <CheckCircle className="w-4 h-4 text-green-500" />
+                <CheckCircle className="w-4 h-4 text-brand-500" />
                 Fleet management
               </li>
               <li className="flex items-center gap-2 text-sm text-gray-700">
-                <CheckCircle className="w-4 h-4 text-green-500" />
+                <CheckCircle className="w-4 h-4 text-brand-500" />
                 Insurance details
               </li>
               <li className="flex items-center gap-2 text-sm text-gray-700">
-                <CheckCircle className="w-4 h-4 text-green-500" />
+                <CheckCircle className="w-4 h-4 text-brand-500" />
                 Booking calendar
               </li>
             </ul>
@@ -141,8 +141,8 @@ export default function BusinessSection() {
               <p className="text-sm text-gray-600">Reach travelers actively searching for Mongolia experiences</p>
             </div>
             <div className="text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-8 h-8 text-green-600" />
+              <div className="w-16 h-16 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-8 h-8 text-brand-600" />
               </div>
               <h4 className="font-semibold text-gray-900 mb-2">Easy Management</h4>
               <p className="text-sm text-gray-600">Simple dashboard to manage all your listings in one place</p>

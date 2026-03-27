@@ -62,7 +62,7 @@ export function FilterSidebar({ query, onUpdate, onReset, total }: FilterSidebar
           <input type="range" min={0} max={2000} step={50}
             value={query.priceRange[1]}
             onChange={e => onUpdate({ priceRange: [query.priceRange[0], Number(e.target.value)] })}
-            className="w-full accent-green-500" />
+            className="w-full accent-brand-500" />
           <div className="flex justify-between text-xs text-gray-500">
             <span>${query.priceRange[0]}</span>
             <span>${query.priceRange[1]}</span>
@@ -82,7 +82,7 @@ export function FilterSidebar({ query, onUpdate, onReset, total }: FilterSidebar
               min={new Date().toISOString().slice(0, 10)}
               value={query.fromDate || ''}
               onChange={e => onUpdate({ fromDate: e.target.value })}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-green-400 focus:ring-1 focus:ring-green-400/20"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-brand-400 focus:ring-1 focus:ring-brand-400/20"
             />
           </div>
           <div>
@@ -92,13 +92,13 @@ export function FilterSidebar({ query, onUpdate, onReset, total }: FilterSidebar
               min={query.fromDate || new Date().toISOString().slice(0, 10)}
               value={query.toDate || ''}
               onChange={e => onUpdate({ toDate: e.target.value })}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-green-400 focus:ring-1 focus:ring-green-400/20"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:border-brand-400 focus:ring-1 focus:ring-brand-400/20"
             />
           </div>
           {(query.fromDate || query.toDate) && (
             <button
               onClick={() => onUpdate({ fromDate: '', toDate: '' })}
-              className="text-xs text-green-600 hover:text-green-700"
+              className="text-xs text-brand-600 hover:text-brand-700"
             >
               Clear dates
             </button>
@@ -114,7 +114,7 @@ export function FilterSidebar({ query, onUpdate, onReset, total }: FilterSidebar
             <button key={r.value || 'all'} onClick={() => onUpdate({ region: r.value })}
               className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 ${
                 query.region === r.value
-                  ? 'bg-green-50 text-green-700 font-medium border border-green-200'
+                  ? 'bg-brand-50 text-brand-700 font-medium border border-brand-200'
                   : 'text-gray-600 hover:bg-gray-50'
               }`}>
               {r.value && <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />}
@@ -132,7 +132,7 @@ export function FilterSidebar({ query, onUpdate, onReset, total }: FilterSidebar
             <button key={d.value} onClick={() => onUpdate({ durationFilter: d.value })}
               className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                 query.durationFilter === d.value
-                  ? 'bg-green-50 text-green-700 font-medium border border-green-200'
+                  ? 'bg-brand-50 text-brand-700 font-medium border border-brand-200'
                   : 'text-gray-600 hover:bg-gray-50'
               }`}>
               {d.label}
@@ -154,7 +154,7 @@ export function FilterSidebar({ query, onUpdate, onReset, total }: FilterSidebar
                 key={g.value}
                 onClick={() => onUpdate({ guests: { adults: g.value, children: 0 } })}
                 className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                  isActive ? 'bg-green-50 text-green-700 border-green-200' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                  isActive ? 'bg-brand-50 text-brand-700 border-brand-200' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
                 }`}
               >
                 <Users className="w-3 h-3" />
@@ -173,7 +173,7 @@ export function FilterSidebar({ query, onUpdate, onReset, total }: FilterSidebar
             <button key={r} onClick={() => onUpdate({ rating: r })}
               className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm transition-colors ${
                 query.rating === r
-                  ? 'bg-green-50 text-green-700 font-medium border border-green-200'
+                  ? 'bg-brand-50 text-brand-700 font-medium border border-brand-200'
                   : 'text-gray-600 hover:bg-gray-50'
               }`}>
               {r === 0 ? 'Any rating' : (

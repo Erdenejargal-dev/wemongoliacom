@@ -52,7 +52,7 @@ export default function AnalyticsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-5 h-5 text-green-500 animate-spin" />
+        <Loader2 className="w-5 h-5 text-brand-500 animate-spin" />
       </div>
     )
   }
@@ -105,8 +105,8 @@ export default function AnalyticsPage() {
                   : '—'
               }
               icon={DollarSign}
-              iconColor="text-green-600"
-              iconBg="bg-green-50"
+              iconColor="text-brand-600"
+              iconBg="bg-brand-50"
             />
             <StatCard
               title="This Month"
@@ -146,7 +146,7 @@ export default function AnalyticsPage() {
               </div>
               <div>
                 <p className="text-xs font-medium text-gray-500">Completed</p>
-                <p className="text-lg font-semibold text-green-600">{analytics.bookings?.completed ?? 0}</p>
+                <p className="text-lg font-semibold text-brand-600">{analytics.bookings?.completed ?? 0}</p>
               </div>
               <div>
                 <p className="text-xs font-medium text-gray-500">Cancelled</p>

@@ -41,7 +41,7 @@ export function TourGrid({ tours, loading, loadingMore, error, total = 0, onLoad
         <p className="text-sm text-gray-500 max-w-sm mb-4">{error}</p>
         <button
           onClick={() => window.location.reload()}
-          className="text-sm font-medium text-green-600 hover:text-green-700 underline"
+          className="text-sm font-medium text-brand-600 hover:text-brand-700 underline"
         >
           Try again
         </button>
@@ -70,7 +70,7 @@ export function TourGrid({ tours, loading, loadingMore, error, total = 0, onLoad
         {onClearFilters && (
           <button
             onClick={onClearFilters}
-            className="text-sm font-medium text-green-600 hover:text-green-700 underline"
+            className="text-sm font-medium text-brand-600 hover:text-brand-700 underline"
           >
             Clear all filters
           </button>

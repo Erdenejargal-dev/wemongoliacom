@@ -1,13 +1,13 @@
 import type { TripStatus } from '@/lib/mock-data/trips'
 
 const styles: Record<TripStatus, string> = {
-  Upcoming:  'bg-green-50 text-green-700 border border-green-100',
+  Upcoming:  'bg-brand-50 text-brand-700 border border-brand-100',
   Completed: 'bg-blue-50 text-blue-700 border border-blue-100',
   Cancelled: 'bg-red-50 text-red-600 border border-red-100',
 }
 
 const dots: Record<TripStatus, string> = {
-  Upcoming:  'bg-green-500',
+  Upcoming:  'bg-brand-500',
   Completed: 'bg-blue-500',
   Cancelled: 'bg-red-400',
 }

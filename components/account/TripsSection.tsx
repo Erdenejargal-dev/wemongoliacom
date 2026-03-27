@@ -9,7 +9,7 @@ interface TripsSectionProps {
 }
 
 const statusStyle: Record<TripStatus, string> = {
-  Upcoming:  'bg-green-50 text-green-700 border-green-100',
+  Upcoming:  'bg-brand-50 text-brand-700 border-brand-100',
   Completed: 'bg-blue-50 text-blue-700 border-blue-100',
   Cancelled: 'bg-red-50 text-red-600 border-red-100',
 }
@@ -25,7 +25,7 @@ export function TripsSection({ trips }: TripsSectionProps) {
         <Compass className="w-10 h-10 text-gray-300 mx-auto mb-3" />
         <p className="text-gray-500 font-medium text-sm mb-1">No trips yet</p>
         <p className="text-gray-400 text-xs mb-4">Your booked tours will appear here.</p>
-        <Link href="/tours" className="text-sm text-green-600 hover:text-green-700 font-semibold underline">Browse Tours</Link>
+        <Link href="/tours" className="text-sm text-brand-600 hover:text-brand-700 font-semibold underline">Browse Tours</Link>
       </div>
     )
   }
@@ -50,8 +50,8 @@ export function TripsSection({ trips }: TripsSectionProps) {
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
-                  <span className="flex items-center gap-1"><CalendarDays className="w-3.5 h-3.5 text-green-500" />{formatDate(trip.date)}</span>
-                  <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5 text-green-500" />{trip.guests} guest{trip.guests !== 1 ? 's' : ''}</span>
+                  <span className="flex items-center gap-1"><CalendarDays className="w-3.5 h-3.5 text-brand-500" />{formatDate(trip.date)}</span>
+                  <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5 text-brand-500" />{trip.guests} guest{trip.guests !== 1 ? 's' : ''}</span>
                 </div>
               </div>
               <div className="flex items-center justify-between flex-wrap gap-2">
@@ -60,7 +60,7 @@ export function TripsSection({ trips }: TripsSectionProps) {
                   <p className="text-xs text-gray-400">Total: <span className="font-bold text-gray-700">${trip.price.toLocaleString()}</span></p>
                 </div>
                 <Link href={`/tours/${trip.tourSlug}`}
-                  className="flex items-center gap-1.5 text-xs text-green-600 hover:text-green-700 font-semibold transition-colors">
+                  className="flex items-center gap-1.5 text-xs text-brand-600 hover:text-brand-700 font-semibold transition-colors">
                   <ExternalLink className="w-3.5 h-3.5" />View Tour
                 </Link>
               </div>

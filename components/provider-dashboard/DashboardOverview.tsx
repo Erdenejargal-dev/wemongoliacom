@@ -1,10 +1,9 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
   BookOpen,
-  DollarSign,
-  Star,
   CalendarCheck,
   AlertCircle,
   CheckCircle2,
@@ -16,11 +15,15 @@ import {
 } from 'lucide-react'
 import { SECTION_LABELS, type ProviderType } from '@/lib/provider-menu'
 import type { ProviderBooking, ProviderAnalytics } from '@/lib/api/provider'
+import { VerificationBanner } from './VerificationBanner'
 
 interface DashboardOverviewProps {
   providerName?: string
   providerDescription?: string | null
   providerTypes?: ProviderType[]
+  verificationStatus?: 'unverified' | 'pending_review' | 'verified' | 'rejected'
+  rejectionReason?: string | null
+  token?: string
   analytics: ProviderAnalytics | null
   recentBookings: ProviderBooking[]
 }
@@ -49,9 +52,20 @@ export function DashboardOverview({
   providerName,
   providerDescription,
   providerTypes = ['tour_operator'],
+  verificationStatus,
+  rejectionReason,
+  token,
   analytics,
   recentBookings,
 }: DashboardOverviewProps) {
+  const [currentVerificationStatus, setCurrentVerificationStatus] = useState(verificationStatus)
+
+  // Sync local state if parent re-renders with fresh profile data
+  // (e.g. after token refresh or if parent refetches the profile)
+  useEffect(() => {
+    setCurrentVerificationStatus(verificationStatus)
+  }, [verificationStatus])
+
   const pendingCount = analytics?.bookings?.pending ?? 0
   const hasIncompleteProfile =
     !providerDescription || providerDescription.trim().length < 50
@@ -72,7 +86,7 @@ export function DashboardOverview({
             {providerTypes.map(t => (
               <span
                 key={t}
-                className="text-[10px] font-semibold text-green-300 bg-green-500/15 border border-green-500/20 px-2.5 py-1 rounded-full"
+                className="text-[10px] font-semibold text-brand-300 bg-brand-500/15 border border-brand-500/20 px-2.5 py-1 rounded-full"
               >
                 {t === 'tour_operator' ? '🗺️' : t === 'car_rental' ? '🚐' : '🏕️'} {SECTION_LABELS[t]}
               </span>
@@ -86,6 +100,16 @@ export function DashboardOverview({
           </p>
         </div>
       </div>
+
+      {/* ── Verification status banner ─────────────────────────────── */}
+      {currentVerificationStatus && token && (
+        <VerificationBanner
+          verificationStatus={currentVerificationStatus}
+          token={token}
+          rejectionReason={rejectionReason}
+          onStatusChange={setCurrentVerificationStatus}
+        />
+      )}
 
       {/* ── Action alerts ──────────────────────────────────────────── */}
       {(pendingCount > 0 || hasIncompleteProfile) && (
@@ -123,7 +147,7 @@ export function DashboardOverview({
 
       {/* ── Status bar — no alerts ─────────────────────────────────── */}
       {pendingCount === 0 && !hasIncompleteProfile && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-green-800">
+        <div className="flex items-center gap-3 px-4 py-3 bg-brand-50 border border-brand-200 rounded-xl text-brand-800">
           <CheckCircle2 className="w-5 h-5 shrink-0" />
           <p className="font-medium text-sm">
             {recentBookings.length > 0
@@ -146,7 +170,7 @@ export function DashboardOverview({
             label="Revenue"
             value={analytics.revenue?.total != null ? `$${analytics.revenue.total.toLocaleString()}` : '—'}
             sub={analytics.revenue?.thisMonth != null ? `$${analytics.revenue.thisMonth.toLocaleString()} this month` : undefined}
-            accent="text-green-600"
+            accent="text-brand-600"
           />
           <StatCard
             label="This Month"
@@ -169,10 +193,10 @@ export function DashboardOverview({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Link
             href="/dashboard/business/services"
-            className="flex flex-col items-center gap-2 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-green-200 transition-all text-center group"
+            className="flex flex-col items-center gap-2 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-brand-200 transition-all text-center group"
           >
-            <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center group-hover:bg-green-100 transition-colors">
-              <Plus className="w-5 h-5 text-green-600" />
+            <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center group-hover:bg-brand-100 transition-colors">
+              <Plus className="w-5 h-5 text-brand-600" />
             </div>
             <span className="text-xs font-semibold text-gray-700">Add Tour</span>
           </Link>
@@ -213,7 +237,7 @@ export function DashboardOverview({
           {recentBookings.length > 0 && (
             <Link
               href="/dashboard/business/bookings"
-              className="text-xs font-medium text-green-600 hover:text-green-700 flex items-center gap-1"
+              className="text-xs font-medium text-brand-600 hover:text-brand-700 flex items-center gap-1"
             >
               View all <ArrowRight className="w-3 h-3" />
             </Link>
@@ -231,7 +255,7 @@ export function DashboardOverview({
               })
               const statusColors: Record<string, string> = {
                 pending: 'bg-amber-100 text-amber-700',
-                confirmed: 'bg-green-100 text-green-700',
+                confirmed: 'bg-brand-100 text-brand-700',
                 completed: 'bg-blue-100 text-blue-700',
                 cancelled: 'bg-red-100 text-red-700',
               }
@@ -266,7 +290,7 @@ export function DashboardOverview({
             </p>
             <Link
               href="/dashboard/business/services"
-              className="inline-flex items-center gap-1.5 mt-4 text-xs font-semibold text-green-600 hover:text-green-700"
+              className="inline-flex items-center gap-1.5 mt-4 text-xs font-semibold text-brand-600 hover:text-brand-700"
             >
               <Compass className="w-3.5 h-3.5" /> Manage your listings
             </Link>

@@ -125,7 +125,7 @@ const TourCard = ({ tour }: { tour: TourCardModel }) => {
           {/* Difficulty & Reviews Row */}
           <div className="flex items-center justify-between mb-2">
             <span className={`inline-block px-2 py-0.5 text-[10px] font-bold uppercase ${
-              tour.difficulty === 'easy' ? 'bg-green-600 text-white' :
+              tour.difficulty === 'easy' ? 'bg-brand-600 text-white' :
               tour.difficulty === 'moderate' ? 'bg-yellow-500 text-white' :
               tour.difficulty === 'challenging' ? 'bg-orange-500 text-white' :
               'bg-red-600 text-white'

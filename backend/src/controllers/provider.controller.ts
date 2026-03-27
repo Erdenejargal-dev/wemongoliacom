@@ -99,6 +99,15 @@ export const updateDepartureSchema = z.object({
 
 // ─── Handlers ─────────────────────────────────────────────────────────────
 
+export async function submitVerification(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await providerService.submitForVerification(req.user!.userId)
+    return ok(res, result, 'Verification request submitted. We will review your profile shortly.')
+  } catch (err) {
+    next(err)
+  }
+}
+
 export async function getMyProfile(req: Request, res: Response, next: NextFunction) {
   try {
     const result = await providerService.getMyProvider(req.user!.userId)

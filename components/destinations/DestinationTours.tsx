@@ -20,7 +20,7 @@ export function DestinationTours({ destinationSlug, destinationName }: Destinati
           Tours in {destinationName}
         </h2>
         <Link href={`/tours?destination=${encodeURIComponent(destinationName)}`}
-          className="flex items-center gap-1 text-sm text-green-600 hover:text-green-700 font-semibold transition-colors">
+          className="flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 font-semibold transition-colors">
           View all
           <ArrowRight className="w-3.5 h-3.5" />
         </Link>
@@ -42,7 +42,7 @@ function TourMiniCard({ tour }: { tour: Tour }) {
     luxury:      'bg-yellow-50 text-yellow-600',
     budget:      'bg-blue-50 text-blue-600',
     photography: 'bg-pink-50 text-pink-600',
-    trekking:    'bg-green-50 text-green-600',
+    trekking:    'bg-brand-50 text-brand-600',
   }
 
   return (
@@ -66,7 +66,7 @@ function TourMiniCard({ tour }: { tour: Tour }) {
 
       {/* Content */}
       <div className="p-4">
-        <h3 className="text-sm font-semibold text-gray-900 leading-snug line-clamp-2 mb-2 group-hover:text-green-700 transition-colors">
+        <h3 className="text-sm font-semibold text-gray-900 leading-snug line-clamp-2 mb-2 group-hover:text-brand-700 transition-colors">
           {tour.title}
         </h3>
 

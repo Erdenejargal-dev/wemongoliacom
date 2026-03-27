@@ -38,7 +38,7 @@ export default function InvestSection() {
           className="text-3xl sm:text-4xl md:text-5xl font-black mb-8 sm:mb-10 md:mb-12"
         >
           <span className="text-gray-900">WE MON</span>
-          <span className="text-green-500">GO</span>
+          <span className="text-brand-500">GO</span>
           <span className="text-gray-900">LIA</span>
           <br />
           <span className="text-red-500">SERVICES</span>
@@ -63,7 +63,7 @@ export default function InvestSection() {
               >
                 <h4 className="font-black text-sm mb-2">
                   <span className="text-gray-900">WE MON</span>
-                  <span className="text-green-500">GO</span>
+                  <span className="text-brand-500">GO</span>
                   <span className="text-gray-900">LIA</span>
                   <span className="text-gray-900 ml-1">COMPREHENSIVE INSURANCE</span>
                 </h4>
@@ -81,7 +81,7 @@ export default function InvestSection() {
                   NO WAITING TIMES
                   <br />
                   <span className="text-gray-900">INSTANT</span>
-                  <span className="text-green-500"> BOOKING</span>
+                  <span className="text-brand-500"> BOOKING</span>
                 </h4>
                 <p className="text-gray-600 text-sm">Quick and efficient travel planning without delays. Your adventure starts immediately.</p>
               </motion.div>
@@ -95,7 +95,7 @@ export default function InvestSection() {
               >
                 <h4 className="font-black text-sm mb-2 text-gray-900">
                   <span className="text-gray-900">TAILORED</span>
-                  <span className="text-green-900"> EXPERIENCES</span>
+                  <span className="text-brand-900"> EXPERIENCES</span>
                   <span className="text-gray-900 ml-1">FOR EVERY NEED</span>
                 </h4>
                 <p className="text-gray-800 text-sm">From extreme adventures to luxury retreats, we customize every detail to match your preferences.</p>
@@ -133,7 +133,7 @@ export default function InvestSection() {
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent p-4 flex flex-col justify-end">
                 <h4 className="text-white font-bold text-xs">
                   <span className="text-white">MON</span>
-                  <span className="text-green-500">GO</span>
+                  <span className="text-brand-500">GO</span>
                   <span className="text-white">LIA</span>
                 </h4>
                 <p className="text-white font-black text-sm">{card.title}</p>
@@ -165,7 +165,7 @@ export default function InvestSection() {
           <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm relative">
             <h3 className="text-xl font-black mb-4">
               <span className="text-gray-900">WE MON</span>
-              <span className="text-green-500">GO</span>
+              <span className="text-brand-500">GO</span>
               <span className="text-gray-900">LIA</span>
               <span className="text-gray-900 ml-2">YOUR TRUSTED TRAVEL PARTNER</span>
             </h3>
@@ -176,7 +176,7 @@ export default function InvestSection() {
 
             <a
               href="#travel"
-              className="inline-flex items-center gap-2 text-gray-900 font-semibold hover:text-green-500 transition-colors"
+              className="inline-flex items-center gap-2 text-gray-900 font-semibold hover:text-brand-500 transition-colors"
             >
               Plan Your Journey
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

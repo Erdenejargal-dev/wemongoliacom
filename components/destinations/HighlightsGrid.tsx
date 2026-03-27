@@ -28,7 +28,7 @@ export function HighlightsGrid({ highlights }: HighlightsGridProps) {
               <p className="text-white/80 text-xs leading-relaxed line-clamp-2">{h.description}</p>
             </div>
             {/* Number badge */}
-            <div className="absolute top-3 left-3 w-7 h-7 rounded-full bg-green-500 text-white text-xs font-bold flex items-center justify-center shadow">
+            <div className="absolute top-3 left-3 w-7 h-7 rounded-full bg-brand-500 text-white text-xs font-bold flex items-center justify-center shadow">
               {i + 1}
             </div>
           </div>

@@ -37,8 +37,8 @@ export function DestinationAutocomplete({ value, onChange, placeholder = 'Where 
 
   return (
     <div ref={ref} className={`relative ${className}`}>
-      <div className={`flex items-center gap-2 ${focused ? 'ring-2 ring-green-400/20 border-green-400' : 'border-gray-200'} border rounded-xl px-3 py-2.5 bg-white transition-all`}>
-        <MapPin className="w-4 h-4 text-green-500 shrink-0" />
+      <div className={`flex items-center gap-2 ${focused ? 'ring-2 ring-brand-400/20 border-brand-400' : 'border-gray-200'} border rounded-xl px-3 py-2.5 bg-white transition-all`}>
+        <MapPin className="w-4 h-4 text-brand-500 shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Where</p>
           <input
@@ -65,7 +65,7 @@ export function DestinationAutocomplete({ value, onChange, placeholder = 'Where 
               <button
                 key={dest}
                 onMouseDown={() => { onChange(dest); setOpen(false) }}
-                className={`flex items-center gap-2.5 w-full px-3 py-2.5 text-sm rounded-lg text-left transition-colors ${i === activeIdx ? 'bg-green-50 text-green-700' : 'hover:bg-gray-50 text-gray-700'}`}
+                className={`flex items-center gap-2.5 w-full px-3 py-2.5 text-sm rounded-lg text-left transition-colors ${i === activeIdx ? 'bg-brand-50 text-brand-700' : 'hover:bg-gray-50 text-gray-700'}`}
               >
                 <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                 {dest}

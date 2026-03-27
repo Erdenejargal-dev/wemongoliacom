@@ -26,7 +26,7 @@ export default async function DestinationPage({ params }: Props) {
         {/* About */}
         <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
           <div className="max-w-3xl">
-            <span className="text-xs font-bold text-green-600 uppercase tracking-widest">About</span>
+            <span className="text-xs font-bold text-brand-600 uppercase tracking-widest">About</span>
             <h2 className="text-2xl font-bold text-gray-900 mt-2 mb-4">
               Discover {destination.name}
             </h2>
@@ -73,7 +73,7 @@ export default async function DestinationPage({ params }: Props) {
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/75 to-black/40" />
           <div className="relative px-8 py-12 max-w-lg">
-            <p className="text-green-400 text-xs font-bold uppercase tracking-widest mb-2">Plan Your Trip</p>
+            <p className="text-brand-400 text-xs font-bold uppercase tracking-widest mb-2">Plan Your Trip</p>
             <h3 className="text-2xl font-bold text-white mb-3">
               Ready to explore {destination.name}?
             </h3>
@@ -81,7 +81,7 @@ export default async function DestinationPage({ params }: Props) {
               Browse our hand-curated tours and find the perfect adventure for your travel style.
             </p>
             <a href={`/tours?destination=${encodeURIComponent(destination.name)}`}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-bold text-sm rounded-xl transition-colors shadow-lg">
+              className="inline-flex items-center gap-2 px-6 py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm rounded-xl transition-colors shadow-lg">
               Browse {destination.name} Tours
             </a>
           </div>

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { Fragment } from 'react'
+import { WeMongoliaLogo } from '@/components/brand/WeMongoliaLogo'
 
 const SECTIONS = [
   {
@@ -73,16 +74,12 @@ function NavColumn({ heading, links }: (typeof SECTIONS)[number]) {
 
 export default function Footer() {
   return (
-    <footer className="bg-[#faf9f7] antialiased selection:bg-[#1db681]/10">
+    <footer className="bg-[#faf9f7] antialiased selection:bg-[#0285C9]/10">
 
       {/* ═══ Layer 1 — Brand ═══════════════════════════════ */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="pt-20 sm:pt-24 pb-14 sm:pb-16">
-          <img
-            src="/wemongolia.svg"
-            alt="WeMongolia"
-            className="h-8 w-auto"
-          />
+          <WeMongoliaLogo className="h-8 w-auto" />
           <div className="mt-10 max-w-md">
             <p className="text-[18px] leading-[1.55] font-normal text-[#3a3935] tracking-[-0.015em]">
               A more thoughtful way to explore Mongolia.

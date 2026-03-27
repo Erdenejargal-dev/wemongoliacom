@@ -34,7 +34,7 @@ export default function FindOutMoreSection() {
           className="text-3xl md:text-4xl font-black mb-12"
         >
           <span className="text-gray-900">MON</span>
-          <span className="text-green-500">GO</span>
+          <span className="text-brand-500">GO</span>
           <span className="text-gray-900">LIA</span>
           <br />
           <span className="text-orange-500">FIND OUT MORE</span>
@@ -72,7 +72,7 @@ export default function FindOutMoreSection() {
                   animate={isInView ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.8 }}
                   transition={{ duration: 0.3, delay: 0.4 + index * 0.05 }}
                   whileHover={{ scale: 1.05 }}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:border-green-500 hover:text-green-500 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:border-brand-500 hover:text-brand-500 transition-colors"
                 >
                   {link.title}
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -113,7 +113,7 @@ export default function FindOutMoreSection() {
                   animate={isInView ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.8 }}
                   transition={{ duration: 0.3, delay: 0.4 + index * 0.1 }}
                   whileHover={{ scale: 1.05 }}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:border-green-500 hover:text-green-500 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm font-medium text-gray-700 hover:border-brand-500 hover:text-brand-500 transition-colors"
                 >
                   {link.title}
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowRight } from 'lucide-react'
 import { auth } from '@/lib/auth'
 import { getHostCTAHref } from '@/lib/navigation'
@@ -17,14 +18,18 @@ export default async function CreateBusinessPage() {
   const ctaHref = getHostCTAHref(session)
   const signInHref = session ? '/' : '/auth/login?callbackUrl=%2Fonboarding'
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-green-950 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-brand-950 flex flex-col">
       {/* Nav */}
       <header className="px-6 py-5 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-green-500 rounded-lg flex items-center justify-center">
-            <span className="text-white text-xs font-bold">W</span>
-          </div>
-          <span className="text-sm font-bold text-white">WeMongolia</span>
+        <Link href="/" className="flex items-center gap-2 min-w-0">
+          <Image
+            src="/brand/wemongolia-white.png"
+            alt="WeMongolia"
+            width={180}
+            height={36}
+            className="h-8 w-auto max-w-[200px] object-contain object-left"
+            priority
+          />
         </Link>
         <Link href={signInHref} className="text-xs text-white/60 hover:text-white transition-colors">{session ? 'Home' : 'Sign in'}</Link>
       </header>
@@ -35,7 +40,7 @@ export default async function CreateBusinessPage() {
 
             {/* Left — copy */}
             <div>
-              <div className="inline-flex items-center gap-2 bg-green-500/20 text-green-400 text-xs font-bold px-3 py-1.5 rounded-full mb-6">
+              <div className="inline-flex items-center gap-2 bg-brand-500/20 text-brand-400 text-xs font-bold px-3 py-1.5 rounded-full mb-6">
                 🚀 For local providers
               </div>
               <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4 leading-tight">
@@ -49,14 +54,14 @@ export default async function CreateBusinessPage() {
               <div className="space-y-3 mb-8">
                 {STEPS.map((s, i) => (
                   <div key={s} className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-full bg-green-500 text-white text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</div>
+                    <div className="w-6 h-6 rounded-full bg-brand-500 text-white text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</div>
                     <span className="text-sm text-white/80">{s}</span>
                   </div>
                 ))}
               </div>
 
               <Link href={ctaHref}
-                className="inline-flex items-center gap-2 px-7 py-3.5 bg-green-500 hover:bg-green-400 text-white font-bold text-sm rounded-xl transition-colors shadow-xl shadow-green-900/30">
+                className="inline-flex items-center gap-2 px-7 py-3.5 bg-brand-500 hover:bg-brand-400 text-white font-bold text-sm rounded-xl transition-colors shadow-xl shadow-brand-900/30">
                 Get Started Free <ArrowRight className="w-4 h-4" />
               </Link>
               <p className="text-white/30 text-xs mt-3">Free to set up · No credit card required</p>

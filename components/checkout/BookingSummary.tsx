@@ -37,23 +37,23 @@ export function BookingSummary({
           </div>
         )}
         <div className="p-5">
-          <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">Your tour</p>
+          <p className="text-xs font-semibold text-brand-600 uppercase tracking-wide mb-1">Your tour</p>
           <h3 className="text-base font-bold text-gray-900 leading-tight mb-3">{tourTitle}</h3>
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm text-gray-600">
-              <MapPin className="w-3.5 h-3.5 text-green-500 shrink-0" />
+              <MapPin className="w-3.5 h-3.5 text-brand-500 shrink-0" />
               {tourLocation}
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Clock className="w-3.5 h-3.5 text-green-500 shrink-0" />
+              <Clock className="w-3.5 h-3.5 text-brand-500 shrink-0" />
               {tourDuration}
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
-              <CalendarDays className="w-3.5 h-3.5 text-green-500 shrink-0" />
+              <CalendarDays className="w-3.5 h-3.5 text-brand-500 shrink-0" />
               {formatDate(date)}
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Users className="w-3.5 h-3.5 text-green-500 shrink-0" />
+              <Users className="w-3.5 h-3.5 text-brand-500 shrink-0" />
               {guests} guest{guests !== 1 ? 's' : ''}
             </div>
           </div>
@@ -87,19 +87,19 @@ export function BookingSummary({
       </div>
 
       {/* Trust badges */}
-      <div className="bg-green-50 rounded-2xl p-4 space-y-2">
-        <div className="flex items-center gap-2 text-xs text-green-800 font-medium">
-          <Shield className="w-3.5 h-3.5 text-green-600 shrink-0" />
+      <div className="bg-brand-50 rounded-2xl p-4 space-y-2">
+        <div className="flex items-center gap-2 text-xs text-brand-800 font-medium">
+          <Shield className="w-3.5 h-3.5 text-brand-600 shrink-0" />
           Free cancellation up to 7 days before your tour
         </div>
-        <div className="flex items-center gap-2 text-xs text-green-800 font-medium">
-          <svg className="w-3.5 h-3.5 text-green-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+        <div className="flex items-center gap-2 text-xs text-brand-800 font-medium">
+          <svg className="w-3.5 h-3.5 text-brand-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           Instant booking confirmation
         </div>
-        <div className="flex items-center gap-2 text-xs text-green-800 font-medium">
-          <svg className="w-3.5 h-3.5 text-green-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+        <div className="flex items-center gap-2 text-xs text-brand-800 font-medium">
+          <svg className="w-3.5 h-3.5 text-brand-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
           </svg>
           24/7 traveler support

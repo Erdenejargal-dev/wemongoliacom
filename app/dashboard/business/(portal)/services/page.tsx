@@ -28,9 +28,9 @@ function ListingTypeCard({
   return (
     <Link
       href={href}
-      className="group flex items-center gap-4 p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-green-200 transition-all"
+      className="group flex items-center gap-4 p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-brand-200 transition-all"
     >
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-green-50 text-green-600">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
         <Icon className="h-6 w-6" />
       </div>
       <div className="min-w-0 flex-1">
@@ -42,7 +42,7 @@ function ListingTypeCard({
         </div>
         <p className="mt-0.5 text-sm text-gray-500">{description}</p>
       </div>
-      <ChevronRight className="h-5 w-5 shrink-0 text-gray-400 transition-all group-hover:translate-x-0.5 group-hover:text-green-600" />
+      <ChevronRight className="h-5 w-5 shrink-0 text-gray-400 transition-all group-hover:translate-x-0.5 group-hover:text-brand-600" />
     </Link>
   )
 }
@@ -98,7 +98,7 @@ export default function ServicesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="h-5 w-5 text-green-500 animate-spin" />
+        <Loader2 className="h-5 w-5 text-brand-500 animate-spin" />
       </div>
     )
   }

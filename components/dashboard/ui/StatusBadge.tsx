@@ -16,14 +16,14 @@ type Variant =
   | 'partial'
 
 const variantStyles: Record<Variant, string> = {
-  confirmed:  'bg-green-50  text-green-700  border-green-200',
+  confirmed:  'bg-brand-50  text-brand-700  border-brand-200',
   completed:  'bg-blue-50   text-blue-700   border-blue-200',
   pending:    'bg-yellow-50 text-yellow-700 border-yellow-200',
   cancelled:  'bg-red-50    text-red-700    border-red-200',
-  active:     'bg-green-50  text-green-700  border-green-200',
+  active:     'bg-brand-50  text-brand-700  border-brand-200',
   draft:      'bg-gray-50   text-gray-600   border-gray-200',
   paused:     'bg-orange-50 text-orange-700 border-orange-200',
-  paid:       'bg-green-50  text-green-700  border-green-200',
+  paid:       'bg-brand-50  text-brand-700  border-brand-200',
   unpaid:     'bg-red-50    text-red-700    border-red-200',
   authorized: 'bg-yellow-50 text-yellow-700 border-yellow-200',
   failed:     'bg-red-50    text-red-700    border-red-200',

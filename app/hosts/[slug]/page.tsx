@@ -25,7 +25,7 @@ export default async function HostPage({ params }: Props) {
     luxury:      'bg-yellow-50 text-yellow-600',
     budget:      'bg-blue-50 text-blue-600',
     photography: 'bg-pink-50 text-pink-600',
-    trekking:    'bg-green-50 text-green-600',
+    trekking:    'bg-brand-50 text-brand-600',
   }
 
   return (
@@ -67,7 +67,7 @@ export default async function HostPage({ params }: Props) {
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                 <div className="flex items-center justify-between mb-5">
                   <h2 className="text-base font-bold text-gray-900">Tours by {host.name}</h2>
-                  <Link href="/tours" className="text-xs text-green-600 hover:text-green-700 font-semibold transition-colors">
+                  <Link href="/tours" className="text-xs text-brand-600 hover:text-brand-700 font-semibold transition-colors">
                     Browse all tours →
                   </Link>
                 </div>
@@ -85,7 +85,7 @@ export default async function HostPage({ params }: Props) {
                         </div>
                       </div>
                       <div className="p-3">
-                        <p className="text-sm font-semibold text-gray-900 leading-tight line-clamp-2 mb-2 group-hover:text-green-700 transition-colors">{tour.title}</p>
+                        <p className="text-sm font-semibold text-gray-900 leading-tight line-clamp-2 mb-2 group-hover:text-brand-700 transition-colors">{tour.title}</p>
                         <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
                           <span className="flex items-center gap-0.5"><Clock className="w-3 h-3" />{tour.duration}</span>
                           <span className="flex items-center gap-0.5"><Users className="w-3 h-3" />Max {tour.maxGuests}</span>

@@ -7,6 +7,7 @@ import {
   CreditCard, BarChart2, Settings, Compass, ChevronRight, X
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { WeMongoliaLogo } from '@/components/brand/WeMongoliaLogo'
 
 const navItems = [
   { href: '/dashboard/business',           label: 'Overview',   icon: LayoutDashboard },
@@ -42,11 +43,8 @@ export function Sidebar({ open = true, onClose }: SidebarProps) {
       )}>
         {/* Logo */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center">
-              <span className="text-white text-xs font-bold">WM</span>
-            </div>
-            <span className="text-sm font-semibold text-gray-900">We Mongolia</span>
+          <Link href="/" className="flex items-center gap-2.5 min-w-0">
+            <WeMongoliaLogo className="h-8 w-auto max-w-[140px]" />
           </Link>
           {onClose && (
             <button onClick={onClose} className="md:hidden p-1 rounded-lg hover:bg-gray-100">
@@ -86,7 +84,7 @@ export function Sidebar({ open = true, onClose }: SidebarProps) {
         {/* Footer */}
         <div className="px-4 py-4 border-t border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white text-xs font-semibold">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-blue-500 flex items-center justify-center text-white text-xs font-semibold">
               B
             </div>
             <div className="flex-1 min-w-0">

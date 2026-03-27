@@ -3,6 +3,7 @@
 import { Menu } from 'lucide-react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
+import { WeMongoliaLogo } from '@/components/brand/WeMongoliaLogo'
 
 interface DashboardHeaderProps {
   onMenuClick: () => void
@@ -25,7 +26,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
       </button>
 
       <div className="hidden md:flex items-center gap-2">
-        <img src="/wemongolia.svg" alt="WeMongolia" className="h-6 w-auto opacity-40" />
+        <WeMongoliaLogo className="h-6 w-auto opacity-90" />
         <span className="text-xs font-medium text-gray-400">Business Portal</span>
       </div>
 
@@ -34,7 +35,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
           href="/dashboard/business/settings"
           className="flex items-center gap-2 p-1 pr-3 rounded-xl hover:bg-gray-50 transition-colors"
         >
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-white text-xs font-bold">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white text-xs font-bold">
             {initials}
           </div>
           <span className="text-sm font-medium text-gray-700 hidden sm:block max-w-[120px] truncate">

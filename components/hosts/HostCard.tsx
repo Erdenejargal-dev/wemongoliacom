@@ -13,7 +13,7 @@ const typeColor: Record<string, string> = {
   company:    'bg-blue-50 text-blue-700',
   guide:      'bg-purple-50 text-purple-700',
   driver:     'bg-orange-50 text-orange-700',
-  experience: 'bg-green-50 text-green-700',
+  experience: 'bg-brand-50 text-brand-700',
 }
 
 interface HostCardProps {
@@ -53,7 +53,7 @@ export function HostCard({ host, featured = false }: HostCardProps) {
           </div>
           <div className="flex-1 min-w-0 mt-6">
             <div className="flex items-start gap-1.5 flex-wrap">
-              <h3 className="text-sm font-bold text-gray-900 leading-tight group-hover:text-green-700 transition-colors">
+              <h3 className="text-sm font-bold text-gray-900 leading-tight group-hover:text-brand-700 transition-colors">
                 {host.name}
               </h3>
             </div>
@@ -65,7 +65,7 @@ export function HostCard({ host, featured = false }: HostCardProps) {
 
         {/* Location */}
         <div className="flex items-center gap-1 text-xs text-gray-500 mb-2">
-          <MapPin className="w-3 h-3 text-green-500 shrink-0" />
+          <MapPin className="w-3 h-3 text-brand-500 shrink-0" />
           {host.location}
         </div>
 
@@ -82,7 +82,7 @@ export function HostCard({ host, featured = false }: HostCardProps) {
             <span className="text-xs text-gray-400">({host.reviewsCount})</span>
           </div>
           <div className="flex items-center gap-1 text-xs text-gray-500">
-            <Compass className="w-3 h-3 text-green-500" />
+            <Compass className="w-3 h-3 text-brand-500" />
             <span className="font-semibold text-gray-700">{host.totalTours}</span>
             <span>tour{host.totalTours !== 1 ? 's' : ''}</span>
           </div>

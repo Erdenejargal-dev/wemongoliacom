@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { confirmPasswordReset } from '@/lib/api/auth-password'
 import { ApiError } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
+import { WeMongoliaLogo } from '@/components/brand/WeMongoliaLogo'
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams()
@@ -50,6 +51,9 @@ function ResetPasswordForm() {
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center px-4 py-16">
       <div className="w-full max-w-md space-y-6">
+        <Link href="/" className="inline-block">
+          <WeMongoliaLogo className="h-8 w-auto" />
+        </Link>
         <Link
           href="/auth/login"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900"
@@ -65,10 +69,10 @@ function ResetPasswordForm() {
 
         {done ? (
           <div className="space-y-4">
-            <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+            <div className="rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-800">
               Your password has been updated. You can sign in with your new password.
             </div>
-            <Button asChild className="h-11 w-full rounded-xl bg-[#1db681] font-semibold">
+            <Button asChild className="h-11 w-full rounded-xl bg-[#0285C9] font-semibold">
               <Link href="/auth/login">Sign in</Link>
             </Button>
           </div>
@@ -132,7 +136,7 @@ function ResetPasswordForm() {
             <Button
               type="submit"
               disabled={loading || !tokenFromUrl.trim()}
-              className="h-11 w-full rounded-xl bg-[#1db681] font-semibold text-white hover:bg-[#19a573]"
+              className="h-11 w-full rounded-xl bg-[#0285C9] font-semibold text-white hover:bg-[#0269A3]"
             >
               {loading ? (
                 <>
@@ -155,7 +159,7 @@ export default function ResetPasswordPage() {
     <Suspense
       fallback={
         <div className="flex min-h-[50vh] items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-[#1db681]" />
+          <Loader2 className="h-6 w-6 animate-spin text-[#0285C9]" />
         </div>
       }
     >

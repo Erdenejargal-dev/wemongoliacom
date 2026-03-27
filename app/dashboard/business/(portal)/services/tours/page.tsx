@@ -21,7 +21,7 @@ import { ApiError } from '@/lib/api/client'
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    active: 'bg-green-50 text-green-700 border-green-200',
+    active: 'bg-brand-50 text-brand-700 border-brand-200',
     draft:  'bg-gray-50 text-gray-600 border-gray-200',
     paused: 'bg-amber-50 text-amber-700 border-amber-200',
   }
@@ -39,7 +39,7 @@ function TourCard({ tour }: { tour: ProviderTour }) {
   return (
     <Link
       href={`/dashboard/business/services/tours/${tour.id}`}
-      className="block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md hover:border-green-200 transition-all group"
+      className="block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md hover:border-brand-200 transition-all group"
     >
       <div className="h-36 bg-gray-100 relative">
         {img ? (
@@ -145,7 +145,7 @@ function CreateTourPanel({
   const canSubmit = title.trim().length >= 2 && parseFloat(basePrice) > 0
 
   const inputClass =
-    'w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-colors'
+    'w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-colors'
 
   return (
     <>
@@ -258,7 +258,7 @@ function CreateTourPanel({
                   value="draft"
                   checked={status === 'draft'}
                   onChange={() => setStatus('draft')}
-                  className="accent-green-600"
+                  className="accent-brand-600"
                 />
                 Draft
               </label>
@@ -269,7 +269,7 @@ function CreateTourPanel({
                   value="active"
                   checked={status === 'active'}
                   onChange={() => setStatus('active')}
-                  className="accent-green-600"
+                  className="accent-brand-600"
                 />
                 Active (visible to travelers)
               </label>
@@ -290,7 +290,7 @@ function CreateTourPanel({
             type="submit"
             form="create-tour-form"
             disabled={saving || !canSubmit}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-white bg-green-500 hover:bg-green-600 disabled:bg-gray-300 rounded-xl transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 rounded-xl transition-colors"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
             {saving ? 'Creating…' : 'Create Tour'}
@@ -367,7 +367,7 @@ export default function ToursPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-5 h-5 text-green-500 animate-spin" />
+        <Loader2 className="w-5 h-5 text-brand-500 animate-spin" />
       </div>
     )
   }
@@ -388,7 +388,7 @@ export default function ToursPage() {
         actions={
           <button
             onClick={() => setShowCreate(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-500 hover:bg-green-600 rounded-xl transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 rounded-xl transition-colors"
           >
             <Plus className="w-4 h-4" /> Add Tour
           </button>
@@ -401,8 +401,8 @@ export default function ToursPage() {
 
       {tours.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
-          <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-green-50 flex items-center justify-center">
-            <MapPin className="w-6 h-6 text-green-500" />
+          <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-brand-50 flex items-center justify-center">
+            <MapPin className="w-6 h-6 text-brand-500" />
           </div>
           <h3 className="text-base font-bold text-gray-900 mb-1">No tours yet</h3>
           <p className="text-sm text-gray-500 mb-5 max-w-sm mx-auto">
@@ -410,7 +410,7 @@ export default function ToursPage() {
           </p>
           <button
             onClick={() => setShowCreate(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-500 hover:bg-green-600 rounded-xl transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 rounded-xl transition-colors"
           >
             <Plus className="w-4 h-4" /> Create your first tour
           </button>

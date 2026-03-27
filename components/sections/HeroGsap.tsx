@@ -101,11 +101,11 @@ export default function HeroGsap() {
   return (
     <section
       ref={heroRef}
-      className="relative h-screen w-full overflow-hidden bg-gradient-to-br from-gray-900 via-green-900 to-gray-900"
+      className="relative h-screen w-full overflow-hidden bg-gradient-to-br from-gray-900 via-brand-900 to-gray-900"
     >
       {/* Floating Geometric Shapes */}
       <div ref={shapesRef} className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="shape absolute top-20 left-10 w-32 h-32 bg-green-500/20 rounded-full blur-xl" />
+        <div className="shape absolute top-20 left-10 w-32 h-32 bg-brand-500/20 rounded-full blur-xl" />
         <div className="shape absolute top-40 right-20 w-40 h-40 bg-orange-500/20 rounded-lg blur-xl rotate-45" />
         <div className="shape absolute bottom-32 left-1/4 w-24 h-24 bg-pink-500/20 rounded-full blur-xl" />
         <div className="shape absolute top-1/3 right-1/3 w-36 h-36 bg-blue-500/20 blur-xl" style={{ clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)' }} />
@@ -127,7 +127,7 @@ export default function HeroGsap() {
           className="text-[60px] sm:text-[100px] md:text-[140px] lg:text-[200px] font-black leading-none tracking-tight mb-6"
         >
           <span className="text-white">{splitText('MON')}</span>
-          <span className="text-green-400">{splitText('GO')}</span>
+          <span className="text-brand-400">{splitText('GO')}</span>
           <span className="text-white">{splitText('LIA')}</span>
         </h1>
 

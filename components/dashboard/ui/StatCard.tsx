@@ -25,7 +25,7 @@ export function StatCard({ title, value, icon: Icon, trend, trendLabel, iconColo
       <div className="flex items-end justify-between">
         <p className="text-2xl font-bold text-gray-900">{value}</p>
         {trend !== undefined && (
-          <div className={`flex items-center gap-1 text-sm font-medium ${isPositive ? 'text-green-600' : 'text-red-500'}`}>
+          <div className={`flex items-center gap-1 text-sm font-medium ${isPositive ? 'text-brand-600' : 'text-red-500'}`}>
             {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
             <span>{isPositive ? '+' : ''}{trend}%</span>
             {trendLabel && <span className="text-gray-400 font-normal ml-1">{trendLabel}</span>}

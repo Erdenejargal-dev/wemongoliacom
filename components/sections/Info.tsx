@@ -44,7 +44,7 @@ export default function Info() {
               whileHover={{ y: -8, transition: { duration: 0.3 } }}
               className="bg-white rounded-xl p-8 shadow-lg hover:shadow-2xl transition-shadow duration-300"
             >
-              <h3 className="text-2xl md:text-3xl font-bold text-green-500 mb-4 tracking-wide">
+              <h3 className="text-2xl md:text-3xl font-bold text-brand-500 mb-4 tracking-wide">
                 {card.title}
               </h3>
               <p className="text-lg text-gray-700 leading-relaxed">

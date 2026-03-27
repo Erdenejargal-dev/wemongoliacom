@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { X, ChevronRight, LayoutDashboard, Compass, CalendarCheck, MessageSquare, Star, BarChart2, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { WeMongoliaLogo } from '@/components/brand/WeMongoliaLogo'
 import { apiClient } from '@/lib/api/client'
 import { buildProviderMenu, SECTION_LABELS, type ProviderType } from '@/lib/provider-menu'
 
@@ -114,7 +115,7 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
         {/* Brand */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <Link href="/" className="flex items-center gap-2.5" onClick={onClose}>
-            <img src="/wemongolia.svg" alt="WeMongolia" className="h-7 w-auto" />
+            <WeMongoliaLogo className="h-7 w-auto" />
           </Link>
           <button onClick={onClose} className="md:hidden p-1 rounded-lg hover:bg-gray-100">
             <X className="w-4 h-4" />
@@ -179,7 +180,7 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
         {/* Footer */}
         <div className="px-4 py-4 border-t border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
               {provider?.name?.charAt(0) ?? 'B'}
             </div>
             <div className="flex-1 min-w-0">

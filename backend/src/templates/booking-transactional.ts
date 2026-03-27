@@ -64,7 +64,7 @@ export function buildBookingCreatedProvider(c: BookingEmailCommon & { travelerNa
   const linkSafe = escapeHtml(c.bookingsUrl)
   const html = wrapEmailHtml(
     'New booking',
-    `<p style="margin:0 0 16px 0;">${intro}</p>${tableWrap(commonHtmlRows(c))}<p style="margin:20px 0 0 0;"><a href="${linkSafe}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:600;">View in Business Portal</a></p><p style="margin:12px 0 0 0;font-size:12px;color:#71717a;">If the button does not work, copy this link:<br><span style="word-break:break-all;">${linkSafe}</span></p>`,
+    `<p style="margin:0 0 16px 0;">${intro}</p>${tableWrap(commonHtmlRows(c))}<p style="margin:20px 0 0 0;"><a href="${linkSafe}" style="display:inline-block;background:#0285C9;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:600;">View in Business Portal</a></p><p style="margin:12px 0 0 0;font-size:12px;color:#71717a;">If the button does not work, copy this link:<br><span style="word-break:break-all;">${linkSafe}</span></p>`,
   )
   const text = wrapEmailText('New booking', [
     `${c.travelerName} made a new booking.`,
@@ -117,7 +117,7 @@ export function buildBookingCancelledProvider(
   const linkSafe = escapeHtml(c.bookingsUrl)
   const html = wrapEmailHtml(
     title,
-    `<p style="margin:0 0 16px 0;">${intro}</p>${tableWrap(commonHtmlRows(c))}${reasonLine}<p style="margin:20px 0 0 0;"><a href="${linkSafe}" style="color:#16a34a;text-decoration:none;font-weight:600;">Open bookings in Business Portal →</a></p>`,
+    `<p style="margin:0 0 16px 0;">${intro}</p>${tableWrap(commonHtmlRows(c))}${reasonLine}<p style="margin:20px 0 0 0;"><a href="${linkSafe}" style="color:#0285C9;text-decoration:none;font-weight:600;">Open bookings in Business Portal →</a></p>`,
   )
   const text = wrapEmailText(title, [
     isGuest ? `${c.travelerName} cancelled.` : 'Cancellation recorded.',

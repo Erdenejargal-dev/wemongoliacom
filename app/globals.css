@@ -2,6 +2,8 @@
 
 /* ── Design tokens (CSS custom properties) ───────────────────────── */
 :root {
+  --brand: #0285c9;
+  --brand-hover: #0269a3;
   --background: #ffffff;
   --foreground: #171717;
   --card: #ffffff;
@@ -26,6 +28,17 @@
 
 /* ── Map to Tailwind v4 color tokens ─────────────────────────────── */
 @theme inline {
+  --color-brand-50: #e8f5fc;
+  --color-brand-100: #c7e8f6;
+  --color-brand-200: #a0d8ef;
+  --color-brand-300: #6fc0e4;
+  --color-brand-400: #3ca3d4;
+  --color-brand-500: #0285c9;
+  --color-brand-600: #026ba3;
+  --color-brand-700: #055a86;
+  --color-brand-800: #0a4a6e;
+  --color-brand-900: #0d3d5c;
+  --color-brand-950: #0a283d;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);

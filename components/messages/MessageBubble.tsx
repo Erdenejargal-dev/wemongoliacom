@@ -20,7 +20,7 @@ export function MessageBubble({ message, userAvatar, hostAvatar }: MessageBubble
       <div className={`max-w-[72%] ${isUser ? 'items-end' : 'items-start'} flex flex-col gap-0.5`}>
         <div className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
           isUser
-            ? 'bg-green-500 text-white rounded-br-sm'
+            ? 'bg-brand-500 text-white rounded-br-sm'
             : 'bg-white border border-gray-100 text-gray-800 rounded-bl-sm shadow-sm'
         }`}>
           {message.text}

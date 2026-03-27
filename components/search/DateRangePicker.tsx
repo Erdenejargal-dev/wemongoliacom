@@ -16,8 +16,8 @@ export function DateRangePicker({ startDate, endDate, onStartChange, onEndChange
   return (
     <div className={`flex items-stretch gap-0 ${className}`}>
       {/* Start date */}
-      <div className="flex-1 flex items-center gap-2 border border-gray-200 rounded-l-xl px-3 py-2.5 bg-white focus-within:ring-2 focus-within:ring-green-400/20 focus-within:border-green-400 transition-all">
-        <CalendarDays className="w-4 h-4 text-green-500 shrink-0" />
+      <div className="flex-1 flex items-center gap-2 border border-gray-200 rounded-l-xl px-3 py-2.5 bg-white focus-within:ring-2 focus-within:ring-brand-400/20 focus-within:border-brand-400 transition-all">
+        <CalendarDays className="w-4 h-4 text-brand-500 shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Check in</p>
           <input
@@ -34,8 +34,8 @@ export function DateRangePicker({ startDate, endDate, onStartChange, onEndChange
       <div className="w-px bg-gray-200 self-stretch" />
 
       {/* End date */}
-      <div className="flex-1 flex items-center gap-2 border border-gray-200 rounded-r-xl px-3 py-2.5 bg-white focus-within:ring-2 focus-within:ring-green-400/20 focus-within:border-green-400 transition-all">
-        <CalendarDays className="w-4 h-4 text-green-500 shrink-0" />
+      <div className="flex-1 flex items-center gap-2 border border-gray-200 rounded-r-xl px-3 py-2.5 bg-white focus-within:ring-2 focus-within:ring-brand-400/20 focus-within:border-brand-400 transition-all">
+        <CalendarDays className="w-4 h-4 text-brand-500 shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Check out</p>
           <input

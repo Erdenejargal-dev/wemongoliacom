@@ -39,16 +39,16 @@ export function TripTimeline({ status, date }: TripTimelineProps) {
           <div key={step} className="flex items-center flex-1">
             {/* Node */}
             <div className="flex flex-col items-center">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0 transition-colors ${done ? 'bg-green-500' : current ? 'bg-green-400 ring-4 ring-green-100' : 'bg-gray-200'}`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0 transition-colors ${done ? 'bg-brand-500' : current ? 'bg-brand-400 ring-4 ring-brand-100' : 'bg-gray-200'}`}>
                 {done ? <Check className="w-3 h-3" /> : <span className={`text-[10px] font-bold ${current ? 'text-white' : 'text-gray-400'}`}>{i + 1}</span>}
               </div>
-              <span className={`text-[9px] font-semibold mt-1 text-center leading-tight w-16 ${done ? 'text-green-600' : current ? 'text-green-500' : 'text-gray-400'}`}>
+              <span className={`text-[9px] font-semibold mt-1 text-center leading-tight w-16 ${done ? 'text-brand-600' : current ? 'text-brand-500' : 'text-gray-400'}`}>
                 {step}
               </span>
             </div>
             {/* Connector */}
             {i < STEPS.length - 1 && (
-              <div className={`flex-1 h-0.5 mb-3 mx-0.5 ${i < active ? 'bg-green-400' : 'bg-gray-200'}`} />
+              <div className={`flex-1 h-0.5 mb-3 mx-0.5 ${i < active ? 'bg-brand-400' : 'bg-gray-200'}`} />
             )}
           </div>
         )

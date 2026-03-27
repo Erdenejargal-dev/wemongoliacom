@@ -214,7 +214,7 @@ export default function BookingsPage() {
               <button
                 onClick={() => handleConfirm(r.bookingCode)}
                 disabled={busy}
-                className="px-2 py-1 text-xs bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 transition-colors disabled:opacity-50"
+                className="px-2 py-1 text-xs bg-brand-50 text-brand-700 border border-brand-200 rounded-lg hover:bg-brand-100 transition-colors disabled:opacity-50"
               >
                 {busy ? '…' : 'Confirm'}
               </button>

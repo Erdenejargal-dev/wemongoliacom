@@ -46,9 +46,9 @@ export function GuestSelector({ value, onChange, className }: GuestSelectorProps
     <div ref={ref} className={`relative ${className}`}>
       <button
         onClick={() => setOpen(v => !v)}
-        className={`flex items-center gap-2 w-full border rounded-xl px-3 py-2.5 bg-white text-left transition-all ${open ? 'ring-2 ring-green-400/20 border-green-400' : 'border-gray-200 hover:border-gray-300'}`}
+        className={`flex items-center gap-2 w-full border rounded-xl px-3 py-2.5 bg-white text-left transition-all ${open ? 'ring-2 ring-brand-400/20 border-brand-400' : 'border-gray-200 hover:border-gray-300'}`}
       >
-        <Users className="w-4 h-4 text-green-500 shrink-0" />
+        <Users className="w-4 h-4 text-brand-500 shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Travelers</p>
           <p className="text-sm text-gray-900">{total === 0 ? 'Add guests' : `${total} guest${total !== 1 ? 's' : ''}`}</p>

@@ -33,7 +33,7 @@ import { ApiError } from '@/lib/api/client'
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const inputClass =
-  'w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-colors'
+  'w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-colors'
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -44,7 +44,7 @@ function fmtDate(iso: string) {
 function ReadinessBanner({ readiness }: { readiness: ProviderTourDetail['readiness'] }) {
   if (readiness.ready) {
     return (
-      <div className="flex items-center gap-3 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-green-800">
+      <div className="flex items-center gap-3 px-4 py-3 bg-brand-50 border border-brand-200 rounded-xl text-brand-800">
         <CheckCircle2 className="w-5 h-5 shrink-0" />
         <p className="text-sm font-medium">This tour meets all publish requirements and can be set to Active.</p>
       </div>
@@ -137,7 +137,7 @@ function DepartureSection({
         </h3>
         <button
           onClick={() => setShowAdd(v => !v)}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-green-600 hover:text-green-700"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700"
         >
           <Plus className="w-3.5 h-3.5" /> Add Departure
         </button>
@@ -167,7 +167,7 @@ function DepartureSection({
             </div>
           </div>
           <div className="flex gap-2">
-            <button type="submit" disabled={saving} className="px-4 py-2 text-xs font-semibold text-white bg-green-500 hover:bg-green-600 disabled:bg-gray-300 rounded-lg transition-colors">
+            <button type="submit" disabled={saving} className="px-4 py-2 text-xs font-semibold text-white bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 rounded-lg transition-colors">
               {saving ? 'Saving…' : 'Add Departure'}
             </button>
             <button type="button" onClick={() => setShowAdd(false)} className="px-4 py-2 text-xs font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
@@ -188,7 +188,7 @@ function DepartureSection({
                   {d.priceOverride != null && <> · ${d.priceOverride}</>}
                 </p>
               </div>
-              <span className="text-[10px] font-semibold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
+              <span className="text-[10px] font-semibold text-brand-700 bg-brand-50 border border-brand-200 px-2 py-0.5 rounded-full">
                 {d.status}
               </span>
               <button
@@ -362,7 +362,7 @@ export default function TourDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-5 h-5 text-green-500 animate-spin" />
+        <Loader2 className="w-5 h-5 text-brand-500 animate-spin" />
       </div>
     )
   }
@@ -371,7 +371,7 @@ export default function TourDetailPage() {
     return (
       <div className="text-center py-24">
         <p className="text-sm text-gray-500 mb-4">{error ?? 'Tour not found.'}</p>
-        <Link href="/dashboard/business/services/tours" className="text-sm font-semibold text-green-600 hover:text-green-700">
+        <Link href="/dashboard/business/services/tours" className="text-sm font-semibold text-brand-600 hover:text-brand-700">
           ← Back to tours
         </Link>
       </div>
@@ -409,7 +409,7 @@ export default function TourDetailPage() {
 
       {/* Messages */}
       {error && <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{error}</div>}
-      {success && <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">{success}</div>}
+      {success && <div className="p-3 bg-brand-50 border border-brand-200 rounded-xl text-sm text-brand-700">{success}</div>}
 
       {/* Edit form */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
@@ -487,7 +487,7 @@ export default function TourDetailPage() {
                 <input
                   type="radio" name="status" value={s}
                   checked={status === s} onChange={() => setStatus(s)}
-                  className="accent-green-600"
+                  className="accent-brand-600"
                 />
                 {s === 'active' ? 'Active (visible)' : s.charAt(0).toUpperCase() + s.slice(1)}
               </label>
@@ -502,7 +502,7 @@ export default function TourDetailPage() {
           <button
             onClick={handleSave}
             disabled={saving || !canSave}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-500 hover:bg-green-600 disabled:bg-gray-300 rounded-xl transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 rounded-xl transition-colors"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {saving ? 'Saving…' : 'Save Changes'}

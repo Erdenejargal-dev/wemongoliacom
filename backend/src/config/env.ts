@@ -12,6 +12,8 @@ const envSchema = z.object({
   CORS_ORIGIN:                 z.string().default('http://localhost:3000'),
   /** Public web app URL for email links; defaults to CORS_ORIGIN when empty */
   PUBLIC_APP_URL:              z.string().optional().default(''),
+  /** Optional absolute URL for the logo in HTML emails (CDN). If empty, uses PUBLIC_APP_URL + /brand/wemongolia.png */
+  EMAIL_LOGO_URL:              z.string().optional().default(''),
   PASSWORD_RESET_EXPIRES_MINUTES: z.string().default('60').transform((v) => parseInt(v, 10)),
   BCRYPT_ROUNDS:               z.string().default('10'),
   PLATFORM_FEE_PERCENT:        z.string().default('5'),
@@ -54,4 +56,5 @@ export const env = {
   PLATFORM_FEE_PERCENT: parseFloat(data.PLATFORM_FEE_PERCENT),
   /** Use for password-reset and welcome email links */
   PUBLIC_APP_URL:       publicAppUrl,
+  EMAIL_LOGO_URL:       (data.EMAIL_LOGO_URL ?? '').trim(),
 } as const

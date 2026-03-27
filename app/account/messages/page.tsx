@@ -47,7 +47,7 @@ export default function MessagesPage() {
         <h2 className="text-base font-bold text-gray-900 mb-1">You have no conversations yet</h2>
         <p className="text-sm text-gray-500 mb-5">Book a tour to start chatting with hosts.</p>
         <Link href="/tours"
-          className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors shadow-md">
+          className="inline-flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors shadow-md">
           <Compass className="w-4 h-4" />Explore Tours
         </Link>
       </div>
@@ -59,7 +59,7 @@ export default function MessagesPage() {
       {/* Page header */}
       <div className="bg-white border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-2">
-          <MessageSquare className="w-4 h-4 text-green-500" />
+          <MessageSquare className="w-4 h-4 text-brand-500" />
           <h1 className="text-base font-bold text-gray-900">Messages</h1>
         </div>
       </div>

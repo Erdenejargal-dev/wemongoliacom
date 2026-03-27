@@ -29,14 +29,14 @@ export function RevenueChart() {
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-32" preserveAspectRatio="none">
         <defs>
           <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#22c55e" stopOpacity="0.2" />
-            <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
+            <stop offset="0%" stopColor="#0285C9" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="#0285C9" stopOpacity="0" />
           </linearGradient>
         </defs>
         <path d={area} fill="url(#revGrad)" />
-        <path d={path} fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={path} fill="none" stroke="#0285C9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         {points.map(p => (
-          <circle key={p.month} cx={p.x} cy={p.y} r="3" fill="#22c55e" />
+          <circle key={p.month} cx={p.x} cy={p.y} r="3" fill="#0285C9" />
         ))}
       </svg>
       <div className="flex justify-between mt-2">

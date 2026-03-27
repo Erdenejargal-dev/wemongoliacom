@@ -37,6 +37,13 @@ enum ListingStatus {
   archived
 }
 
+enum VerificationStatus {
+  unverified
+  pending_review
+  verified
+  rejected
+}
+
 enum VehicleStatus {
   draft
   active
@@ -240,10 +247,13 @@ model Provider {
   ratingAverage     Float          @default(0)
   reviewsCount      Int            @default(0)
   totalGuestsHosted Int            @default(0)
-  isVerified        Boolean        @default(false)
-  status            ListingStatus  @default(draft)
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  isVerified          Boolean            @default(false)
+  verificationStatus  VerificationStatus @default(unverified)
+  rejectionReason     String?
+  reviewedAt          DateTime?
+  status              ListingStatus      @default(draft)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 
   owner          User            @relation(fields: [ownerUserId], references: [id], onDelete: Restrict)
   tours          Tour[]

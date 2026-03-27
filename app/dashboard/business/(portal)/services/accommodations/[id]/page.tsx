@@ -31,7 +31,7 @@ import {
   ACCOMMODATION_TYPES, PROPERTY_AMENITIES, ROOM_AMENITIES, BED_TYPES,
 } from '@/lib/constants/amenities'
 
-const inputClass = 'w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-colors'
+const inputClass = 'w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-colors'
 const TABS = ['overview', 'rooms', 'calendar', 'images'] as const
 type Tab = typeof TABS[number]
 const TAB_LABELS: Record<Tab, { label: string; icon: any }> = {
@@ -60,7 +60,7 @@ function AmenitySelect({ options, selected, onChange, label }: {
             onClick={() => toggle(o.value)}
             className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
               selected.includes(o.value)
-                ? 'bg-green-50 border-green-300 text-green-700 font-semibold'
+                ? 'bg-brand-50 border-brand-300 text-brand-700 font-semibold'
                 : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
             }`}
           >
@@ -116,7 +116,7 @@ export default function AccommodationManagePage() {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center py-24"><Loader2 className="w-5 h-5 text-green-500 animate-spin" /></div>
+    return <div className="flex items-center justify-center py-24"><Loader2 className="w-5 h-5 text-brand-500 animate-spin" /></div>
   }
   if (!acc) {
     return <div className="p-6 text-sm text-gray-500">{error || 'Accommodation not found.'}</div>
@@ -137,7 +137,7 @@ export default function AccommodationManagePage() {
         </div>
         <div className="flex items-center gap-2">
           <span className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full border ${
-            acc.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' :
+            acc.status === 'active' ? 'bg-brand-50 text-brand-700 border-brand-200' :
             acc.status === 'paused' ? 'bg-amber-50 text-amber-700 border-amber-200' :
             'bg-gray-50 text-gray-600 border-gray-200'
           }`}>{acc.status}</span>
@@ -170,7 +170,7 @@ export default function AccommodationManagePage() {
               onClick={() => switchTab(t)}
               className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
                 activeTab === t
-                  ? 'border-green-500 text-green-700 bg-green-50/50'
+                  ? 'border-brand-500 text-brand-700 bg-brand-50/50'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
             >
@@ -319,11 +319,11 @@ function OverviewTab({ acc, destinations, onUpdated }: {
         </div>
       </div>
 
-      {msg && <div className="p-2.5 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">{msg}</div>}
+      {msg && <div className="p-2.5 bg-brand-50 border border-brand-200 rounded-xl text-sm text-brand-700">{msg}</div>}
       {err && <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{err}</div>}
 
       <div className="flex items-center gap-3">
-        <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-500 hover:bg-green-600 disabled:bg-gray-300 rounded-xl transition-colors">
+        <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 rounded-xl transition-colors">
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save changes
         </button>
         <button onClick={handleArchive} className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 rounded-xl transition-colors">
@@ -395,7 +395,7 @@ function RoomTypesTab({ accId, roomTypes, onUpdated }: {
         <h3 className="text-sm font-bold text-gray-900">Room types ({roomTypes.length})</h3>
         <button
           onClick={() => { setEditing(blank); setIsNew(true) }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-lg transition-colors"
         >
           <Plus className="w-3 h-3" /> Add room type
         </button>
@@ -405,14 +405,14 @@ function RoomTypesTab({ accId, roomTypes, onUpdated }: {
 
       {roomTypes.length === 0 ? (
         <div className="text-center py-10">
-          <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-green-50 flex items-center justify-center">
-            <Building2 className="w-5 h-5 text-green-500" />
+          <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-brand-50 flex items-center justify-center">
+            <Building2 className="w-5 h-5 text-brand-500" />
           </div>
           <p className="text-sm font-bold text-gray-900 mb-1">No room types yet</p>
           <p className="text-xs text-gray-500 mb-4">Add at least one room type to publish this property.</p>
           <button
             onClick={() => { setEditing(blank); setIsNew(true) }}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-500 hover:bg-green-600 rounded-xl transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 rounded-xl transition-colors"
           >
             <Plus className="w-4 h-4" /> Add room type
           </button>
@@ -502,7 +502,7 @@ function RoomSlideOver({ room, isNew, onSave, onClose }: {
           <button
             onClick={() => local.name.trim() && local.basePricePerNight > 0 && onSave(local, isNew)}
             disabled={!local.name.trim() || local.basePricePerNight <= 0}
-            className="flex-1 py-2.5 text-sm font-semibold text-white bg-green-500 hover:bg-green-600 disabled:bg-gray-300 rounded-xl transition-colors"
+            className="flex-1 py-2.5 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 rounded-xl transition-colors"
           >
             {isNew ? 'Add room type' : 'Save changes'}
           </button>

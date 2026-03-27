@@ -3,7 +3,7 @@ import { MapPin, Compass } from 'lucide-react'
 import type { Destination } from '@/lib/mock-data/destinations'
 
 const difficultyBadge: Record<string, string> = {
-  Easy:        'bg-green-50 text-green-700',
+  Easy:        'bg-brand-50 text-brand-700',
   Moderate:    'bg-yellow-50 text-yellow-700',
   Challenging: 'bg-orange-50 text-orange-700',
 }
@@ -40,7 +40,7 @@ export function DestinationCard({ destination, featured = false }: DestinationCa
         {/* Tour count badge */}
         <div className="absolute bottom-3 right-3">
           <span className="flex items-center gap-1 text-[10px] font-bold bg-white/90 text-gray-800 px-2.5 py-1 rounded-full backdrop-blur-sm shadow-sm">
-            <Compass className="w-3 h-3 text-green-500" />
+            <Compass className="w-3 h-3 text-brand-500" />
             {destination.tourCount} tour{destination.tourCount !== 1 ? 's' : ''}
           </span>
         </div>
@@ -54,7 +54,7 @@ export function DestinationCard({ destination, featured = false }: DestinationCa
       {/* Content */}
       <div className="p-4">
         <div className="flex items-center gap-1 text-xs text-gray-500 mb-2">
-          <MapPin className="w-3 h-3 text-green-500 shrink-0" />
+          <MapPin className="w-3 h-3 text-brand-500 shrink-0" />
           {destination.region} · {destination.country}
         </div>
         <p className="text-xs text-gray-600 leading-relaxed line-clamp-2 mb-3">
@@ -63,10 +63,10 @@ export function DestinationCard({ destination, featured = false }: DestinationCa
         <div className="flex items-center justify-between">
           <div className="flex gap-1 flex-wrap">
             {destination.bestMonths.slice(0, 3).map(m => (
-              <span key={m} className="text-[10px] font-medium px-1.5 py-0.5 bg-green-50 text-green-700 rounded-md">{m}</span>
+              <span key={m} className="text-[10px] font-medium px-1.5 py-0.5 bg-brand-50 text-brand-700 rounded-md">{m}</span>
             ))}
           </div>
-          <span className="text-xs font-semibold text-green-600 group-hover:text-green-700 transition-colors">
+          <span className="text-xs font-semibold text-brand-600 group-hover:text-brand-700 transition-colors">
             Explore →
           </span>
         </div>

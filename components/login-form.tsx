@@ -21,6 +21,7 @@ import {
   getDefaultRedirect,
   buildRegisterUrl,
 } from "@/lib/navigation";
+import { WeMongoliaLogo } from "@/components/brand/WeMongoliaLogo";
 
 /* ── Locale-aware copy ──────────────────────────────────────────────────── */
 
@@ -125,13 +126,13 @@ export function LoginForm({
   };
 
   const inputStyles =
-    "h-11 rounded-xl border-gray-200 px-4 placeholder:text-gray-400 focus-visible:border-[#1db681] focus-visible:ring-[#1db681]/20";
+    "h-11 rounded-xl border-gray-200 px-4 placeholder:text-gray-400 focus-visible:border-[#0285C9] focus-visible:ring-[#0285C9]/20";
 
   return (
     <div className={cn("grid min-h-svh lg:grid-cols-2", className)} {...props}>
       {/* ── Form Panel ─────────────────────────────────────────────── */}
       <div className="flex min-h-svh flex-col bg-white lg:relative">
-        <div className="h-1 bg-gradient-to-r from-[#1db681] to-[#4466b0] lg:hidden" />
+        <div className="h-1 bg-gradient-to-r from-[#0285C9] to-[#4466b0] lg:hidden" />
 
        
 
@@ -139,6 +140,9 @@ export function LoginForm({
         <div className="flex flex-1 flex-col justify-center px-6 py-10 sm:px-10 lg:px-16 xl:px-20">
           <div className="mx-auto w-full max-w-[420px]">
             <div className="mb-8">
+              <Link href="/" className="mb-6 inline-block">
+                <WeMongoliaLogo className="h-8 w-auto" />
+              </Link>
               <h1 className="text-[26px] font-semibold tracking-tight text-gray-900 sm:text-[30px]">
                 {t.heading}
               </h1>
@@ -220,7 +224,7 @@ export function LoginForm({
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="h-11 w-full rounded-xl bg-[#1db681] text-[15px] font-semibold text-white shadow-none transition-colors hover:bg-[#19a573] disabled:opacity-50"
+                className="h-11 w-full rounded-xl bg-[#0285C9] text-[15px] font-semibold text-white shadow-none transition-colors hover:bg-[#0269A3] disabled:opacity-50"
               >
                 {isLoading ? (
                   <>
@@ -237,7 +241,7 @@ export function LoginForm({
               {t.noAccount}{" "}
               <Link
                 href={buildRegisterUrl(callbackUrl)}
-                className="font-semibold text-[#1db681] transition-colors hover:text-[#19a573]"
+                className="font-semibold text-[#0285C9] transition-colors hover:text-[#0269A3]"
               >
                 {t.createAccount}
               </Link>
@@ -273,7 +277,7 @@ export function LoginForm({
       </div>
 
       {/* ── Visual Panel ──────────────────────────────────────────── */}
-      <div className="relative hidden overflow-hidden lg:flex lg:items-center lg:justify-center bg-gradient-to-br from-[#1db681] via-[#1a9e6e] to-[#4466b0]">
+      <div className="relative hidden overflow-hidden lg:flex lg:items-center lg:justify-center bg-gradient-to-br from-[#0285C9] via-[#0275B8] to-[#4466b0]">
         <svg
           className="pointer-events-none absolute -right-20 -top-20 h-[640px] w-[640px] opacity-[0.06]"
           viewBox="0 0 640 640"
@@ -294,6 +298,9 @@ export function LoginForm({
         </svg>
 
         <div className="relative z-10 max-w-[420px] px-12 xl:px-16">
+          <Link href="/" className="mb-10 inline-block">
+            <WeMongoliaLogo variant="white" className="h-8 w-auto max-w-[220px]" />
+          </Link>
           <div className="inline-flex items-center gap-2 rounded-full bg-white/[0.12] px-4 py-1.5 text-[13px] font-medium text-white backdrop-blur-sm">
             <MapPin className="h-3.5 w-3.5" />
             {t.panelBadge}

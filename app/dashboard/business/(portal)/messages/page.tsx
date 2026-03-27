@@ -41,7 +41,7 @@ function MessageBubble({ msg, isProvider }: { msg: Message; isProvider: boolean 
         <div
           className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
             isProvider
-              ? 'bg-green-600 text-white rounded-br-sm'
+              ? 'bg-brand-600 text-white rounded-br-sm'
               : 'bg-white border border-gray-200 text-gray-800 rounded-bl-sm shadow-sm'
           }`}
         >
@@ -200,7 +200,7 @@ export default function MessagesPage() {
   if (loading && conversations.length === 0) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-5 h-5 text-green-500 animate-spin" />
+        <Loader2 className="w-5 h-5 text-brand-500 animate-spin" />
       </div>
     )
   }
@@ -272,7 +272,7 @@ export default function MessagesPage() {
                     key={conv.id}
                     onClick={() => handleSelect(conv.id)}
                     className={`w-full text-left px-4 py-3.5 border-b border-gray-50 flex items-start gap-3 transition-colors touch-manipulation ${
-                      activeId === conv.id ? 'bg-green-50' : 'hover:bg-gray-50'
+                      activeId === conv.id ? 'bg-brand-50' : 'hover:bg-gray-50'
                     }`}
                   >
                     <div className="relative shrink-0">
@@ -290,7 +290,7 @@ export default function MessagesPage() {
                         )}
                       </div>
                       {unread > 0 && (
-                        <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-green-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                        <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-brand-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                           {unread > 99 ? '99+' : unread}
                         </span>
                       )}
@@ -299,7 +299,7 @@ export default function MessagesPage() {
                       <div className="flex items-center justify-between gap-2 mb-0.5">
                         <p
                           className={`text-sm truncate ${
-                            activeId === conv.id ? 'font-semibold text-green-800' : 'font-medium text-gray-900'
+                            activeId === conv.id ? 'font-semibold text-brand-800' : 'font-medium text-gray-900'
                           }`}
                         >
                           {name}
@@ -407,7 +407,7 @@ export default function MessagesPage() {
                         }
                       }}
                       disabled={sending || messagesLoading}
-                      className="flex-1 resize-none border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none max-h-32 overflow-y-auto min-h-[44px] disabled:opacity-60"
+                      className="flex-1 resize-none border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none max-h-32 overflow-y-auto min-h-[44px] disabled:opacity-60"
                     />
                     <button
                       type="button"
@@ -416,7 +416,7 @@ export default function MessagesPage() {
                         if (text) handleSend(text)
                       }}
                       disabled={sending || messagesLoading || !replyText.trim()}
-                      className="w-11 h-11 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl flex items-center justify-center shrink-0 transition-colors"
+                      className="w-11 h-11 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl flex items-center justify-center shrink-0 transition-colors"
                     >
                       {sending ? (
                         <Loader2 className="w-4 h-4 animate-spin" />

@@ -17,7 +17,7 @@ export function SearchBar({ onClose }: SearchBarProps) {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4">
         <div className="flex items-center gap-3">
           {/* Where */}
-          <div className="flex-1 flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-400/10 transition-all">
+          <div className="flex-1 flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus-within:border-brand-400 focus-within:ring-2 focus-within:ring-brand-400/10 transition-all">
             <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Where</p>
@@ -34,7 +34,7 @@ export function SearchBar({ onClose }: SearchBarProps) {
           <div className="w-px h-10 bg-gray-200 hidden sm:block" />
 
           {/* When */}
-          <div className="flex-1 flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-400/10 transition-all">
+          <div className="flex-1 flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus-within:border-brand-400 focus-within:ring-2 focus-within:ring-brand-400/10 transition-all">
             <CalendarDays className="w-4 h-4 text-gray-400 shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">When</p>
@@ -51,7 +51,7 @@ export function SearchBar({ onClose }: SearchBarProps) {
           <div className="w-px h-10 bg-gray-200 hidden sm:block" />
 
           {/* Guests */}
-          <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus-within:border-green-400 focus-within:ring-2 focus-within:ring-green-400/10 transition-all min-w-[140px]">
+          <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus-within:border-brand-400 focus-within:ring-2 focus-within:ring-brand-400/10 transition-all min-w-[140px]">
             <Users className="w-4 h-4 text-gray-400 shrink-0" />
             <div>
               <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Guests</p>
@@ -67,7 +67,7 @@ export function SearchBar({ onClose }: SearchBarProps) {
           </div>
 
           {/* Search button */}
-          <button className="flex items-center gap-2 px-5 py-3 bg-green-500 hover:bg-green-600 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-green-200">
+          <button className="flex items-center gap-2 px-5 py-3 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm shadow-brand-200">
             <Search className="w-4 h-4" />
             <span className="hidden sm:inline">Search</span>
           </button>
@@ -83,7 +83,7 @@ export function SearchBar({ onClose }: SearchBarProps) {
           <span className="text-xs text-gray-400">Popular:</span>
           {['Gobi Desert', 'Lake Khövsgöl', 'Ulaanbaatar', 'Terelj'].map(s => (
             <button key={s} onClick={() => setDestination(s)}
-              className="text-xs px-3 py-1 bg-gray-100 hover:bg-green-50 hover:text-green-700 text-gray-600 rounded-full transition-colors border border-gray-200 hover:border-green-200">
+              className="text-xs px-3 py-1 bg-gray-100 hover:bg-brand-50 hover:text-brand-700 text-gray-600 rounded-full transition-colors border border-gray-200 hover:border-brand-200">
               {s}
             </button>
           ))}

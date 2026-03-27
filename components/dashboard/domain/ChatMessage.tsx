@@ -22,7 +22,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
           </div>
           <p className="text-[10px] text-gray-400 mt-1 text-right">{formatTime(message.timestamp)}</p>
         </div>
-        <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-semibold shrink-0 self-end">
+        <div className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center text-white text-xs font-semibold shrink-0 self-end">
           WM
         </div>
       </div>

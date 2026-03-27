@@ -34,7 +34,7 @@ export function TourItinerary({ itinerary }: TourItineraryProps) {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-bold text-gray-900">Day-by-Day Itinerary</h2>
         <div className="flex gap-3">
-          <button onClick={expandAll} className="text-xs text-green-600 hover:text-green-700 font-medium transition-colors">Expand all</button>
+          <button onClick={expandAll} className="text-xs text-brand-600 hover:text-brand-700 font-medium transition-colors">Expand all</button>
           <span className="text-gray-300">|</span>
           <button onClick={collapseAll} className="text-xs text-gray-500 hover:text-gray-700 font-medium transition-colors">Collapse all</button>
         </div>
@@ -52,7 +52,7 @@ export function TourItinerary({ itinerary }: TourItineraryProps) {
               >
                 <div className="flex items-center gap-3">
                   {/* Day badge */}
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isOpen ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isOpen ? 'bg-brand-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
                     Day {day.dayNumber}
                   </span>
                   <span className="text-sm font-semibold text-gray-900">{day.title}</span>

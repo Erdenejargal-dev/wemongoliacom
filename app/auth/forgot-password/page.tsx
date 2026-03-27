@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { requestForgotPassword } from '@/lib/api/auth-password'
 import { ApiError } from '@/lib/api/client'
+import { WeMongoliaLogo } from '@/components/brand/WeMongoliaLogo'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -31,6 +32,9 @@ export default function ForgotPasswordPage() {
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center px-4 py-16">
       <div className="w-full max-w-md space-y-6">
+        <Link href="/" className="inline-block">
+          <WeMongoliaLogo className="h-8 w-auto" />
+        </Link>
         <Link
           href="/auth/login"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900"
@@ -47,7 +51,7 @@ export default function ForgotPasswordPage() {
         </div>
 
         {submitted ? (
-          <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+          <div className="rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-800">
             If an account exists for that email, we sent instructions to reset your password. Check your inbox
             and spam folder.
           </div>
@@ -75,7 +79,7 @@ export default function ForgotPasswordPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="h-11 w-full rounded-xl bg-[#1db681] font-semibold text-white hover:bg-[#19a573]"
+              className="h-11 w-full rounded-xl bg-[#0285C9] font-semibold text-white hover:bg-[#0269A3]"
             >
               {loading ? (
                 <>

@@ -43,11 +43,11 @@ export function TripCard({ trip, onCancel }: TripCardProps) {
           {/* Meta */}
           <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
             <span className="flex items-center gap-1">
-              <CalendarDays className="w-3.5 h-3.5 text-green-500" />
+              <CalendarDays className="w-3.5 h-3.5 text-brand-500" />
               {formatDate(trip.date)} · {trip.durationDays} {trip.durationUnit}{trip.durationDays !== 1 ? 's' : ''}
             </span>
             <span className="flex items-center gap-1">
-              <Users className="w-3.5 h-3.5 text-green-500" />
+              <Users className="w-3.5 h-3.5 text-brand-500" />
               {trip.guests} guest{trip.guests !== 1 ? 's' : ''}
             </span>
             <span className="font-bold text-gray-800">${trip.price.toLocaleString()}</span>

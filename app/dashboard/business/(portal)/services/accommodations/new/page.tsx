@@ -24,7 +24,7 @@ import {
 import { useEffect } from 'react'
 
 const STEPS = ['Basics', 'Details', 'Room Types', 'Images', 'Review']
-const inputClass = 'w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 transition-colors'
+const inputClass = 'w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-colors'
 
 interface LocalRoomType {
   _key: string
@@ -65,7 +65,7 @@ function AmenitySelect({ options, selected, onChange, label }: {
             onClick={() => toggle(o.value)}
             className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
               selected.includes(o.value)
-                ? 'bg-green-50 border-green-300 text-green-700 font-semibold'
+                ? 'bg-brand-50 border-brand-300 text-brand-700 font-semibold'
                 : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
             }`}
           >
@@ -227,7 +227,7 @@ export default function NewAccommodationPage() {
             key={s}
             onClick={() => i <= step && setStep(i)}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-              i === step ? 'bg-green-50 text-green-700 border border-green-200' :
+              i === step ? 'bg-brand-50 text-brand-700 border border-brand-200' :
               i < step ? 'bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100' :
               'text-gray-400 border border-transparent'
             }`}
@@ -307,8 +307,8 @@ export default function NewAccommodationPage() {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
           {roomTypes.length === 0 ? (
             <div className="text-center py-8">
-              <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-green-50 flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-green-500" />
+              <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-brand-50 flex items-center justify-center">
+                <Building2 className="w-5 h-5 text-brand-500" />
               </div>
               <p className="text-sm font-bold text-gray-900 mb-1">Add your first room type</p>
               <p className="text-xs text-gray-500 mb-4 max-w-xs mx-auto">
@@ -316,7 +316,7 @@ export default function NewAccommodationPage() {
               </p>
               <button
                 onClick={() => { setEditingRoom(newRoom()); setShowRoomSlide(true) }}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-500 hover:bg-green-600 rounded-xl transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 rounded-xl transition-colors"
               >
                 <Plus className="w-4 h-4" /> Add room type
               </button>
@@ -327,7 +327,7 @@ export default function NewAccommodationPage() {
                 <h3 className="text-sm font-bold text-gray-900">Room types ({roomTypes.length})</h3>
                 <button
                   onClick={() => { setEditingRoom(newRoom()); setShowRoomSlide(true) }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-lg transition-colors"
                 >
                   <Plus className="w-3 h-3" /> Add another
                 </button>
@@ -390,7 +390,7 @@ export default function NewAccommodationPage() {
               { label: 'At least 1 image', ok: readiness.image },
             ].map(r => (
               <div key={r.label} className="flex items-center gap-2 text-sm">
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center ${r.ok ? 'bg-green-100 text-green-600' : 'bg-red-50 text-red-400'}`}>
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center ${r.ok ? 'bg-brand-100 text-brand-600' : 'bg-red-50 text-red-400'}`}>
                   {r.ok ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
                 </div>
                 <span className={r.ok ? 'text-gray-700' : 'text-red-600 font-medium'}>{r.label}</span>
@@ -427,7 +427,7 @@ export default function NewAccommodationPage() {
           <button
             onClick={() => setStep(s => s + 1)}
             disabled={!canGoNext}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-green-500 hover:bg-green-600 disabled:bg-gray-300 rounded-xl transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 rounded-xl transition-colors"
           >
             Next <ArrowRight className="w-4 h-4" />
           </button>
@@ -444,7 +444,7 @@ export default function NewAccommodationPage() {
             <button
               onClick={() => handleSubmit(true)}
               disabled={saving || !isReady}
-              className="px-5 py-2.5 text-sm font-semibold text-white bg-green-500 hover:bg-green-600 disabled:bg-gray-300 rounded-xl transition-colors"
+              className="px-5 py-2.5 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 rounded-xl transition-colors"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : null}
               Publish
@@ -523,7 +523,7 @@ function RoomTypeSlideOver({ room, onSave, onClose }: {
           <button
             onClick={() => canSave && onSave(local)}
             disabled={!canSave}
-            className="flex-1 py-2.5 text-sm font-semibold text-white bg-green-500 hover:bg-green-600 disabled:bg-gray-300 rounded-xl transition-colors"
+            className="flex-1 py-2.5 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 rounded-xl transition-colors"
           >
             Save room type
           </button>

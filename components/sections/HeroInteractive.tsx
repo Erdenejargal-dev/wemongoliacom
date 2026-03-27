@@ -78,12 +78,12 @@ export default function HeroInteractive() {
   const currentButtons = tabButtons[activeTab];
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-gray-900 via-green-900 to-gray-900">
+    <section className="relative overflow-hidden bg-gradient-to-br from-gray-900 via-brand-900 to-gray-900">
       {/* Background decorations */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-green-500/20 rounded-full blur-3xl" />
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-brand-500/20 rounded-full blur-3xl" />
         <div className="absolute top-1/2 -left-40 w-96 h-96 bg-orange-500/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 right-1/4 w-80 h-80 bg-green-400/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 right-1/4 w-80 h-80 bg-brand-400/10 rounded-full blur-3xl" />
       </div>
 
       {/* Background Image Overlay */}
@@ -102,7 +102,7 @@ export default function HeroInteractive() {
         <div className="text-center mb-6 sm:mb-8">
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-tight mb-3 sm:mb-4">
             <span className="text-white">WE MON</span>
-            <span className="text-green-400">GO</span>
+            <span className="text-brand-400">GO</span>
             <span className="text-white">LIA</span>
           </h1>
          
@@ -123,7 +123,7 @@ export default function HeroInteractive() {
                 onClick={() => handleTabChange(tab.id as "destinations" | "tours" | "hotels")}
                 className={`flex items-center justify-center gap-1.5 sm:gap-2 flex-1 px-2 sm:px-6 md:px-10 py-2.5 sm:py-3.5 text-xs sm:text-sm font-semibold rounded-xl transition-all ${
                   activeTab === tab.id
-                    ? "bg-green-500 text-white shadow-lg"
+                    ? "bg-brand-500 text-white shadow-lg"
                     : "text-white/70 hover:text-white hover:bg-white/10"
                 }`}
               >
@@ -168,7 +168,7 @@ export default function HeroInteractive() {
                 onClick={() => setSearchTab(tab.toLowerCase().replace(" ", "-"))}
                 className={`flex-1 py-4 text-sm font-semibold transition-all border-b-2 ${
                   searchTab === tab.toLowerCase().replace(" ", "-")
-                    ? "border-green-400 text-white"
+                    ? "border-brand-400 text-white"
                     : "border-transparent text-white/60 hover:text-white/90"
                 }`}
               >
@@ -188,13 +188,13 @@ export default function HeroInteractive() {
                   onChange={(e) => setDestination(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                   placeholder="Where in Mongolia?"
-                  className="pl-11 h-14 border-gray-300 focus:border-green-500 focus:ring-green-500 text-base"
+                  className="pl-11 h-14 border-gray-300 focus:border-brand-500 focus:ring-brand-500 text-base"
                 />
               </div>
 
               {/* Region */}
               <Select value={region} onValueChange={setRegion}>
-                <SelectTrigger className="h-14 border-gray-300 focus:border-green-500 focus:ring-green-500 text-base">
+                <SelectTrigger className="h-14 border-gray-300 focus:border-brand-500 focus:ring-brand-500 text-base">
                   <SelectValue placeholder="Select Region" />
                 </SelectTrigger>
                 <SelectContent>
@@ -209,7 +209,7 @@ export default function HeroInteractive() {
 
               {/* Experience Type */}
               <Select value={experienceType} onValueChange={setExperienceType}>
-                <SelectTrigger className="h-14 border-gray-300 focus:border-green-500 focus:ring-green-500 text-base">
+                <SelectTrigger className="h-14 border-gray-300 focus:border-brand-500 focus:ring-brand-500 text-base">
                   <SelectValue placeholder="Experience Type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -225,7 +225,7 @@ export default function HeroInteractive() {
               {/* Search Button */}
               <Button
                 onClick={handleSearch}
-                className="h-14 bg-green-600 hover:bg-green-700 text-white font-bold text-base shadow-lg active:scale-[0.98] transition-transform"
+                className="h-14 bg-brand-600 hover:bg-brand-700 text-white font-bold text-base shadow-lg active:scale-[0.98] transition-transform"
               >
                 <Search className="w-5 h-5 mr-2" />
                 Search Tours
@@ -236,15 +236,15 @@ export default function HeroInteractive() {
             <div className="mt-6 pt-6 border-t border-gray-200">
               <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-600">
                 <div className="flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-green-600" />
+                  <Shield className="w-4 h-4 text-brand-600" />
                   <span>Full Insurance Included</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-green-600" />
+                  <Clock className="w-4 h-4 text-brand-600" />
                   <span>No Waiting • Instant Booking</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-green-600" />
+                  <Sparkles className="w-4 h-4 text-brand-600" />
                   <span>Tailored to Your Needs</span>
                 </div>
               </div>

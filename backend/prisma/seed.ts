@@ -7,6 +7,26 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('Seeding database...')
 
+  // ── 0. Admin user ─────────────────────────────────────────────────────────
+  const adminPw = await bcrypt.hash('admin123', 10)
+  const admin = await prisma.user.upsert({
+    where:  { email: 'info@wemongolia.com' },
+    update: {
+      role:         'admin',
+      passwordHash: adminPw,  // always reset password to admin123 on seed
+      isVerified:   true,
+    },
+    create: {
+      firstName:    'WeMongolia',
+      lastName:     'Admin',
+      email:        'info@wemongolia.com',
+      passwordHash: adminPw,
+      role:         'admin',
+      isVerified:   true,
+    },
+  })
+  console.log('  Admin:', admin.email)
+
   // ── 1. Traveler user ──────────────────────────────────────────────────────
   const travelerPw = await bcrypt.hash('password123', 10)
   const traveler = await prisma.user.upsert({
@@ -300,6 +320,7 @@ async function main() {
 
   console.log('\nSeed complete!')
   console.log('\nTest credentials:')
+  console.log('  Admin     -> info@wemongolia.com      / admin123')
   console.log('  Traveler  -> traveler@wemongolia.com  / password123')
   console.log('  Provider  -> provider@wemongolia.com  / password123')
 }
