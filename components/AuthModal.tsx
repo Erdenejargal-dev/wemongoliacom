@@ -213,7 +213,7 @@ function LoginPanel({
         </Link>
       </div>
 
-      <Button className='w-full' type='submit' disabled={isLoading}>
+      <Button className='w-full bg-brand-500 hover:bg-brand-600' type='submit' disabled={isLoading}>
         {isLoading ? 'Signing in…' : 'Sign in to We Mongolia'}
       </Button>
 
@@ -222,7 +222,7 @@ function LoginPanel({
         <button
           type='button'
           onClick={onSwitchToRegister}
-          className='text-foreground font-medium hover:underline'
+          className='text-foreground font-medium hover:underline '
         >
           Create an account
         </button>
@@ -411,7 +411,7 @@ function RegisterPanel({
         </div>
       </div>
 
-      <Button className='w-full' type='submit' disabled={isLoading}>
+      <Button className='w-full bg-brand-500 hover:bg-brand-600' type='submit' disabled={isLoading}>
         {isLoading ? 'Creating account…' : 'Create Account'}
       </Button>
 

@@ -77,7 +77,7 @@ export default function Footer() {
     <footer className="bg-[#faf9f7] antialiased selection:bg-[#0285C9]/10">
 
       {/* ═══ Layer 1 — Brand ═══════════════════════════════ */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
         <div className="pt-20 sm:pt-24 pb-14 sm:pb-16">
           <WeMongoliaLogo className="h-8 w-auto" />
           <div className="mt-10 max-w-md">
@@ -96,7 +96,7 @@ export default function Footer() {
       </div>
 
       {/* ═══ Layer 2 — Navigation ══════════════════════════ */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-20">
         <div className="py-14 sm:py-16">
 
           {/* Desktop: flex row with vertical dividers */}
@@ -128,7 +128,7 @@ export default function Footer() {
       </div>
 
       {/* ═══ Layer 3 — Legal / Meta ════════════════════════ */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
         <div className="py-8 sm:py-10 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
 
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
