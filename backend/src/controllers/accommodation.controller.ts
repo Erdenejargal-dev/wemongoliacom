@@ -4,8 +4,12 @@ import * as accommodationService from '../services/accommodation.service'
 import { ok } from '../utils/response'
 
 export const listQuerySchema = z.object({
-  destinationId:     z.string().cuid().optional(),
-  accommodationType: z.enum(['ger_camp', 'hotel', 'lodge', 'guesthouse', 'resort']).optional(),
+  destinationId:      z.string().cuid().optional(),
+  /** Single type filter (backward compatible). */
+  accommodationType:  z.enum(['ger_camp', 'hotel', 'lodge', 'guesthouse', 'resort', 'hostel', 'homestay']).optional(),
+  /** Multi-type filter: comma-separated values, e.g. "ger_camp,resort".
+   *  When present, overrides accommodationType. */
+  accommodationTypes: z.string().optional(),
   minPrice:          z.coerce.number().nonnegative().optional(),
   maxPrice:          z.coerce.number().nonnegative().optional(),
   guests:            z.coerce.number().int().positive().optional(),

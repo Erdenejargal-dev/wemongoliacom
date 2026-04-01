@@ -44,6 +44,7 @@ const tourCardSelect = {
   shortDescription: true,
   category:         true,
   durationDays:     true,
+  maxGuests:        true,
   difficulty:       true,
   basePrice:        true,
   currency:         true,

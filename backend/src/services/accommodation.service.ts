@@ -3,17 +3,21 @@ import { prisma } from '../lib/prisma'
 import { AppError } from '../middleware/error'
 
 export interface AccommodationListQuery {
-  destinationId?:      string
-  accommodationType?:  string
-  minPrice?:           number
-  maxPrice?:           number
-  guests?:             number
-  checkIn?:            string
-  checkOut?:           string
-  amenities?:          string[]
-  page?:               number
-  limit?:              number
-  sort?:               'price_asc' | 'price_desc' | 'rating' | 'newest'
+  destinationId?:       string
+  /** Single type — backward compatible. */
+  accommodationType?:   string
+  /** Comma-separated multi-type filter, e.g. "ger_camp,resort".
+   *  Overrides accommodationType when present. */
+  accommodationTypes?:  string
+  minPrice?:            number
+  maxPrice?:            number
+  guests?:              number
+  checkIn?:             string
+  checkOut?:            string
+  amenities?:           string[]
+  page?:                number
+  limit?:               number
+  sort?:                'price_asc' | 'price_desc' | 'rating' | 'newest'
 }
 
 function buildOrderBy(sort?: AccommodationListQuery['sort']): Prisma.AccommodationOrderByWithRelationInput[] {
@@ -33,9 +37,20 @@ export async function listAccommodations(query: AccommodationListQuery = {}) {
 
   const where: Prisma.AccommodationWhereInput = { status: 'active' }
 
-  if (query.destinationId)     where.destinationId     = query.destinationId
-  if (query.accommodationType) where.accommodationType = query.accommodationType as any
-  if (query.amenities?.length) where.amenities         = { hasEvery: query.amenities }
+  if (query.destinationId) where.destinationId = query.destinationId
+
+  // Multi-type filter takes precedence over single-type
+  if (query.accommodationTypes) {
+    const types = query.accommodationTypes
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean)
+    if (types.length > 0) where.accommodationType = { in: types as any[] }
+  } else if (query.accommodationType) {
+    where.accommodationType = query.accommodationType as any
+  }
+
+  if (query.amenities?.length) where.amenities = { hasEvery: query.amenities }
 
   // Check room availability if dates provided
   if (query.checkIn && query.checkOut) {

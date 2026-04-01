@@ -18,6 +18,8 @@ export interface BackendTour {
   basePrice: number
   currency: string
   durationDays?: number
+  /** Now returned by the list endpoint (added to tourCardSelect). */
+  maxGuests?: number
   difficulty?: string
   ratingAverage: number
   reviewsCount: number
@@ -141,6 +143,7 @@ export interface TourListParams {
   difficulty?: string
   minDays?: number
   maxDays?: number
+  featured?: boolean
   /**
    * The /tours endpoint uses `sort`, NOT `sortBy`.
    * (search.service uses `sortBy` — these are different endpoints.)
