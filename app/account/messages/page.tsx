@@ -1,18 +1,17 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
 /**
  * app/account/messages/page.tsx
  *
  * Traveler-facing real messaging page — uses the live backend conversations API.
- * Previous version used mock data; this replaces it entirely.
  *
- * Architecture mirrors app/dashboard/business/(portal)/messages/page.tsx
- * (provider portal) but adapted for the traveler role.
+ * Architecture note:
+ *   useSearchParams() requires a <Suspense> boundary in Next.js App Router.
+ *   We split into a thin page export (provides Suspense) and the real
+ *   MessagesContent component that owns all state and logic.
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { Suspense, useState, useEffect, useCallback, useRef } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -42,9 +41,19 @@ function formatTime(dateStr: string): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// ── Loading fallback (also used as Suspense fallback) ─────────────────────────
 
-export default function TravelerMessagesPage() {
+function PageSpinner() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <Loader2 className="w-5 h-5 text-brand-500 animate-spin" />
+    </div>
+  )
+}
+
+// ── Inner component (uses useSearchParams — must be inside Suspense) ──────────
+
+function MessagesContent() {
   const { data: session } = useSession()
   const router            = useRouter()
   const searchParams      = useSearchParams()
@@ -74,14 +83,12 @@ export default function TravelerMessagesPage() {
     try {
       const list = await fetchConversations(ft)
       setConversations(list)
-      // If URL contains ?convId=, pre-select that conversation
       const convId = searchParams.get('convId')
       if (convId && list.some(c => c.id === convId)) {
         setActiveId(convId)
         setMobileView('chat')
-      } else if (list.length > 0 && !activeId) {
-        // Auto-select most recent on desktop
-        setActiveId(list[0].id)
+      } else if (list.length > 0) {
+        setActiveId(prev => prev ?? list[0].id)
       }
     } catch (e: unknown) {
       if (e instanceof ApiError && e.status === 401) {
@@ -93,7 +100,7 @@ export default function TravelerMessagesPage() {
     } finally {
       setLoading(false)
     }
-  }, [token, searchParams])
+  }, [token, searchParams, router])
 
   // ── Load messages for active conversation ─────────────────────────────────
 
@@ -104,7 +111,7 @@ export default function TravelerMessagesPage() {
     setSendError(null)
     try {
       const { messages: msgs } = await fetchMessages(convId, ft)
-      setMessages(msgs.reverse())   // backend returns newest-first; reverse for display
+      setMessages(msgs.reverse())
       await markConversationRead(convId, ft)
       setConversations(prev =>
         prev.map(c => c.id === convId ? { ...c, travelerUnreadCount: 0 } : c),
@@ -119,7 +126,7 @@ export default function TravelerMessagesPage() {
     } finally {
       setMessagesLoading(false)
     }
-  }, [token])
+  }, [token, router])
 
   useEffect(() => { loadConversations() }, [loadConversations])
   useEffect(() => { if (activeId) loadMessages(activeId); else setMessages([]) }, [activeId, loadMessages])
@@ -173,13 +180,7 @@ export default function TravelerMessagesPage() {
     )
   }
 
-  if (loading && conversations.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-5 h-5 text-brand-500 animate-spin" />
-      </div>
-    )
-  }
+  if (loading && conversations.length === 0) return <PageSpinner />
 
   if (!loading && conversations.length === 0) {
     return (
@@ -187,19 +188,19 @@ export default function TravelerMessagesPage() {
         <MessageSquare className="w-12 h-12 text-gray-300 mb-4" />
         <h2 className="text-base font-bold text-gray-900 mb-1">No conversations yet</h2>
         <p className="text-sm text-gray-500 mb-5">
-          Book a tour or stay, then use "Contact Host" from your trips to start a conversation.
+          Book a tour or stay, then use &quot;Contact Host&quot; from your trips to start a conversation.
         </p>
-        <Link href="/tours"
-          className="inline-flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors shadow-md">
+        <Link
+          href="/tours"
+          className="inline-flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors shadow-md"
+        >
           <Compass className="w-4 h-4" />Explore Tours
         </Link>
       </div>
     )
   }
 
-  const providerName = active
-    ? active.provider.name
-    : ''
+  const providerName = active?.provider.name ?? ''
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -248,8 +249,8 @@ export default function TravelerMessagesPage() {
 
               <div className="flex-1 overflow-y-auto">
                 {conversations.map(conv => {
-                  const unread = conv.travelerUnreadCount ?? 0
-                  const name = conv.provider.name
+                  const unread  = conv.travelerUnreadCount ?? 0
+                  const name    = conv.provider.name
                   const logoUrl = conv.provider.logoUrl
                   return (
                     <button
@@ -257,14 +258,12 @@ export default function TravelerMessagesPage() {
                       onClick={() => handleSelect(conv.id)}
                       className={`w-full text-left px-4 py-3.5 border-b border-gray-50 flex items-start gap-3 transition-colors touch-manipulation ${activeId === conv.id ? 'bg-brand-50' : 'hover:bg-gray-50'}`}
                     >
-                      {/* Provider avatar */}
                       <div className="relative shrink-0">
                         <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
-                          {logoUrl ? (
-                            <img src={logoUrl} alt={name} className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-gray-500 font-semibold text-sm">{name.charAt(0)}</span>
-                          )}
+                          {logoUrl
+                            ? <img src={logoUrl} alt={name} className="w-full h-full object-cover" />
+                            : <span className="text-gray-500 font-semibold text-sm">{name.charAt(0)}</span>
+                          }
                         </div>
                         {unread > 0 && (
                           <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-brand-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
@@ -307,11 +306,10 @@ export default function TravelerMessagesPage() {
                       <ArrowLeft className="w-5 h-5" />
                     </button>
                     <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center shrink-0">
-                      {active.provider.logoUrl ? (
-                        <img src={active.provider.logoUrl} alt={providerName} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-gray-500 font-semibold">{providerName.charAt(0)}</span>
-                      )}
+                      {active.provider.logoUrl
+                        ? <img src={active.provider.logoUrl} alt={providerName} className="w-full h-full object-cover" />
+                        : <span className="text-gray-500 font-semibold">{providerName.charAt(0)}</span>
+                      }
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900">{providerName}</p>
@@ -331,7 +329,6 @@ export default function TravelerMessagesPage() {
                       <>
                         {messages.map(msg => {
                           const isTraveler = msg.senderRole === 'traveler'
-                          const time = formatTime(msg.createdAt)
                           return (
                             <div key={msg.id} className={`flex items-end gap-2 ${isTraveler ? 'flex-row-reverse' : 'flex-row'}`}>
                               <div className={`max-w-[85%] sm:max-w-[75%] flex flex-col gap-0.5 ${isTraveler ? 'items-end' : 'items-start'}`}>
@@ -342,7 +339,7 @@ export default function TravelerMessagesPage() {
                                 }`}>
                                   {msg.text}
                                 </div>
-                                <span className="text-[10px] text-gray-400 px-1">{time}</span>
+                                <span className="text-[10px] text-gray-400 px-1">{formatTime(msg.createdAt)}</span>
                               </div>
                             </div>
                           )
@@ -396,5 +393,15 @@ export default function TravelerMessagesPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+// ── Page export — provides the required Suspense boundary ─────────────────────
+
+export default function TravelerMessagesPage() {
+  return (
+    <Suspense fallback={<PageSpinner />}>
+      <MessagesContent />
+    </Suspense>
   )
 }
