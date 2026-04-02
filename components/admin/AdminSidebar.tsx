@@ -14,23 +14,25 @@ import {
 import { cn } from '@/lib/utils'
 import { WeMongoliaLogo } from '@/components/brand/WeMongoliaLogo'
 import { PLATFORM } from '@/lib/constants/platform'
-
-const navItems = [
-  { href: '/admin',           label: 'Overview',   icon: LayoutDashboard, exact: true },
-  { href: '/admin/users',     label: 'Users',      icon: Users },
-  { href: '/admin/providers', label: 'Providers',  icon: Building2 },
-  { href: '/admin/bookings',  label: 'Bookings',   icon: BookOpen },
-]
+import { useAdminLocale } from '@/lib/i18n/admin/context'
 
 interface AdminSidebarProps {
-  open?:    boolean
-  onClose?: () => void
-  userName?: string
+  open?:      boolean
+  onClose?:   () => void
+  userName?:  string
   userEmail?: string
 }
 
 export function AdminSidebar({ open = true, onClose, userName, userEmail }: AdminSidebarProps) {
   const pathname = usePathname()
+  const { t } = useAdminLocale()
+
+  const navItems = [
+    { href: '/admin',           label: t.sidebar.overview,   icon: LayoutDashboard, exact: true },
+    { href: '/admin/users',     label: t.sidebar.users,      icon: Users },
+    { href: '/admin/providers', label: t.sidebar.providers,  icon: Building2 },
+    { href: '/admin/bookings',  label: t.sidebar.bookings,   icon: BookOpen },
+  ]
 
   return (
     <>
@@ -60,7 +62,11 @@ export function AdminSidebar({ open = true, onClose, userName, userEmail }: Admi
               ADMIN
             </span>
             {onClose && (
-              <button onClick={onClose} className="md:hidden p-1 rounded hover:bg-gray-800 text-gray-400">
+              <button
+                onClick={onClose}
+                className="md:hidden p-1 rounded hover:bg-gray-800 text-gray-400"
+                aria-label="Close menu"
+              >
                 <X className="w-4 h-4" />
               </button>
             )}
@@ -70,7 +76,7 @@ export function AdminSidebar({ open = true, onClose, userName, userEmail }: Admi
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-4 px-3">
           <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2">
-            Operations
+            {t.sidebar.operations}
           </p>
           <ul className="space-y-0.5">
             {navItems.map(item => {
@@ -96,8 +102,8 @@ export function AdminSidebar({ open = true, onClose, userName, userEmail }: Admi
                         active ? 'text-amber-400' : 'text-gray-500 group-hover:text-gray-300',
                       )}
                     />
-                    {item.label}
-                    {active && <ChevronRight className="w-3.5 h-3.5 ml-auto text-amber-400" />}
+                    <span className="truncate">{item.label}</span>
+                    {active && <ChevronRight className="w-3.5 h-3.5 ml-auto text-amber-400 shrink-0" />}
                   </Link>
                 </li>
               )
@@ -107,11 +113,11 @@ export function AdminSidebar({ open = true, onClose, userName, userEmail }: Admi
           {/* Support reference */}
           <div className="mt-6 px-3">
             <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
-              Support
+              {t.sidebar.support}
             </p>
             <a
               href={`mailto:${PLATFORM.supportEmail}`}
-              className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+              className="text-xs text-gray-500 hover:text-gray-300 transition-colors break-all"
             >
               {PLATFORM.supportEmail}
             </a>
@@ -121,7 +127,7 @@ export function AdminSidebar({ open = true, onClose, userName, userEmail }: Admi
         {/* Footer / user */}
         <div className="px-4 py-4 border-t border-gray-800">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 text-xs font-bold">
+            <div className="w-8 h-8 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 text-xs font-bold shrink-0">
               {userName?.charAt(0)?.toUpperCase() ?? 'A'}
             </div>
             <div className="flex-1 min-w-0">

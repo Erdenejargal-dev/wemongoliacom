@@ -457,7 +457,8 @@ export async function listMyBookings(userId: string, status?: string) {
       cancelReason:   true,
       listingSnapshot: true,
       createdAt:     true,
-      provider:      { select: { name: true, slug: true, logoUrl: true } },
+      /** id is included so the frontend can start a conversation via POST /conversations */
+      provider:      { select: { id: true, name: true, slug: true, logoUrl: true } },
 
       // Tour-specific fields needed by traveler trip cards.
       // For non-tour bookings this will be null.

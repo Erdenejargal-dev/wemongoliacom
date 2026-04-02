@@ -59,6 +59,35 @@ export interface Message {
 
 // ── API functions ──────────────────────────────────────────────────────────
 
+/**
+ * Start or re-use an existing conversation with a provider.
+ * The backend re-uses an existing traveler ↔ provider conversation if one
+ * already exists, otherwise creates a new one.
+ *
+ * @param providerId   - CUID of the provider (from Trip.providerId)
+ * @param initialMessage - First message text (required by backend, min 1 char)
+ * @param token        - Auth token
+ * @param listingType  - Optional: 'tour' | 'vehicle' | 'accommodation'
+ * @returns { conversation, message } on success, null on error
+ */
+export async function startConversation(
+  providerId: string,
+  initialMessage: string,
+  token: string,
+  listingType?: 'tour' | 'vehicle' | 'accommodation',
+): Promise<{ conversation: Conversation; message: any } | null> {
+  return apiClient.post<{ conversation: Conversation; message: any }>(
+    '/conversations',
+    {
+      providerId,
+      initialMessage,
+      ...(listingType ? { listingType } : {}),
+    },
+    token,
+  )
+}
+
+
 export async function fetchConversations(token: string): Promise<Conversation[]> {
   try {
     const result = await apiClient.get<Conversation[]>('/conversations', token)

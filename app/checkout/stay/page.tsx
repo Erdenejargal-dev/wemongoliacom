@@ -145,11 +145,18 @@ function StayCheckoutContent() {
 
       const backendBooking = await createBooking(
         {
-          listingType:      'accommodation',
-          listingId:        stay.id,
-          roomTypeId:       roomType.id,
-          startDate:        checkIn,
-          endDate:          checkOut,
+          listingType: 'accommodation',
+          listingId:   stay.id,
+          roomTypeId:  roomType.id,
+          /**
+           * Accommodation bookings MUST use checkIn / checkOut — NOT startDate / endDate.
+           * The backend booking service checks input.checkIn and input.checkOut for
+           * listingType === 'accommodation'. Sending startDate/endDate would leave
+           * checkIn/checkOut as undefined and throw 400:
+           *   "roomTypeId, checkIn, and checkOut are required for accommodation bookings."
+           */
+          checkIn:  checkIn,
+          checkOut: checkOut,
           guests,
           adults:           guests,
           children:         0,

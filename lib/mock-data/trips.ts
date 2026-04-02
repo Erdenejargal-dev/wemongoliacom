@@ -11,6 +11,11 @@ export interface Trip {
   location: string
   hostSlug: string
   hostName: string
+  /**
+   * Provider CUID — required to start a conversation via POST /conversations.
+   * Populated from BackendBooking.provider.id when that field is present.
+   */
+  providerId?: string
   image: string
   date: string        // ISO date of tour start
   durationDays: number

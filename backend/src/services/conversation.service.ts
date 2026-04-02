@@ -83,6 +83,17 @@ export async function startConversation(input: StartConversationInput) {
     },
   })
 
+  // Non-blocking email notification to provider
+  void import('./email.service')
+    .then(({ notifyMessageSent }) =>
+      notifyMessageSent({
+        conversationId: conversation.id,
+        senderRole:     'traveler',
+        messagePreview: input.initialMessage.slice(0, 200),
+      }),
+    )
+    .catch((err) => console.error('[email] notifyMessageSent (start) failed:', err))
+
   return { conversation, message }
 }
 
@@ -158,6 +169,17 @@ export async function sendMessage(input: SendMessageInput) {
     where: { id: conversationId },
     data:  updateData as any,
   })
+
+  // Non-blocking email notification to the OTHER party
+  void import('./email.service')
+    .then(({ notifyMessageSent }) =>
+      notifyMessageSent({
+        conversationId,
+        senderRole:     senderRole as 'traveler' | 'provider',
+        messagePreview: text.slice(0, 200),
+      }),
+    )
+    .catch((err) => console.error('[email] notifyMessageSent (send) failed:', err))
 
   return message
 }

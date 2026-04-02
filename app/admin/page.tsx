@@ -9,8 +9,9 @@ import {
 } from 'lucide-react'
 import { fetchAdminAnalytics, fetchAdminProviders, fetchAdminBookings } from '@/lib/api/admin'
 import type { AdminAnalytics, AdminProvider, AdminBooking } from '@/lib/api/admin'
+import { useAdminLocale } from '@/lib/i18n/admin/context'
 
-// ── tiny helpers ─────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmt(n: number) {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
@@ -18,33 +19,15 @@ function fmt(n: number) {
   return `$${n.toFixed(0)}`
 }
 
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-const bookingStatusConfig: Record<string, { label: string; cls: string }> = {
-  pending:   { label: 'Pending',   cls: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
-  confirmed: { label: 'Confirmed', cls: 'bg-green-50 text-green-700 border-green-200' },
-  cancelled: { label: 'Cancelled', cls: 'bg-red-50 text-red-700 border-red-200' },
-  completed: { label: 'Completed', cls: 'bg-blue-50 text-blue-700 border-blue-200' },
-}
-
-const verifyStatusConfig: Record<string, { label: string; icon: React.ReactNode; cls: string }> = {
-  pending_review: { label: 'Pending Review', icon: <AlertCircle className="w-3.5 h-3.5" />, cls: 'bg-amber-50 text-amber-700 border-amber-200' },
-  unverified:     { label: 'Unverified',     icon: <Clock className="w-3.5 h-3.5" />,       cls: 'bg-gray-50 text-gray-500 border-gray-200' },
-  verified:       { label: 'Verified',       icon: <CheckCircle2 className="w-3.5 h-3.5" />, cls: 'bg-green-50 text-green-700 border-green-200' },
-  rejected:       { label: 'Rejected',       icon: <XCircle className="w-3.5 h-3.5" />,      cls: 'bg-red-50 text-red-700 border-red-200' },
-}
-
-// ── stat card ────────────────────────────────────────────────────────────────
+// ── Stat card ─────────────────────────────────────────────────────────────────
 
 function StatCard({
   label, value, sub, icon: Icon, accent = 'gray',
 }: {
-  label: string
-  value: string | number
-  sub?: string
-  icon: React.ElementType
+  label:   string
+  value:   string | number
+  sub?:    string
+  icon:    React.ElementType
   accent?: 'gray' | 'amber' | 'blue' | 'green' | 'red'
 }) {
   const accentCls: Record<string, string> = {
@@ -68,17 +51,57 @@ function StatCard({
   )
 }
 
-// ── page ─────────────────────────────────────────────────────────────────────
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AdminOverviewPage() {
-  const { data: session } = useSession()
-  const token = session?.user?.accessToken
+  const { data: session }  = useSession()
+  const token              = session?.user?.accessToken
+  const { t }              = useAdminLocale()
 
   const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null)
-  const [pending, setPending]     = useState<AdminProvider[]>([])
-  const [recent, setRecent]       = useState<AdminBooking[]>([])
-  const [loading, setLoading]     = useState(true)
-  const [error, setError]         = useState<string | null>(null)
+  const [pending,   setPending]   = useState<AdminProvider[]>([])
+  const [recent,    setRecent]    = useState<AdminBooking[]>([])
+  const [loading,   setLoading]   = useState(true)
+  const [error,     setError]     = useState<string | null>(null)
+
+  // Build locale-aware booking-status badges
+  const bookingStatusConfig: Record<string, { label: string; cls: string }> = {
+    pending:   { label: t.bookings.statusLabels.pending,   cls: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+    confirmed: { label: t.bookings.statusLabels.confirmed, cls: 'bg-green-50 text-green-700 border-green-200' },
+    cancelled: { label: t.bookings.statusLabels.cancelled, cls: 'bg-red-50 text-red-700 border-red-200' },
+    completed: { label: t.bookings.statusLabels.completed, cls: 'bg-blue-50 text-blue-700 border-blue-200' },
+  }
+
+  // Build locale-aware verification badges
+  const verifyStatusConfig: Record<string, { label: string; icon: React.ReactNode; cls: string }> = {
+    pending_review: {
+      label: t.providers.verifyLabels.pending_review,
+      icon: <AlertCircle className="w-3.5 h-3.5" />,
+      cls: 'bg-amber-50 text-amber-700 border-amber-200',
+    },
+    unverified: {
+      label: t.providers.verifyLabels.unverified,
+      icon: <Clock className="w-3.5 h-3.5" />,
+      cls: 'bg-gray-50 text-gray-500 border-gray-200',
+    },
+    verified: {
+      label: t.providers.verifyLabels.verified,
+      icon: <CheckCircle2 className="w-3.5 h-3.5" />,
+      cls: 'bg-green-50 text-green-700 border-green-200',
+    },
+    rejected: {
+      label: t.providers.verifyLabels.rejected,
+      icon: <XCircle className="w-3.5 h-3.5" />,
+      cls: 'bg-red-50 text-red-700 border-red-200',
+    },
+  }
+
+  // Locale-aware date formatter
+  function fmtDate(iso: string) {
+    return new Date(iso).toLocaleDateString(t.dateLocale, {
+      month: 'short', day: 'numeric', year: 'numeric',
+    })
+  }
 
   useEffect(() => {
     if (!token) return
@@ -93,7 +116,7 @@ export default function AdminOverviewPage() {
         setPending(p.data)
         setRecent(b.data)
       })
-      .catch(e => setError(e?.message ?? 'Failed to load dashboard data'))
+      .catch(e => setError(e?.message ?? t.overview.errorLoadingDashboard))
       .finally(() => setLoading(false))
   }, [token])
 
@@ -109,46 +132,55 @@ export default function AdminOverviewPage() {
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
         <p className="text-sm text-red-700 font-medium">{error}</p>
-        <p className="text-xs text-red-500 mt-1">Check that the backend is running and you are signed in as admin.</p>
+        <p className="text-xs text-red-500 mt-1">{t.common.errorHint}</p>
       </div>
     )
   }
+
+  const quickLinks = [
+    { href: '/admin/users',     ...t.overview.quickActions.users,     icon: Users },
+    { href: '/admin/providers', ...t.overview.quickActions.providers, icon: Building2 },
+    { href: '/admin/bookings',  ...t.overview.quickActions.bookings,  icon: BookOpen },
+  ]
 
   return (
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-gray-900">Operations Overview</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Real-time platform health and pending actions.</p>
+        <h1 className="text-xl font-bold text-gray-900">{t.overview.title}</h1>
+        <p className="text-sm text-gray-500 mt-0.5">{t.overview.subtitle}</p>
       </div>
 
       {/* Stats grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          label="Total Users"
+          label={t.overview.stats.totalUsers}
           value={analytics?.users.total ?? 0}
-          sub={`+${analytics?.users.newThisMonth ?? 0} this month`}
+          sub={t.overview.stats.usersNewThisMonth(analytics?.users.newThisMonth ?? 0)}
           icon={Users}
           accent="blue"
         />
         <StatCard
-          label="Providers"
+          label={t.overview.stats.providers}
           value={analytics?.providers.total ?? 0}
-          sub={`${analytics?.providers.active ?? 0} active · ${analytics?.providers.pendingVerification ?? 0} pending`}
+          sub={t.overview.stats.providersSub(
+            analytics?.providers.active ?? 0,
+            analytics?.providers.pendingVerification ?? 0,
+          )}
           icon={Building2}
           accent={analytics?.providers.pendingVerification ? 'amber' : 'gray'}
         />
         <StatCard
-          label="Total Bookings"
+          label={t.overview.stats.totalBookings}
           value={analytics?.bookings.total ?? 0}
-          sub={`${analytics?.bookings.thisMonth ?? 0} this month`}
+          sub={t.overview.stats.bookingsThisMonth(analytics?.bookings.thisMonth ?? 0)}
           icon={BookOpen}
           accent="green"
         />
         <StatCard
-          label="Revenue (paid)"
+          label={t.overview.stats.revenue}
           value={fmt(analytics?.revenue.total ?? 0)}
-          sub={`${fmt(analytics?.revenue.thisMonth ?? 0)} this month`}
+          sub={t.overview.stats.revenueThisMonth(fmt(analytics?.revenue.thisMonth ?? 0))}
           icon={TrendingUp}
           accent="green"
         />
@@ -160,22 +192,27 @@ export default function AdminOverviewPage() {
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
             <div className="flex items-center gap-2">
               <ShieldAlert className="w-4 h-4 text-amber-500" />
-              <h2 className="text-sm font-semibold text-gray-900">Pending Verification</h2>
+              <h2 className="text-sm font-semibold text-gray-900">
+                {t.overview.pendingQueue.title}
+              </h2>
               {(analytics?.providers.pendingVerification ?? 0) > 0 && (
                 <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] font-bold">
                   {analytics?.providers.pendingVerification}
                 </span>
               )}
             </div>
-            <Link href="/admin/providers?verificationStatus=pending_review" className="text-xs text-amber-600 hover:text-amber-700 font-medium flex items-center gap-1">
-              View all <ArrowRight className="w-3 h-3" />
+            <Link
+              href="/admin/providers?verificationStatus=pending_review"
+              className="text-xs text-amber-600 hover:text-amber-700 font-medium flex items-center gap-1"
+            >
+              {t.common.viewAll} <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
 
           {pending.length === 0 ? (
             <div className="px-5 py-8 text-center">
               <CheckCircle2 className="w-8 h-8 text-green-400 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">No providers awaiting verification.</p>
+              <p className="text-sm text-gray-500">{t.overview.pendingQueue.empty}</p>
             </div>
           ) : (
             <ul className="divide-y divide-gray-50">
@@ -188,10 +225,10 @@ export default function AdminOverviewPage() {
                     </p>
                   </div>
                   <Link
-                    href={`/admin/providers?verificationStatus=pending_review`}
+                    href="/admin/providers?verificationStatus=pending_review"
                     className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-50 text-amber-700 text-xs font-medium border border-amber-200 hover:bg-amber-100 transition-colors"
                   >
-                    Review
+                    {t.common.reviewAction}
                   </Link>
                 </li>
               ))}
@@ -204,21 +241,27 @@ export default function AdminOverviewPage() {
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
             <div className="flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-blue-500" />
-              <h2 className="text-sm font-semibold text-gray-900">Recent Bookings</h2>
+              <h2 className="text-sm font-semibold text-gray-900">
+                {t.overview.recentBookings.title}
+              </h2>
             </div>
-            <Link href="/admin/bookings" className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
-              View all <ArrowRight className="w-3 h-3" />
+            <Link
+              href="/admin/bookings"
+              className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+            >
+              {t.common.viewAll} <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
 
           {recent.length === 0 ? (
             <div className="px-5 py-8 text-center">
-              <p className="text-sm text-gray-500">No bookings yet.</p>
+              <p className="text-sm text-gray-500">{t.overview.recentBookings.empty}</p>
             </div>
           ) : (
             <ul className="divide-y divide-gray-50">
               {recent.map(b => {
-                const sc = bookingStatusConfig[b.bookingStatus] ?? { label: b.bookingStatus, cls: 'bg-gray-50 text-gray-500 border-gray-200' }
+                const sc = bookingStatusConfig[b.bookingStatus]
+                  ?? { label: b.bookingStatus, cls: 'bg-gray-50 text-gray-500 border-gray-200' }
                 return (
                   <li key={b.id} className="px-5 py-3 flex items-center justify-between gap-3">
                     <div className="min-w-0">
@@ -243,26 +286,24 @@ export default function AdminOverviewPage() {
 
       {/* Quick links */}
       <section>
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Quick Actions</h2>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          {t.overview.quickActions.title}
+        </h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {[
-            { href: '/admin/users',     label: 'Manage Users',     desc: 'View and edit user roles', icon: Users },
-            { href: '/admin/providers', label: 'Manage Providers', desc: 'Verify and moderate businesses', icon: Building2 },
-            { href: '/admin/bookings',  label: 'Manage Bookings',  desc: 'Review and support bookings', icon: BookOpen },
-          ].map(item => (
+          {quickLinks.map(item => (
             <Link
               key={item.href}
               href={item.href}
               className="flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all group"
             >
-              <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center group-hover:bg-gray-900 transition-colors">
+              <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center group-hover:bg-gray-900 transition-colors shrink-0">
                 <item.icon className="w-4 h-4 text-gray-600 group-hover:text-white transition-colors" />
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-gray-900">{item.label}</p>
                 <p className="text-xs text-gray-400">{item.desc}</p>
               </div>
-              <ArrowRight className="w-4 h-4 text-gray-300 ml-auto group-hover:text-gray-600 transition-colors" />
+              <ArrowRight className="w-4 h-4 text-gray-300 ml-auto group-hover:text-gray-600 transition-colors shrink-0" />
             </Link>
           ))}
         </div>

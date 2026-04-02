@@ -1,9 +1,10 @@
 'use client'
 
-import { Menu } from 'lucide-react'
+import { Menu, Languages } from 'lucide-react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { WeMongoliaLogo } from '@/components/brand/WeMongoliaLogo'
+import { useProviderLocale } from '@/lib/i18n/provider/context'
 
 interface DashboardHeaderProps {
   onMenuClick: () => void
@@ -11,6 +12,8 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
   const { data: session } = useSession()
+  const { t, lang, setLang } = useProviderLocale()
+
   const name = session?.user?.name ?? ''
   const initials = name
     ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -21,16 +24,27 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
       <button
         className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors shrink-0"
         onClick={onMenuClick}
+        aria-label="Open menu"
       >
         <Menu className="w-5 h-5 text-gray-600" />
       </button>
 
       <div className="hidden md:flex items-center gap-2">
         <WeMongoliaLogo className="h-6 w-auto opacity-90" />
-        <span className="text-xs font-medium text-gray-400">Business Portal</span>
+        <span className="text-xs font-medium text-gray-400">{t.header.businessPortal}</span>
       </div>
 
       <div className="flex items-center gap-3 ml-auto">
+        {/* Language toggle */}
+        <button
+          onClick={() => setLang(lang === 'mn' ? 'en' : 'mn')}
+          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100 border border-gray-200 hover:border-gray-300 rounded-lg transition-colors"
+          title={lang === 'mn' ? 'Switch to English' : 'Монгол хэл рүү шилжих'}
+        >
+          <Languages className="w-3.5 h-3.5" />
+          {t.langToggleLabel}
+        </button>
+
         <Link
           href="/dashboard/business/settings"
           className="flex items-center gap-2 p-1 pr-3 rounded-xl hover:bg-gray-50 transition-colors"
@@ -39,7 +53,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
             {initials}
           </div>
           <span className="text-sm font-medium text-gray-700 hidden sm:block max-w-[120px] truncate">
-            {name || 'Settings'}
+            {name || t.menu.settings}
           </span>
         </Link>
       </div>

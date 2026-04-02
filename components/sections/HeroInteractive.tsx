@@ -2,259 +2,307 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Globe,
-  Plane,
-  Users,
-  MapPin,
-  Search,
-  ChevronDown,
-  Mountain,
-  Tent,
-  Hotel,
-  Map,
-  Compass,
-  Camera,
-  Shield,
-  Clock,
-  Award,
-  Sparkles,
-} from "lucide-react";
+import { MapPin, Search, Users, Calendar } from "lucide-react";
 
-// Button configurations for each tab
-const tabButtons = {
-  destinations: [
-    { id: "gobi", label: "Gobi Desert", icon: Mountain },
-    { id: "ulaanbaatar", label: "Ulaanbaatar", icon: Map },
-    { id: "nomadic", label: "Nomadic Life", icon: Tent },
-  ],
-  tours: [
-    { id: "extreme", label: "Extreme Adventures", icon: Mountain },
-    { id: "traditional", label: "Traditional Tours", icon: Users },
-    { id: "luxury", label: "Luxury Travel", icon: Sparkles },
-  ],
-  hotels: [
-    { id: "hotels", label: "City Hotels", icon: Hotel },
-    { id: "ger", label: "Ger Camps", icon: Tent },
-    { id: "luxury", label: "Luxury Stays", icon: Camera },
-  ],
-};
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type Category = "tours" | "stays" | "destinations";
+
+// ─── Static data ─────────────────────────────────────────────────────────────
+
+const CATEGORIES: { id: Category; label: string }[] = [
+  { id: "tours",        label: "Tours"        },
+  { id: "stays",        label: "Stays"        },
+  { id: "destinations", label: "Destinations" },
+];
+
+const GUEST_OPTIONS = ["1", "2", "3", "4", "5", "6+"];
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export default function HeroInteractive() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"destinations" | "tours" | "hotels">("tours");
-  const [activeButton, setActiveButton] = useState("extreme");
-  const [searchTab, setSearchTab] = useState("tours");
 
-  // Controlled search state
+  const [category, setCategory] = useState<Category>("tours");
+
+  // Shared destination
   const [destination, setDestination] = useState("");
-  const [region, setRegion] = useState("");
-  const [experienceType, setExperienceType] = useState("");
 
-  // Update active button when tab changes
-  const handleTabChange = (tab: "destinations" | "tours" | "hotels") => {
-    setActiveTab(tab);
-    setActiveButton(tabButtons[tab][0].id);
-  };
+  // Tours
+  const [tourDate, setTourDate]   = useState("");
+  const [tourGuests, setTourGuests] = useState("2");
 
-  // Build URL params and navigate to /tours
+  // Stays
+  const [checkIn,    setCheckIn]    = useState("");
+  const [checkOut,   setCheckOut]   = useState("");
+  const [stayGuests, setStayGuests] = useState("2");
+
+  // ── Navigation ──────────────────────────────────────────────────────────────
+
   const handleSearch = () => {
     const params = new URLSearchParams();
     if (destination.trim()) params.set("destination", destination.trim());
-    if (region) params.set("region", region);
-    if (experienceType) params.set("type", experienceType);
-    router.push(`/tours?${params.toString()}`);
+
+    if (category === "tours") {
+      if (tourDate)   params.set("date",   tourDate);
+      if (tourGuests) params.set("guests", tourGuests);
+      router.push(`/tours?${params.toString()}`);
+    } else if (category === "stays") {
+      if (checkIn)    params.set("checkIn",  checkIn);
+      if (checkOut)   params.set("checkOut", checkOut);
+      if (stayGuests) params.set("guests",   stayGuests);
+      router.push(`/stays?${params.toString()}`);
+    } else {
+      router.push(`/destinations?${params.toString()}`);
+    }
   };
 
-  const currentButtons = tabButtons[activeTab];
+  const handleKey = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") handleSearch();
+  };
+
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-gray-900 via-brand-900 to-gray-900">
-      {/* Background decorations */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-brand-500/20 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 -left-40 w-96 h-96 bg-orange-500/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 right-1/4 w-80 h-80 bg-brand-400/10 rounded-full blur-3xl" />
-      </div>
+    <section className="relative min-h-[92vh] flex items-center overflow-hidden rounded-[28px] sm:rounded-[36px] lg:rounded-[44px]">
 
-      {/* Background Image Overlay */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center opacity-20"
+      {/* ── Background image ──────────────────────────────────────────────── */}
+      <div
+        className="absolute inset-0 bg-cover bg-center"
         style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1583037189850-1921ae7c6c22?q=80&w=2000')",
+          backgroundImage:
+            "url('https://images.unsplash.com/photo-1583037189850-1921ae7c6c22?q=80&w=2000')",
         }}
+        aria-hidden="true"
       />
 
-      <div className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 pt-16 pb-20 sm:pt-20 sm:pb-24 md:pt-24 md:pb-28 lg:pt-28 lg:pb-32">
-        {/* Announcement Badge */}
-     
+      {/* Single clean dark gradient — no floating blobs */}
+      <div
+        className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/50 to-black/70"
+        aria-hidden="true"
+      />
 
-        {/* Main Headline */}
-        <div className="text-center mb-6 sm:mb-8">
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-tight mb-3 sm:mb-4">
-            <span className="text-white">WE MON</span>
-            <span className="text-brand-400">GO</span>
-            <span className="text-white">LIA</span>
-          </h1>
-         
-        </div>
+      {/* ── Content ───────────────────────────────────────────────────────── */}
+      <div className="relative w-full max-w-3xl mx-auto px-4 sm:px-6 py-28 sm:py-36">
 
-    
+        {/* Eyebrow */}
+        <p className="text-center text-orange-400 text-xs sm:text-sm font-semibold tracking-[0.2em] uppercase mb-5">
+          Mongolia Awaits
+        </p>
 
-        {/* Main Category Tabs */}
-        <div className="flex justify-center mb-6 sm:mb-8 px-2">
-          <div className="inline-flex bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 p-1 sm:p-1.5 shadow-xl w-full max-w-2xl">
-            {[
-              { id: "destinations", label: "Destinations", short: "Dest", icon: MapPin },
-              { id: "tours", label: "Tours & Packages", short: "Tours", icon: Compass },
-              { id: "hotels", label: "Accommodation", short: "Stay", icon: Hotel },
-            ].map((tab) => (
+        {/* Headline */}
+        <h1 className="text-center text-4xl sm:text-5xl md:text-[3.5rem] font-extrabold text-white leading-[1.15] tracking-tight mb-4">
+          Discover the Last<br />
+          <span className="text-orange-400">Wild Frontier</span>
+        </h1>
+
+        {/* Supporting line */}
+        <p className="text-center text-white/65 text-base sm:text-lg max-w-lg mx-auto mb-12">
+          Book tours, stays, and unforgettable experiences across Mongolia.
+        </p>
+
+        {/* ── Search card ─────────────────────────────────────────────────── */}
+        <div className="bg-white rounded-2xl shadow-2xl">
+
+          {/* Category tab row */}
+          <div className="flex">
+            {CATEGORIES.map((cat, i) => (
               <button
-                key={tab.id}
-                onClick={() => handleTabChange(tab.id as "destinations" | "tours" | "hotels")}
-                className={`flex items-center justify-center gap-1.5 sm:gap-2 flex-1 px-2 sm:px-6 md:px-10 py-2.5 sm:py-3.5 text-xs sm:text-sm font-semibold rounded-xl transition-all ${
-                  activeTab === tab.id
-                    ? "bg-brand-500 text-white shadow-lg"
-                    : "text-white/70 hover:text-white hover:bg-white/10"
-                }`}
+                key={cat.id}
+                onClick={() => setCategory(cat.id)}
+                className={[
+                  "flex-1 py-4 text-sm font-semibold transition-colors relative",
+                  // rounded corners only on corners of the card
+                  i === 0 ? "rounded-tl-2xl" : "",
+                  i === CATEGORIES.length - 1 ? "rounded-tr-2xl" : "",
+                  category === cat.id
+                    ? "text-orange-500"
+                    : "text-gray-500 hover:text-gray-800",
+                ].join(" ")}
+                aria-selected={category === cat.id}
               >
-                <tab.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                <span className="hidden md:inline">{tab.label}</span>
-                <span className="hidden sm:inline md:hidden">{tab.short}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Dynamic User Type Buttons */}
-        <div className="flex justify-center gap-2 sm:gap-3 mb-10 sm:mb-12 flex-wrap px-2">
-          {currentButtons.map((btn) => {
-            const IconComponent = btn.icon;
-            return (
-              <Button
-                key={btn.id}
-                onClick={() => setActiveButton(btn.id)}
-                className={`px-3 py-2 sm:px-6 sm:py-3 rounded-full transition-all text-xs sm:text-sm font-semibold ${
-                  activeButton === btn.id
-                    ? "bg-orange-500 hover:bg-orange-600 text-white shadow-lg"
-                    : "bg-white/10 backdrop-blur-md border border-white/30 text-white hover:bg-white/20"
-                }`}
-              >
-                <IconComponent className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-                <span className="hidden xs:inline">{btn.label}</span>
-                <span className="xs:hidden">{btn.label.split(' ')[0]}</span>
-              </Button>
-            );
-          })}
-        </div>
-
-        
-
-        {/* Search Section */}
-        <div className="max-w-5xl mx-auto">
-          <div className="flex border-b border-white/20 mb-0 bg-white/5 backdrop-blur-sm rounded-t-2xl">
-            {["Tours", "Destinations", "Ger Camps"].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setSearchTab(tab.toLowerCase().replace(" ", "-"))}
-                className={`flex-1 py-4 text-sm font-semibold transition-all border-b-2 ${
-                  searchTab === tab.toLowerCase().replace(" ", "-")
-                    ? "border-brand-400 text-white"
-                    : "border-transparent text-white/60 hover:text-white/90"
-                }`}
-              >
-                {tab}
+                {cat.label}
+                {/* active indicator */}
+                {category === cat.id && (
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-[2px] bg-orange-500 rounded-full" />
+                )}
               </button>
             ))}
           </div>
 
-          {/* Search Form */}
-          <div className="bg-white/95 backdrop-blur-lg rounded-b-2xl border border-white/20 p-6 sm:p-8 shadow-2xl">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Destination */}
-              <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <Input
-                  value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  placeholder="Where in Mongolia?"
-                  className="pl-11 h-14 border-gray-300 focus:border-brand-500 focus:ring-brand-500 text-base"
-                />
+          <div className="h-px bg-gray-100" />
+
+          {/* Search fields */}
+          <div className="p-5 sm:p-6">
+
+            {/* ── Tours ─────────────────────────────────────────────────── */}
+            {category === "tours" && (
+              <div className="flex flex-col sm:flex-row gap-3">
+
+                {/* Destination */}
+                <div className="relative flex-[2]">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <input
+                    value={destination}
+                    onChange={(e) => setDestination(e.target.value)}
+                    onKeyDown={handleKey}
+                    placeholder="Where do you want to go?"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 placeholder-gray-400"
+                  />
+                </div>
+
+                {/* Date */}
+                <div className="relative flex-1">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <input
+                    type="date"
+                    value={tourDate}
+                    onChange={(e) => setTourDate(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 text-gray-700"
+                  />
+                </div>
+
+                {/* Guests */}
+                <div className="relative flex-1">
+                  <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <select
+                    value={tourGuests}
+                    onChange={(e) => setTourGuests(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 text-gray-700 appearance-none bg-white"
+                  >
+                    {GUEST_OPTIONS.map((g) => (
+                      <option key={g} value={g}>
+                        {g} {g === "1" ? "Guest" : "Guests"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* CTA */}
+                <SearchButton onClick={handleSearch} label="Search" />
               </div>
+            )}
 
-              {/* Region */}
-              <Select value={region} onValueChange={setRegion}>
-                <SelectTrigger className="h-14 border-gray-300 focus:border-brand-500 focus:ring-brand-500 text-base">
-                  <SelectValue placeholder="Select Region" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="gobi">Gobi Desert</SelectItem>
-                  <SelectItem value="khangai">Khangai Mountains</SelectItem>
-                  <SelectItem value="khuvsgul">Lake Khuvsgul</SelectItem>
-                  <SelectItem value="ulaanbaatar">Ulaanbaatar City</SelectItem>
-                  <SelectItem value="altai">Altai Mountains</SelectItem>
-                  <SelectItem value="steppe">Central Steppes</SelectItem>
-                </SelectContent>
-              </Select>
+            {/* ── Stays ─────────────────────────────────────────────────── */}
+            {category === "stays" && (
+              <div className="flex flex-col sm:flex-row gap-3">
 
-              {/* Experience Type */}
-              <Select value={experienceType} onValueChange={setExperienceType}>
-                <SelectTrigger className="h-14 border-gray-300 focus:border-brand-500 focus:ring-brand-500 text-base">
-                  <SelectValue placeholder="Experience Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="extreme">Extreme Adventure</SelectItem>
-                  <SelectItem value="nomadic">Nomadic Homestay</SelectItem>
-                  <SelectItem value="cultural">Cultural Heritage</SelectItem>
-                  <SelectItem value="wildlife">Wildlife Safari</SelectItem>
-                  <SelectItem value="horseback">Horseback Riding</SelectItem>
-                  <SelectItem value="luxury">Luxury Experience</SelectItem>
-                </SelectContent>
-              </Select>
+                {/* Destination */}
+                <div className="relative flex-[2]">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <input
+                    value={destination}
+                    onChange={(e) => setDestination(e.target.value)}
+                    onKeyDown={handleKey}
+                    placeholder="Destination"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 placeholder-gray-400"
+                  />
+                </div>
 
-              {/* Search Button */}
-              <Button
-                onClick={handleSearch}
-                className="h-14 bg-brand-600 hover:bg-brand-700 text-white font-bold text-base shadow-lg active:scale-[0.98] transition-transform"
-              >
-                <Search className="w-5 h-5 mr-2" />
-                Search Tours
-              </Button>
-            </div>
-            
-            {/* Quick Info */}
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-600">
-                <div className="flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-brand-600" />
-                  <span>Full Insurance Included</span>
+                {/* Check-in */}
+                <div className="relative flex-1">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <input
+                    type="date"
+                    value={checkIn}
+                    onChange={(e) => setCheckIn(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 text-gray-700"
+                  />
                 </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-brand-600" />
-                  <span>No Waiting • Instant Booking</span>
+
+                {/* Check-out */}
+                <div className="relative flex-1">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <input
+                    type="date"
+                    value={checkOut}
+                    onChange={(e) => setCheckOut(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 text-gray-700"
+                  />
                 </div>
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-brand-600" />
-                  <span>Tailored to Your Needs</span>
+
+                {/* Guests */}
+                <div className="relative flex-1">
+                  <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <select
+                    value={stayGuests}
+                    onChange={(e) => setStayGuests(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 text-gray-700 appearance-none bg-white"
+                  >
+                    {GUEST_OPTIONS.map((g) => (
+                      <option key={g} value={g}>
+                        {g} {g === "1" ? "Guest" : "Guests"}
+                      </option>
+                    ))}
+                  </select>
                 </div>
+
+                {/* CTA */}
+                <SearchButton onClick={handleSearch} label="Search" />
               </div>
-            </div>
+            )}
+
+            {/* ── Destinations ──────────────────────────────────────────── */}
+            {category === "destinations" && (
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <input
+                    value={destination}
+                    onChange={(e) => setDestination(e.target.value)}
+                    onKeyDown={handleKey}
+                    placeholder="Search a place, region, or landmark…"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 placeholder-gray-400"
+                  />
+                </div>
+                <SearchButton onClick={handleSearch} label="Explore" />
+              </div>
+            )}
+          </div>
+
+          {/* Trust bar */}
+          <div className="px-5 sm:px-6 py-4 border-t border-gray-100 flex flex-wrap items-center gap-x-6 gap-y-2">
+            <TrustItem text="Verified local providers" />
+            <TrustItem text="Instant confirmation" />
+            <TrustItem text="Free cancellation on most bookings" />
           </div>
         </div>
       </div>
 
-      {/* Gradient Overlay at Bottom */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white to-transparent" />
+      {/* Bottom page-blend */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white to-transparent pointer-events-none"
+        aria-hidden="true"
+      />
     </section>
+  );
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function SearchButton({
+  onClick,
+  label,
+}: {
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center justify-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 active:scale-[0.97] text-white text-sm font-bold rounded-xl transition-all shadow-sm whitespace-nowrap"
+    >
+      <Search className="w-4 h-4" />
+      {label}
+    </button>
+  );
+}
+
+function TrustItem({ text }: { text: string }) {
+  return (
+    <span className="flex items-center gap-1.5 text-xs text-gray-500">
+      <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
+      {text}
+    </span>
   );
 }

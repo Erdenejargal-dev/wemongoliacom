@@ -10,38 +10,43 @@ import {
 import { useDebounce } from '@/lib/hooks/useDebounce'
 import { fetchAdminProviders, setAdminProviderVerification } from '@/lib/api/admin'
 import type { AdminProvider } from '@/lib/api/admin'
+import { useAdminLocale } from '@/lib/i18n/admin/context'
 
-// ── helpers ───────────────────────────────────────────────────────────────────
+// ── Badges ────────────────────────────────────────────────────────────────────
 
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+const verifyDotCls: Record<string, string> = {
+  unverified:     'bg-gray-400',
+  pending_review: 'bg-amber-400 animate-pulse',
+  verified:       'bg-green-500',
+  rejected:       'bg-red-500',
 }
 
-const verifyConfig: Record<string, { label: string; cls: string; dotCls: string }> = {
-  unverified:     { label: 'Unverified',      cls: 'bg-gray-50 text-gray-500 border-gray-200',     dotCls: 'bg-gray-400' },
-  pending_review: { label: 'Pending Review',  cls: 'bg-amber-50 text-amber-700 border-amber-200',  dotCls: 'bg-amber-400 animate-pulse' },
-  verified:       { label: 'Verified',        cls: 'bg-green-50 text-green-700 border-green-200',  dotCls: 'bg-green-500' },
-  rejected:       { label: 'Rejected',        cls: 'bg-red-50 text-red-700 border-red-200',        dotCls: 'bg-red-500' },
+const verifyBgCls: Record<string, string> = {
+  unverified:     'bg-gray-50 text-gray-500 border-gray-200',
+  pending_review: 'bg-amber-50 text-amber-700 border-amber-200',
+  verified:       'bg-green-50 text-green-700 border-green-200',
+  rejected:       'bg-red-50 text-red-700 border-red-200',
 }
 
-const statusConfig: Record<string, { label: string; cls: string }> = {
-  draft:    { label: 'Draft',    cls: 'bg-gray-50 text-gray-500 border-gray-200' },
-  active:   { label: 'Active',   cls: 'bg-green-50 text-green-700 border-green-200' },
-  paused:   { label: 'Paused',   cls: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
-  archived: { label: 'Archived', cls: 'bg-gray-100 text-gray-500 border-gray-200' },
+const statusBgCls: Record<string, string> = {
+  draft:    'bg-gray-50 text-gray-500 border-gray-200',
+  active:   'bg-green-50 text-green-700 border-green-200',
+  paused:   'bg-yellow-50 text-yellow-700 border-yellow-200',
+  archived: 'bg-gray-100 text-gray-500 border-gray-200',
 }
 
-function VerifyBadge({ status }: { status: string }) {
-  const cfg = verifyConfig[status] ?? verifyConfig.unverified
+function VerifyBadge({ status, label }: { status: string; label: string }) {
+  const bg  = verifyBgCls[status]  ?? verifyBgCls.unverified
+  const dot = verifyDotCls[status] ?? 'bg-gray-400'
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${cfg.cls}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dotCls}`} />
-      {cfg.label}
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${bg}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+      {label}
     </span>
   )
 }
 
-// ── detail panel ─────────────────────────────────────────────────────────────
+// ── Detail panel ──────────────────────────────────────────────────────────────
 
 function ProviderDetailPanel({
   provider,
@@ -49,16 +54,29 @@ function ProviderDetailPanel({
   onClose,
   saving,
 }: {
-  provider: AdminProvider
-  onVerify: (id: string, status: 'verified' | 'rejected', rejectionReason?: string) => void
-  onClose: () => void
-  saving: boolean
+  provider:  AdminProvider
+  onVerify:  (id: string, status: 'verified' | 'rejected', rejectionReason?: string) => void
+  onClose:   () => void
+  saving:    boolean
 }) {
-  const [rejectStep, setRejectStep]   = useState(false)
+  const { t }       = useAdminLocale()
+  const tp          = t.providers
+  const [rejectStep,   setRejectStep]   = useState(false)
   const [rejectReason, setRejectReason] = useState('')
 
-  function startReject() { setRejectStep(true); setRejectReason('') }
-  function cancelReject() { setRejectStep(false); setRejectReason('') }
+  function fmtDate(iso: string) {
+    return new Date(iso).toLocaleDateString(t.dateLocale, {
+      month: 'short', day: 'numeric', year: 'numeric',
+    })
+  }
+
+  const verifyLabel = (s: string) =>
+    (tp.verifyLabels as Record<string, string>)[s] ?? s
+  const statusLabel = (s: string) =>
+    (tp.statusLabels as Record<string, string>)[s] ?? s
+
+  function startReject()   { setRejectStep(true);  setRejectReason('') }
+  function cancelReject()  { setRejectStep(false); setRejectReason('') }
   function confirmReject() {
     if (!rejectReason.trim()) return
     onVerify(provider.id, 'rejected', rejectReason.trim())
@@ -85,27 +103,31 @@ function ProviderDetailPanel({
 
         {/* Body */}
         <div className="px-6 py-4 space-y-5">
-          {/* Status pair */}
-          <div className="flex items-center gap-3">
-            <VerifyBadge status={provider.verificationStatus} />
+          {/* Status row */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <VerifyBadge status={provider.verificationStatus} label={verifyLabel(provider.verificationStatus)} />
             <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
-              (statusConfig[provider.status] ?? statusConfig.draft).cls
+              statusBgCls[provider.status] ?? statusBgCls.draft
             }`}>
-              {(statusConfig[provider.status] ?? statusConfig.draft).label}
+              {statusLabel(provider.status)}
             </span>
           </div>
 
-          {/* Rejection reason (read-only, for rejected providers) */}
+          {/* Rejection reason (read-only) */}
           {provider.verificationStatus === 'rejected' && provider.rejectionReason && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3">
-              <p className="text-[11px] font-semibold text-red-700 uppercase tracking-wider mb-1">Rejection Reason</p>
+              <p className="text-[11px] font-semibold text-red-700 uppercase tracking-wider mb-1">
+                {tp.detail.rejectionReasonBadge}
+              </p>
               <p className="text-xs text-red-800 leading-relaxed">{provider.rejectionReason}</p>
             </div>
           )}
 
           {/* Owner */}
           <div>
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Owner</p>
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+              {tp.detail.owner}
+            </p>
             <p className="text-sm font-medium text-gray-900">
               {provider.owner.firstName} {provider.owner.lastName}
             </p>
@@ -115,16 +137,20 @@ function ProviderDetailPanel({
           {/* Contact */}
           {(provider.email || provider.phone) && (
             <div>
-              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Contact</p>
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                {tp.detail.contact}
+              </p>
               {provider.email && <p className="text-xs text-gray-600">{provider.email}</p>}
               {provider.phone && <p className="text-xs text-gray-600">{provider.phone}</p>}
             </div>
           )}
 
-          {/* Description */}
+          {/* About */}
           {provider.description && (
             <div>
-              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">About</p>
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                {tp.detail.about}
+              </p>
               <p className="text-xs text-gray-600 leading-relaxed line-clamp-4">
                 {provider.description}
               </p>
@@ -134,7 +160,9 @@ function ProviderDetailPanel({
           {/* Location */}
           {(provider.city || provider.region) && (
             <div>
-              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Location</p>
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                {tp.detail.location}
+              </p>
               <p className="text-xs text-gray-600">
                 {[provider.city, provider.region].filter(Boolean).join(', ')}
               </p>
@@ -143,12 +171,14 @@ function ProviderDetailPanel({
 
           {/* Listings */}
           <div>
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Listings</p>
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+              {tp.detail.listings}
+            </p>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { label: 'Tours',           val: provider._count.tours },
-                { label: 'Vehicles',        val: provider._count.vehicles },
-                { label: 'Accommodations',  val: provider._count.accommodations },
+                { label: tp.detail.tours,          val: provider._count.tours },
+                { label: tp.detail.vehicles,        val: provider._count.vehicles },
+                { label: tp.detail.accommodations,  val: provider._count.accommodations },
               ].map(item => (
                 <div key={item.label} className="bg-gray-50 rounded-lg p-2.5 text-center">
                   <p className="text-base font-bold text-gray-900">{item.val}</p>
@@ -158,36 +188,38 @@ function ProviderDetailPanel({
             </div>
           </div>
 
-          {/* Bookings / Reviews */}
+          {/* Activity */}
           <div>
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Activity</p>
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+              {tp.detail.activity}
+            </p>
             <div className="grid grid-cols-2 gap-2">
               <div className="bg-gray-50 rounded-lg p-2.5 text-center">
                 <p className="text-base font-bold text-gray-900">{provider._count.bookings}</p>
-                <p className="text-[10px] text-gray-500">Bookings</p>
+                <p className="text-[10px] text-gray-500">{tp.detail.bookings}</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-2.5 text-center">
                 <p className="text-base font-bold text-gray-900">{provider.reviewsCount}</p>
-                <p className="text-[10px] text-gray-500">Reviews</p>
+                <p className="text-[10px] text-gray-500">{tp.detail.reviews}</p>
               </div>
             </div>
           </div>
 
-          <p className="text-xs text-gray-400">Joined {fmtDate(provider.createdAt)}</p>
+          <p className="text-xs text-gray-400">{tp.detail.joined(fmtDate(provider.createdAt))}</p>
         </div>
 
         {/* Actions */}
         <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4 space-y-3">
-          {/* Rejection reason step */}
+          {/* Rejection reason form */}
           {rejectStep && (
             <div className="space-y-2">
               <label className="text-xs font-semibold text-gray-700">
-                Rejection reason <span className="text-red-500">*</span>
+                {tp.detail.rejectionReasonLabel} <span className="text-red-500">*</span>
               </label>
               <textarea
                 value={rejectReason}
                 onChange={e => setRejectReason(e.target.value)}
-                placeholder="Describe why this provider is being rejected. This will be sent to them by email."
+                placeholder={tp.detail.rejectionPlaceholder}
                 rows={3}
                 className="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-300"
               />
@@ -196,7 +228,7 @@ function ProviderDetailPanel({
                   onClick={cancelReject}
                   className="flex-1 px-3 py-2 text-xs font-medium rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
                 >
-                  Cancel
+                  {t.common.cancel}
                 </button>
                 <button
                   onClick={confirmReject}
@@ -204,7 +236,7 @@ function ProviderDetailPanel({
                   className="flex-1 px-3 py-2 text-xs font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-1"
                 >
                   <XCircle className="w-3.5 h-3.5" />
-                  {saving ? 'Saving…' : 'Confirm Rejection'}
+                  {saving ? t.common.saving : tp.actions.confirmRejection}
                 </button>
               </div>
             </div>
@@ -215,33 +247,23 @@ function ProviderDetailPanel({
             <div className="flex gap-2">
               {provider.verificationStatus !== 'verified' && (
                 <>
-                  {provider.verificationStatus !== 'rejected' && (
-                    <button
-                      onClick={startReject}
-                      disabled={saving}
-                      className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5"
-                    >
-                      <XCircle className="w-4 h-4" />
-                      Reject
-                    </button>
-                  )}
-                  {provider.verificationStatus === 'rejected' && (
-                    <button
-                      onClick={startReject}
-                      disabled={saving}
-                      className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5"
-                    >
-                      <XCircle className="w-4 h-4" />
-                      Reject Again
-                    </button>
-                  )}
+                  <button
+                    onClick={startReject}
+                    disabled={saving}
+                    className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    {provider.verificationStatus === 'rejected'
+                      ? tp.actions.rejectAgain
+                      : tp.actions.reject}
+                  </button>
                   <button
                     onClick={() => onVerify(provider.id, 'verified')}
                     disabled={saving}
                     className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5"
                   >
                     <CheckCircle2 className="w-4 h-4" />
-                    {saving ? 'Saving…' : 'Verify'}
+                    {saving ? t.common.saving : tp.actions.verify}
                   </button>
                 </>
               )}
@@ -252,7 +274,7 @@ function ProviderDetailPanel({
                   className="w-full px-4 py-2 text-sm font-medium rounded-lg border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50 transition-colors flex items-center justify-center gap-1.5"
                 >
                   <XCircle className="w-4 h-4" />
-                  Revoke Verification
+                  {tp.actions.revokeVerification}
                 </button>
               )}
             </div>
@@ -263,28 +285,39 @@ function ProviderDetailPanel({
   )
 }
 
-// ── page ─────────────────────────────────────────────────────────────────────
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AdminProvidersPage() {
   const { data: session } = useSession()
-  const token = session?.user?.accessToken
-  const searchParams = useSearchParams()
+  const token             = session?.user?.accessToken
+  const searchParams      = useSearchParams()
+  const { t }             = useAdminLocale()
+  const tp                = t.providers
 
-  const [providers, setProviders]   = useState<AdminProvider[]>([])
-  const [total, setTotal]           = useState(0)
-  const [pages, setPages]           = useState(1)
-  const [loading, setLoading]       = useState(true)
-  const [error, setError]           = useState<string | null>(null)
-  const [search, setSearch]         = useState('')
-  const debouncedSearch             = useDebounce(search, 300)
-  // Initialise from URL param so overview "Pending Review" link pre-filters the table
-  const [vFilter, setVFilter]       = useState(() => searchParams.get('verificationStatus') ?? '')
-  const [page, setPage]             = useState(1)
+  const [providers, setProviders] = useState<AdminProvider[]>([])
+  const [total,     setTotal]     = useState(0)
+  const [pages,     setPages]     = useState(1)
+  const [loading,   setLoading]   = useState(true)
+  const [error,     setError]     = useState<string | null>(null)
+  const [search,    setSearch]    = useState('')
+  const debouncedSearch           = useDebounce(search, 300)
+  const [vFilter,   setVFilter]   = useState(() => searchParams.get('verificationStatus') ?? '')
+  const [page,      setPage]      = useState(1)
+  const [selected,  setSelected]  = useState<AdminProvider | null>(null)
+  const [saving,    setSaving]    = useState(false)
 
-  // Reset to page 1 only when debounced search value changes — not on every keystroke
   useEffect(() => { setPage(1) }, [debouncedSearch])
-  const [selected, setSelected]     = useState<AdminProvider | null>(null)
-  const [saving, setSaving]         = useState(false)
+
+  const verifyLabel = (s: string) =>
+    (tp.verifyLabels as Record<string, string>)[s] ?? s
+  const statusLabel = (s: string) =>
+    (tp.statusLabels as Record<string, string>)[s] ?? s
+
+  function fmtDate(iso: string) {
+    return new Date(iso).toLocaleDateString(t.dateLocale, {
+      month: 'short', day: 'numeric', year: 'numeric',
+    })
+  }
 
   const LIMIT = 20
 
@@ -301,7 +334,7 @@ export default function AdminProvidersPage() {
       setTotal(result.pagination.total)
       setPages(result.pagination.pages)
     } catch (e: any) {
-      setError(e?.message ?? 'Failed to load providers')
+      setError(e?.message ?? tp.errorLoading)
     } finally {
       setLoading(false)
     }
@@ -309,7 +342,11 @@ export default function AdminProvidersPage() {
 
   useEffect(() => { load() }, [load])
 
-  async function handleVerify(providerId: string, status: 'verified' | 'rejected', rejectionReason?: string) {
+  async function handleVerify(
+    providerId: string,
+    status: 'verified' | 'rejected',
+    rejectionReason?: string,
+  ) {
     if (!token) return
     setSaving(true)
     try {
@@ -317,7 +354,7 @@ export default function AdminProvidersPage() {
       setSelected(null)
       load()
     } catch (e: any) {
-      alert(e?.message ?? 'Failed to update verification')
+      alert(e?.message ?? tp.errorLoading)
     } finally {
       setSaving(false)
     }
@@ -327,8 +364,8 @@ export default function AdminProvidersPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-gray-900">Providers</h1>
-        <p className="text-sm text-gray-500 mt-0.5">{total.toLocaleString()} registered businesses</p>
+        <h1 className="text-xl font-bold text-gray-900">{tp.title}</h1>
+        <p className="text-sm text-gray-500 mt-0.5">{tp.totalBusinesses(total)}</p>
       </div>
 
       {/* Filters */}
@@ -337,7 +374,7 @@ export default function AdminProvidersPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search business name, email, city…"
+            placeholder={tp.searchPlaceholder}
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900/10"
@@ -348,11 +385,11 @@ export default function AdminProvidersPage() {
           onChange={e => { setVFilter(e.target.value); setPage(1) }}
           className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/10"
         >
-          <option value="">All verification states</option>
-          <option value="unverified">Unverified</option>
-          <option value="pending_review">Pending Review</option>
-          <option value="verified">Verified</option>
-          <option value="rejected">Rejected</option>
+          <option value="">{tp.verifyFilter.all}</option>
+          <option value="unverified">{tp.verifyFilter.unverified}</option>
+          <option value="pending_review">{tp.verifyFilter.pendingReview}</option>
+          <option value="verified">{tp.verifyFilter.verified}</option>
+          <option value="rejected">{tp.verifyFilter.rejected}</option>
         </select>
       </div>
 
@@ -365,18 +402,18 @@ export default function AdminProvidersPage() {
             <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : providers.length === 0 ? (
-          <div className="p-8 text-center text-sm text-gray-500">No providers found.</div>
+          <div className="p-8 text-center text-sm text-gray-500">{tp.empty}</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/50">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Business</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Owner</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Type</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Verification</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Status</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden xl:table-cell">Joined</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{tp.table.business}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">{tp.table.owner}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">{tp.table.type}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{tp.table.verification}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">{tp.table.status}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden xl:table-cell">{tp.table.joined}</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -400,17 +437,17 @@ export default function AdminProvidersPage() {
                     </td>
                     <td className="px-4 py-3 hidden md:table-cell">
                       <p className="text-xs text-gray-500">
-                        {p.providerTypes.map(t => t.replace(/_/g, ' ')).join(', ')}
+                        {p.providerTypes.map(pt => pt.replace(/_/g, ' ')).join(', ')}
                       </p>
                     </td>
                     <td className="px-4 py-3">
-                      <VerifyBadge status={p.verificationStatus} />
+                      <VerifyBadge status={p.verificationStatus} label={verifyLabel(p.verificationStatus)} />
                     </td>
                     <td className="px-4 py-3 hidden lg:table-cell">
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
-                        (statusConfig[p.status] ?? statusConfig.draft).cls
+                        statusBgCls[p.status] ?? statusBgCls.draft
                       }`}>
-                        {(statusConfig[p.status] ?? statusConfig.draft).label}
+                        {statusLabel(p.status)}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-500 hidden xl:table-cell whitespace-nowrap">
@@ -421,7 +458,7 @@ export default function AdminProvidersPage() {
                         onClick={() => setSelected(p)}
                         className="text-xs text-gray-500 hover:text-gray-900 font-medium px-2 py-1 rounded hover:bg-gray-100 transition-colors"
                       >
-                        Review
+                        {t.common.reviewAction}
                       </button>
                     </td>
                   </tr>
@@ -434,14 +471,20 @@ export default function AdminProvidersPage() {
         {/* Pagination */}
         {!loading && pages > 1 && (
           <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-sm">
-            <p className="text-gray-500 text-xs">Page {page} of {pages} · {total} total</p>
+            <p className="text-gray-500 text-xs">{t.common.pageInfo(page, pages, total)}</p>
             <div className="flex items-center gap-1">
-              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <button onClick={() => setPage(p => Math.min(pages, p + 1))} disabled={page === pages}
-                className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed">
+              <button
+                onClick={() => setPage(p => Math.min(pages, p + 1))}
+                disabled={page === pages}
+                className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>

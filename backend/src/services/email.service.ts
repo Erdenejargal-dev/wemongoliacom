@@ -16,6 +16,7 @@ import {
   buildVerificationApproved,
   buildVerificationRejected,
 } from '../templates/verification-emails'
+import { buildMessageNotificationEmail } from '../templates/message-notification'
 import { formatDateTime } from '../utils/email-format'
 
 // ── Payload types (public API for future callers) ───────────────────────────
@@ -226,6 +227,79 @@ export async function notifyWelcomeAfterRegistration(to: string, firstName: stri
   const tripsUrl = `${base}/account/trips`
   const hostUrl = `${base}/onboarding`
   await safeSend(to, () => buildWelcomeEmail({ firstName, exploreUrl, tripsUrl, hostUrl }))
+}
+
+// ── Message notifications ─────────────────────────────────────────────────────
+
+/**
+ * Notify the OTHER participant when a message is sent in a conversation.
+ *
+ * - sender is traveler  → notify provider (owner)
+ * - sender is provider  → notify traveler
+ *
+ * Non-blocking: never throws; errors are logged only.
+ *
+ * TODO: Add rate-limiting / anti-spam (e.g. only notify if last message
+ *       was from the other party) when notification volume warrants it.
+ */
+export async function notifyMessageSent(params: {
+  conversationId:  string
+  senderRole:      'traveler' | 'provider'
+  messagePreview:  string
+}): Promise<void> {
+  if (!isSmtpConfigured()) return
+  try {
+    const base = publicAppBase()
+
+    // Load conversation with participant info (traveler user + provider)
+    const conv = await prisma.conversation.findUnique({
+      where: { id: params.conversationId },
+      select: {
+        id:          true,
+        listingType: true,
+        traveler:    { select: { email: true, firstName: true, lastName: true } },
+        provider:    { select: { name: true, email: true, ownerUserId: true } },
+      },
+    })
+    if (!conv) return
+
+    // Determine who to notify (the OTHER party)
+    if (params.senderRole === 'traveler') {
+      // Traveler sent → notify provider owner
+      const owner = await prisma.user.findUnique({
+        where: { id: conv.provider.ownerUserId },
+        select: { email: true },
+      })
+      const recipientEmail = conv.provider.email?.trim() || owner?.email?.trim()
+      const recipientName  = conv.provider.name
+      const senderName     = `${conv.traveler.firstName} ${conv.traveler.lastName}`.trim() || 'A traveler'
+      const convUrl        = `${base}/dashboard/business/messages`
+
+      await safeSend(recipientEmail, () => buildMessageNotificationEmail({
+        recipientName,
+        senderName,
+        messagePreview: params.messagePreview,
+        conversationUrl: convUrl,
+        listingType: conv.listingType ?? undefined,
+      }))
+    } else {
+      // Provider sent → notify traveler
+      const recipientEmail = conv.traveler.email
+      const recipientName  = `${conv.traveler.firstName} ${conv.traveler.lastName}`.trim() || 'Traveler'
+      const senderName     = conv.provider.name
+      const convUrl        = `${base}/account/messages?convId=${conv.id}`
+
+      await safeSend(recipientEmail, () => buildMessageNotificationEmail({
+        recipientName,
+        senderName,
+        messagePreview: params.messagePreview,
+        conversationUrl: convUrl,
+        listingType: conv.listingType ?? undefined,
+      }))
+    }
+  } catch (err) {
+    console.error('[email] notifyMessageSent error:', err instanceof Error ? err.message : err)
+  }
 }
 
 /** Throws on failure — for protected dev/cron test endpoint only. */

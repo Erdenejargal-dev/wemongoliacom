@@ -9,8 +9,8 @@ export default function TravelSectionNew() {
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section ref={ref} id="travel" className="bg-white py-12 sm:py-16 md:py-20 px-3 sm:px-4 md:px-6">
-      <div className="max-w-6xl mx-auto">
+    <section ref={ref} id="travel" className="bg-white py-16 sm:py-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Title */}
         <motion.h2 
           initial={{ opacity: 0, y: 40 }}

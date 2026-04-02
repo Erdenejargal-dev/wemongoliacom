@@ -6,51 +6,56 @@ import { Search, ChevronLeft, ChevronRight, Shield, UserCheck, User } from 'luci
 import { useDebounce } from '@/lib/hooks/useDebounce'
 import { fetchAdminUsers, setAdminUserRole } from '@/lib/api/admin'
 import type { AdminUser } from '@/lib/api/admin'
+import { useAdminLocale } from '@/lib/i18n/admin/context'
 
-// ── helpers ───────────────────────────────────────────────────────────────────
+// ── Role badge ────────────────────────────────────────────────────────────────
 
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+const roleBadgeCls: Record<string, { cls: string; icon: React.ElementType }> = {
+  traveler:       { cls: 'bg-blue-50 text-blue-700 border-blue-200',     icon: User },
+  provider_owner: { cls: 'bg-purple-50 text-purple-700 border-purple-200', icon: UserCheck },
+  admin:          { cls: 'bg-amber-50 text-amber-700 border-amber-200',  icon: Shield },
 }
 
-const roleConfig: Record<string, { label: string; cls: string; icon: React.ElementType }> = {
-  traveler:       { label: 'Traveler',        cls: 'bg-blue-50 text-blue-700 border-blue-200',   icon: User },
-  provider_owner: { label: 'Provider Owner',  cls: 'bg-purple-50 text-purple-700 border-purple-200', icon: UserCheck },
-  admin:          { label: 'Admin',           cls: 'bg-amber-50 text-amber-700 border-amber-200', icon: Shield },
-}
-
-function RoleBadge({ role }: { role: string }) {
-  const cfg = roleConfig[role] ?? { label: role, cls: 'bg-gray-50 text-gray-600 border-gray-200', icon: User }
+function RoleBadge({ role, label }: { role: string; label: string }) {
+  const cfg = roleBadgeCls[role] ?? { cls: 'bg-gray-50 text-gray-600 border-gray-200', icon: User }
   const Icon = cfg.icon
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${cfg.cls}`}>
       <Icon className="w-3 h-3" />
-      {cfg.label}
+      {label}
     </span>
   )
 }
 
-// ── page ─────────────────────────────────────────────────────────────────────
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AdminUsersPage() {
   const { data: session } = useSession()
-  const token = session?.user?.accessToken
+  const token             = session?.user?.accessToken
+  const { t }             = useAdminLocale()
 
-  const [users, setUsers]         = useState<AdminUser[]>([])
-  const [total, setTotal]         = useState(0)
-  const [pages, setPages]         = useState(1)
-  const [loading, setLoading]     = useState(true)
-  const [error, setError]         = useState<string | null>(null)
-  const [search, setSearch]       = useState('')
-  const debouncedSearch           = useDebounce(search, 300)
+  const [users,  setUsers]  = useState<AdminUser[]>([])
+  const [total,  setTotal]  = useState(0)
+  const [pages,  setPages]  = useState(1)
+  const [loading, setLoading] = useState(true)
+  const [error,  setError]  = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const debouncedSearch     = useDebounce(search, 300)
   const [roleFilter, setRoleFilter] = useState('')
-  const [page, setPage]           = useState(1)
+  const [page, setPage]     = useState(1)
 
-  // Reset to page 1 only when debounced search value changes — not on every keystroke
   useEffect(() => { setPage(1) }, [debouncedSearch])
+
   const [roleModal, setRoleModal] = useState<AdminUser | null>(null)
-  const [newRole, setNewRole]     = useState<string>('')
-  const [saving, setSaving]       = useState(false)
+  const [newRole,   setNewRole]   = useState<string>('')
+  const [saving,    setSaving]    = useState(false)
+
+  // Locale-aware date formatter
+  function fmtDate(iso: string) {
+    return new Date(iso).toLocaleDateString(t.dateLocale, {
+      month: 'short', day: 'numeric', year: 'numeric',
+    })
+  }
 
   const LIMIT = 20
 
@@ -67,7 +72,7 @@ export default function AdminUsersPage() {
       setTotal(result.pagination.total)
       setPages(result.pagination.pages)
     } catch (e: any) {
-      setError(e?.message ?? 'Failed to load users')
+      setError(e?.message ?? t.users.errorLoading)
     } finally {
       setLoading(false)
     }
@@ -83,21 +88,22 @@ export default function AdminUsersPage() {
       setRoleModal(null)
       load()
     } catch (e: any) {
-      alert(e?.message ?? 'Failed to update role')
+      alert(e?.message ?? t.users.errorLoading)
     } finally {
       setSaving(false)
     }
   }
+
+  const roleLabel = (role: string) =>
+    (t.users.roleLabels as Record<string, string>)[role] ?? role
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Users</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {total.toLocaleString()} total accounts
-          </p>
+          <h1 className="text-xl font-bold text-gray-900">{t.users.title}</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{t.users.totalAccounts(total)}</p>
         </div>
       </div>
 
@@ -107,7 +113,7 @@ export default function AdminUsersPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search name or email…"
+            placeholder={t.users.searchPlaceholder}
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900/10"
@@ -118,10 +124,10 @@ export default function AdminUsersPage() {
           onChange={e => { setRoleFilter(e.target.value); setPage(1) }}
           className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/10"
         >
-          <option value="">All roles</option>
-          <option value="traveler">Traveler</option>
-          <option value="provider_owner">Provider Owner</option>
-          <option value="admin">Admin</option>
+          <option value="">{t.users.roleFilter.all}</option>
+          <option value="traveler">{t.users.roleFilter.traveler}</option>
+          <option value="provider_owner">{t.users.roleFilter.providerOwner}</option>
+          <option value="admin">{t.users.roleFilter.admin}</option>
         </select>
       </div>
 
@@ -134,17 +140,17 @@ export default function AdminUsersPage() {
             <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : users.length === 0 ? (
-          <div className="p-8 text-center text-sm text-gray-500">No users found.</div>
+          <div className="p-8 text-center text-sm text-gray-500">{t.users.empty}</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/50">
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">User</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Bookings</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Reviews</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Joined</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.users.table.user}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.users.table.role}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">{t.users.table.bookings}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">{t.users.table.reviews}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">{t.users.table.joined}</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -165,7 +171,7 @@ export default function AdminUsersPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <RoleBadge role={u.role} />
+                      <RoleBadge role={u.role} label={roleLabel(u.role)} />
                     </td>
                     <td className="px-4 py-3 text-gray-600 hidden md:table-cell">
                       {u._count.bookings}
@@ -181,7 +187,7 @@ export default function AdminUsersPage() {
                         onClick={() => { setRoleModal(u); setNewRole(u.role) }}
                         className="text-xs text-gray-500 hover:text-gray-900 font-medium px-2 py-1 rounded hover:bg-gray-100 transition-colors"
                       >
-                        Edit role
+                        {t.common.editRole}
                       </button>
                     </td>
                   </tr>
@@ -195,7 +201,7 @@ export default function AdminUsersPage() {
         {!loading && pages > 1 && (
           <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-sm">
             <p className="text-gray-500 text-xs">
-              Page {page} of {pages} · {total} total
+              {t.common.pageInfo(page, pages, total)}
             </p>
             <div className="flex items-center gap-1">
               <button
@@ -221,7 +227,7 @@ export default function AdminUsersPage() {
       {roleModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <h2 className="text-base font-bold text-gray-900 mb-1">Change Role</h2>
+            <h2 className="text-base font-bold text-gray-900 mb-1">{t.users.modal.title}</h2>
             <p className="text-sm text-gray-500 mb-4">
               {roleModal.firstName} {roleModal.lastName} · {roleModal.email}
             </p>
@@ -230,23 +236,23 @@ export default function AdminUsersPage() {
               onChange={e => setNewRole(e.target.value)}
               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-gray-900/10"
             >
-              <option value="traveler">Traveler</option>
-              <option value="provider_owner">Provider Owner</option>
-              <option value="admin">Admin</option>
+              <option value="traveler">{t.users.roleFilter.traveler}</option>
+              <option value="provider_owner">{t.users.roleFilter.providerOwner}</option>
+              <option value="admin">{t.users.roleFilter.admin}</option>
             </select>
             <div className="flex gap-2">
               <button
                 onClick={() => setRoleModal(null)}
                 className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
               >
-                Cancel
+                {t.common.cancel}
               </button>
               <button
                 onClick={handleSetRole}
                 disabled={saving || newRole === roleModal.role}
                 className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 transition-colors"
               >
-                {saving ? 'Saving…' : 'Save'}
+                {saving ? t.common.saving : t.common.save}
               </button>
             </div>
           </div>

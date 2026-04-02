@@ -18,19 +18,18 @@ import {
 } from '@/lib/api/provider'
 import { getFreshAccessToken } from '@/lib/auth-utils'
 import { ApiError } from '@/lib/api/client'
+import { useProviderLocale } from '@/lib/i18n/provider/context'
 
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled'
-
 const STATUS_VALUES: StatusFilter[] = ['all', 'pending', 'confirmed', 'completed', 'cancelled']
-
-function isStatusFilter(v: string): v is StatusFilter {
-  return (STATUS_VALUES as string[]).includes(v)
-}
+function isStatusFilter(v: string): v is StatusFilter { return (STATUS_VALUES as string[]).includes(v) }
 
 export default function BookingsPage() {
   const { data: session } = useSession()
-  const searchParams = useSearchParams()
-  const statusParam = searchParams.get('status')
+  const searchParams      = useSearchParams()
+  const statusParam       = searchParams.get('status')
+  const { t }             = useProviderLocale()
+  const bt                = t.bookings
 
   const [bookings,      setBookings]      = useState<ProviderBooking[]>([])
   const [total,         setTotal]         = useState(0)
@@ -40,16 +39,18 @@ export default function BookingsPage() {
   const [statusFilter,  setStatusFilter]  = useState<StatusFilter>('all')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
-  const token = session?.user?.accessToken
+  const token  = session?.user?.accessToken
   const router = useRouter()
 
-  // Sync URL ?status= to filter when present
+  function fmtDate(iso: string) {
+    return new Date(iso).toLocaleDateString(t.dateLocale, { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+
   useEffect(() => {
     const v = statusParam?.toLowerCase()
     if (v && isStatusFilter(v)) setStatusFilter(v)
   }, [statusParam])
 
-  // ── Fetch bookings ────────────────────────────────────────────────────
   const load = useCallback(async () => {
     const freshToken = token ? await getFreshAccessToken() : null
     if (!freshToken) return
@@ -60,12 +61,8 @@ export default function BookingsPage() {
       setBookings(result.data)
       setTotal(result.total)
     } catch (e: unknown) {
-      if (e instanceof ApiError && e.status === 401) {
-        await signOut({ redirect: false })
-        router.push('/auth/login')
-      } else {
-        setError(e instanceof Error ? e.message : 'Failed to load bookings.')
-      }
+      if (e instanceof ApiError && e.status === 401) { await signOut({ redirect: false }); router.push('/auth/login') }
+      else setError(e instanceof Error ? e.message : bt.errorLoading)
     } finally {
       setLoading(false)
     }
@@ -73,135 +70,97 @@ export default function BookingsPage() {
 
   useEffect(() => { load() }, [load])
 
-  // ── Client-side search filter ─────────────────────────────────────────
   const filtered = bookings.filter(b => {
     if (!search) return true
     const s = search.toLowerCase()
     const fullName = b.user ? `${b.user.firstName} ${b.user.lastName}` : ''
-    return (
-      b.bookingCode.toLowerCase().includes(s) ||
-      fullName.toLowerCase().includes(s) ||
-      (b.user?.email ?? '').toLowerCase().includes(s)
-    )
+    return b.bookingCode.toLowerCase().includes(s) || fullName.toLowerCase().includes(s) || (b.user?.email ?? '').toLowerCase().includes(s)
   })
 
-  // ── Actions ──────────────────────────────────────────────────────────
   async function handleConfirm(code: string) {
-    const freshToken = await getFreshAccessToken()
-    if (!freshToken) { await signOut({ redirect: false }); router.push('/auth/login'); return }
+    const ft = await getFreshAccessToken()
+    if (!ft) { await signOut({ redirect: false }); router.push('/auth/login'); return }
     setActionLoading(code)
-    try {
-      await confirmProviderBooking(code, freshToken)
-      await load()
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 401) {
-        await signOut({ redirect: false })
-        router.push('/auth/login')
-      } else {
-        setError(e instanceof Error ? e.message : 'Action failed.')
-      }
-    } finally {
-      setActionLoading(null)
-    }
+    try { await confirmProviderBooking(code, ft); await load() }
+    catch (e) {
+      if (e instanceof ApiError && e.status === 401) { await signOut({ redirect: false }); router.push('/auth/login') }
+      else setError(e instanceof Error ? e.message : bt.actionFailed)
+    } finally { setActionLoading(null) }
   }
 
   async function handleComplete(code: string) {
-    const freshToken = await getFreshAccessToken()
-    if (!freshToken) { await signOut({ redirect: false }); router.push('/auth/login'); return }
+    const ft = await getFreshAccessToken()
+    if (!ft) { await signOut({ redirect: false }); router.push('/auth/login'); return }
     setActionLoading(code)
-    try {
-      await completeProviderBooking(code, freshToken)
-      await load()
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 401) {
-        await signOut({ redirect: false })
-        router.push('/auth/login')
-      } else {
-        setError(e instanceof Error ? e.message : 'Action failed.')
-      }
-    } finally {
-      setActionLoading(null)
-    }
+    try { await completeProviderBooking(code, ft); await load() }
+    catch (e) {
+      if (e instanceof ApiError && e.status === 401) { await signOut({ redirect: false }); router.push('/auth/login') }
+      else setError(e instanceof Error ? e.message : bt.actionFailed)
+    } finally { setActionLoading(null) }
   }
 
   async function handleCancel(code: string) {
-    const freshToken = await getFreshAccessToken()
-    if (!freshToken) { await signOut({ redirect: false }); router.push('/auth/login'); return }
-    const reason = window.prompt('Reason for cancellation:')
+    const ft = await getFreshAccessToken()
+    if (!ft) { await signOut({ redirect: false }); router.push('/auth/login'); return }
+    const reason = window.prompt(bt.cancellationPrompt)
     if (!reason) return
     setActionLoading(code)
-    try {
-      await cancelProviderBooking(code, reason, freshToken)
-      await load()
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 401) {
-        await signOut({ redirect: false })
-        router.push('/auth/login')
-      } else {
-        setError(e instanceof Error ? e.message : 'Action failed.')
-      }
-    } finally {
-      setActionLoading(null)
-    }
+    try { await cancelProviderBooking(code, reason, ft); await load() }
+    catch (e) {
+      if (e instanceof ApiError && e.status === 401) { await signOut({ redirect: false }); router.push('/auth/login') }
+      else setError(e instanceof Error ? e.message : bt.actionFailed)
+    } finally { setActionLoading(null) }
   }
 
-  // ── Columns ──────────────────────────────────────────────────────────
   const columns: Column<ProviderBooking>[] = [
     {
       key: 'bookingCode',
-      header: 'Booking ID',
+      header: bt.columns.bookingId,
       render: r => <span className="font-mono text-xs text-gray-500">{r.bookingCode}</span>,
     },
     {
       key: 'user',
-      header: 'Customer',
+      header: bt.columns.customer,
       sortable: true,
       render: r => {
         const name  = r.user ? `${r.user.firstName} ${r.user.lastName}`.trim() : '—'
         const email = r.user?.email ?? ''
-        return (
-          <div>
-            <p className="font-medium text-gray-900 text-sm">{name}</p>
-            <p className="text-xs text-gray-400">{email}</p>
-          </div>
-        )
+        return <div><p className="font-medium text-gray-900 text-sm">{name}</p><p className="text-xs text-gray-400">{email}</p></div>
       },
     },
-    { key: 'listingType', header: 'Type', render: r => <span className="capitalize">{r.listingType}</span> },
+    { key: 'listingType', header: bt.columns.type,   render: r => <span className="capitalize">{r.listingType}</span> },
     {
       key: 'startDate',
-      header: 'Date',
+      header: bt.columns.date,
       sortable: true,
-      render: r => new Date(r.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      render: r => fmtDate(r.startDate),
     },
-    { key: 'guests', header: 'Guests', render: r => `${r.guests}` },
+    { key: 'guests',  header: bt.columns.guests,  render: r => `${r.guests}` },
     {
       key: 'bookingStatus',
-      header: 'Status',
+      header: bt.columns.status,
       render: r => {
         const allowed = ['pending', 'confirmed', 'cancelled', 'completed'] as const
         const s = r.bookingStatus as (typeof allowed)[number]
-        return <StatusBadge status={allowed.includes(s) ? s : 'pending'} />
+        const label = (t.statusLabels as Record<string, string>)[r.bookingStatus] ?? r.bookingStatus
+        return <StatusBadge status={allowed.includes(s) ? s : 'pending'} label={label} />
       },
     },
     {
       key: 'paymentStatus',
-      header: 'Payment',
+      header: bt.columns.payment,
       render: r => {
         const allowed = ['unpaid', 'authorized', 'paid', 'refunded', 'failed', 'partial'] as const
         const s = r.paymentStatus as (typeof allowed)[number]
-        return <StatusBadge status={allowed.includes(s) ? s : 'unpaid'} />
+        const label = (t.paymentLabels as Record<string, string>)[r.paymentStatus] ?? r.paymentStatus
+        return <StatusBadge status={allowed.includes(s) ? s : 'unpaid'} label={label} />
       },
     },
     {
       key: 'totalAmount',
-      header: 'Amount',
+      header: bt.columns.amount,
       sortable: true,
-      render: r => (
-        <span className="font-semibold text-gray-900">
-          {r.currency} {r.totalAmount.toLocaleString()}
-        </span>
-      ),
+      render: r => <span className="font-semibold text-gray-900">{r.currency} {r.totalAmount.toLocaleString()}</span>,
     },
     {
       key: 'actions',
@@ -211,30 +170,21 @@ export default function BookingsPage() {
         return (
           <div className="flex gap-1">
             {r.bookingStatus === 'pending' && (
-              <button
-                onClick={() => handleConfirm(r.bookingCode)}
-                disabled={busy}
-                className="px-2 py-1 text-xs bg-brand-50 text-brand-700 border border-brand-200 rounded-lg hover:bg-brand-100 transition-colors disabled:opacity-50"
-              >
-                {busy ? '…' : 'Confirm'}
+              <button onClick={() => handleConfirm(r.bookingCode)} disabled={busy}
+                className="px-2 py-1 text-xs bg-brand-50 text-brand-700 border border-brand-200 rounded-lg hover:bg-brand-100 transition-colors disabled:opacity-50">
+                {busy ? '…' : bt.confirmBtn}
               </button>
             )}
             {r.bookingStatus === 'confirmed' && (
-              <button
-                onClick={() => handleComplete(r.bookingCode)}
-                disabled={busy}
-                className="px-2 py-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50"
-              >
-                {busy ? '…' : 'Complete'}
+              <button onClick={() => handleComplete(r.bookingCode)} disabled={busy}
+                className="px-2 py-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50">
+                {busy ? '…' : bt.completeBtn}
               </button>
             )}
             {(r.bookingStatus === 'pending' || r.bookingStatus === 'confirmed') && (
-              <button
-                onClick={() => handleCancel(r.bookingCode)}
-                disabled={busy}
-                className="px-2 py-1 text-xs text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-              >
-                Cancel
+              <button onClick={() => handleCancel(r.bookingCode)} disabled={busy}
+                className="px-2 py-1 text-xs text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
+                {bt.cancelBtn}
               </button>
             )}
           </div>
@@ -243,58 +193,45 @@ export default function BookingsPage() {
     },
   ]
 
-  // ── Render ────────────────────────────────────────────────────────────
   return (
     <div>
       <PageHeader
-        title="Bookings"
-        description={loading ? 'Loading…' : `${total} booking${total !== 1 ? 's' : ''}`}
+        title={bt.title}
+        description={loading ? '…' : bt.totalCount(total)}
         actions={
-          <button
-            onClick={load}
-            disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
+          <button onClick={load} disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            {bt.refresh}
           </button>
         }
       />
 
-      {/* Error banner */}
       {error && (
-        <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
-          {error}
-        </div>
+        <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{error}</div>
       )}
-
-      {/* Unauthenticated notice */}
       {!token && !loading && (
         <div className="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
-          Sign in as a provider to see your bookings.
+          {bt.signInNotice}
         </div>
       )}
 
       <TableToolbar
         searchValue={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search by customer name or booking ID…"
-        filters={[
-          {
-            label: 'Status',
-            value: statusFilter,
-            onChange: (v: string) => {
-              if (isStatusFilter(v)) setStatusFilter(v)
-            },
-            options: [
-              { label: 'All Status',   value: 'all'       },
-              { label: 'Pending',      value: 'pending'   },
-              { label: 'Confirmed',    value: 'confirmed' },
-              { label: 'Completed',    value: 'completed' },
-              { label: 'Cancelled',    value: 'cancelled' },
-            ],
-          },
-        ]}
+        searchPlaceholder={bt.searchPlaceholder}
+        filters={[{
+          label: bt.columns.status,
+          value: statusFilter,
+          onChange: (v: string) => { if (isStatusFilter(v)) setStatusFilter(v) },
+          options: [
+            { label: bt.statusOptions.all,       value: 'all'       },
+            { label: bt.statusOptions.pending,   value: 'pending'   },
+            { label: bt.statusOptions.confirmed, value: 'confirmed' },
+            { label: bt.statusOptions.completed, value: 'completed' },
+            { label: bt.statusOptions.cancelled, value: 'cancelled' },
+          ],
+        }]}
       />
 
       <DataTable
@@ -306,18 +243,13 @@ export default function BookingsPage() {
           loading ? (
             <div className="flex items-center justify-center py-16 text-gray-400 text-sm gap-2">
               <RefreshCw className="w-4 h-4 animate-spin" />
-              Loading bookings…
+              {bt.totalCount(0)}…
             </div>
           ) : (
-            <EmptyState
-              icon={BookOpen}
-              title="No bookings found"
-              description="Bookings will appear here once customers reserve your services."
-            />
+            <EmptyState icon={BookOpen} title={bt.empty.title} description={bt.empty.description} />
           )
         }
       />
     </div>
   )
 }
-

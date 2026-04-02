@@ -23,7 +23,14 @@ export const createBookingSchema = z.object({
   children:        z.coerce.number().int().min(0).optional(),
   specialRequests: z.string().max(500).optional(),
   travelerFullName: z.string().max(200).optional(),
-  travelerEmail:    z.string().email().optional(),
+  /**
+   * Use the same permissive email regex as the frontend TravelerForm
+   * (/^[^\s@]+@[^\s@]+\.[^\s@]+$/) so that any email accepted by the
+   * frontend form is also accepted by this schema.
+   * z.string().email() uses a stricter RFC pattern that rejects single-char
+   * TLDs, numeric TLDs, and other valid-looking addresses, causing 422s.
+   */
+  travelerEmail:    z.string().regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Invalid email').optional(),
   travelerPhone:    z.string().max(30).optional(),
   travelerCountry:  z.string().max(100).optional(),
 })

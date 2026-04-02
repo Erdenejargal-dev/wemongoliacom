@@ -32,18 +32,29 @@ const variantStyles: Record<Variant, string> = {
 }
 
 interface StatusBadgeProps {
-  status: Variant
+  status:    Variant
+  /** Optional translated label. Falls back to capitalised status value if not provided. */
+  label?:    string
   className?: string
 }
 
-export function StatusBadge({ status, className }: StatusBadgeProps) {
+/**
+ * StatusBadge — shows a coloured pill for a booking/payment status.
+ *
+ * Pass a `label` prop from your locale dictionary to show a translated string:
+ *   <StatusBadge status="pending" label={t.statusLabels.pending} />
+ *
+ * If `label` is omitted the raw status value is shown (capitalize via CSS).
+ */
+export function StatusBadge({ status, label, className }: StatusBadgeProps) {
   return (
     <span className={cn(
-      'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border capitalize',
+      'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border',
+      !label && 'capitalize',
       variantStyles[status],
-      className
+      className,
     )}>
-      {status}
+      {label ?? status}
     </span>
   )
 }

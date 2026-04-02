@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { submitProviderForVerification } from '@/lib/api/provider'
 import { PLATFORM } from '@/lib/constants/platform'
+import { useProviderLocale } from '@/lib/i18n/provider/context'
 
 type VerificationStatus = 'unverified' | 'pending_review' | 'verified' | 'rejected'
 
@@ -16,45 +17,24 @@ interface VerificationBannerProps {
   onStatusChange?: (newStatus: VerificationStatus) => void
 }
 
-const config: Record<
-  VerificationStatus,
-  { title: string; description: string; bg: string; border: string; textCls: string; icon: React.ElementType; iconCls: string }
-> = {
+const STATUS_STYLE: Record<VerificationStatus, {
+  bg: string; border: string; textCls: string; icon: React.ElementType; iconCls: string
+}> = {
   unverified: {
-    title:       'Your business is not yet verified',
-    description: 'Submit your profile for admin review to unlock full access and appear in traveler search.',
-    bg:          'bg-gray-50',
-    border:      'border-gray-200',
-    textCls:     'text-gray-700',
-    icon:        Shield,
-    iconCls:     'text-gray-400',
+    bg: 'bg-gray-50', border: 'border-gray-200', textCls: 'text-gray-700',
+    icon: Shield, iconCls: 'text-gray-400',
   },
   pending_review: {
-    title:       'Verification under review',
-    description: 'Your submission is being reviewed by our team. We will notify you once complete. This typically takes 1–2 business days.',
-    bg:          'bg-blue-50',
-    border:      'border-blue-200',
-    textCls:     'text-blue-800',
-    icon:        Clock,
-    iconCls:     'text-blue-400',
+    bg: 'bg-blue-50', border: 'border-blue-200', textCls: 'text-blue-800',
+    icon: Clock, iconCls: 'text-blue-400',
   },
   verified: {
-    title:       'Business verified',
-    description: 'Your business is verified and visible to travelers.',
-    bg:          'bg-green-50',
-    border:      'border-green-200',
-    textCls:     'text-green-800',
-    icon:        ShieldCheck,
-    iconCls:     'text-green-500',
+    bg: 'bg-green-50', border: 'border-green-200', textCls: 'text-green-800',
+    icon: ShieldCheck, iconCls: 'text-green-500',
   },
   rejected: {
-    title:       'Verification not approved',
-    description: 'Your verification was not approved. Please review the reason below, update your profile, then resubmit.',
-    bg:          'bg-red-50',
-    border:      'border-red-200',
-    textCls:     'text-red-800',
-    icon:        ShieldAlert,
-    iconCls:     'text-red-400',
+    bg: 'bg-red-50', border: 'border-red-200', textCls: 'text-red-800',
+    icon: ShieldAlert, iconCls: 'text-red-400',
   },
 }
 
@@ -64,12 +44,24 @@ export function VerificationBanner({
   rejectionReason,
   onStatusChange,
 }: VerificationBannerProps) {
+  const { t } = useProviderLocale()
+  const vt = t.verification
+
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState<string | null>(null)
 
   const canSubmit = verificationStatus === 'unverified' || verificationStatus === 'rejected'
-  const cfg       = config[verificationStatus] ?? config.unverified
-  const Icon      = cfg.icon
+  const style     = STATUS_STYLE[verificationStatus] ?? STATUS_STYLE.unverified
+  const Icon      = style.icon
+
+  // Locale-aware config for each status
+  const config: Record<VerificationStatus, { title: string; desc: string }> = {
+    unverified:     { title: vt.unverified.title,     desc: vt.unverified.desc },
+    pending_review: { title: vt.pendingReview.title,  desc: vt.pendingReview.desc },
+    verified:       { title: vt.verified.title,       desc: '' },
+    rejected:       { title: vt.rejected.title,       desc: vt.rejected.desc },
+  }
+  const { title, desc } = config[verificationStatus]
 
   async function handleSubmit() {
     if (!token) return
@@ -79,47 +71,46 @@ export function VerificationBanner({
       await submitProviderForVerification(token)
       onStatusChange?.('pending_review')
     } catch (e: any) {
-      setError(e?.message ?? 'Failed to submit. Please try again.')
+      setError(e?.message ?? vt.failedToSubmit)
     } finally {
       setLoading(false)
     }
   }
 
-  // Verified: show compact pill only
+  // Verified: compact pill only
   if (verificationStatus === 'verified') {
     return (
-      <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border ${cfg.bg} ${cfg.border}`}>
+      <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border ${style.bg} ${style.border}`}>
         <ShieldCheck className="w-4 h-4 text-green-500 shrink-0" />
-        <p className="text-sm font-medium text-green-800">Business verified</p>
+        <p className="text-sm font-medium text-green-800">{vt.verified.title}</p>
       </div>
     )
   }
 
   return (
-    <div className={`rounded-xl border ${cfg.bg} ${cfg.border} p-4`}>
+    <div className={`rounded-xl border ${style.bg} ${style.border} p-4`}>
       <div className="flex items-start gap-3">
-        <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${cfg.iconCls}`} />
+        <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${style.iconCls}`} />
         <div className="flex-1 min-w-0">
-          <p className={`text-sm font-semibold ${cfg.textCls}`}>{cfg.title}</p>
-          <p className={`text-xs mt-0.5 ${cfg.textCls} opacity-80 leading-relaxed`}>
-            {cfg.description}
-          </p>
+          <p className={`text-sm font-semibold ${style.textCls}`}>{title}</p>
+          {desc && (
+            <p className={`text-xs mt-0.5 ${style.textCls} opacity-80 leading-relaxed`}>{desc}</p>
+          )}
 
-          {/* Rejection reason — shown prominently when present */}
+          {/* Rejection reason — read-only */}
           {verificationStatus === 'rejected' && rejectionReason && (
             <div className="mt-3 rounded-lg border border-red-200 bg-white/60 px-3 py-2">
-              <p className="text-[11px] font-semibold text-red-700 uppercase tracking-wider mb-1">Reason from WeMongolia</p>
+              <p className="text-[11px] font-semibold text-red-700 uppercase tracking-wider mb-1">
+                {vt.rejected.reason}
+              </p>
               <p className="text-xs text-red-800 leading-relaxed">{rejectionReason}</p>
             </div>
           )}
 
-          {error && (
-            <p className="text-xs text-red-600 mt-2 font-medium">{error}</p>
-          )}
+          {error && <p className="text-xs text-red-600 mt-2 font-medium">{error}</p>}
 
           {verificationStatus === 'rejected' && (
             <p className="text-xs text-red-600 mt-2">
-              Questions? Contact{' '}
               <a href={`mailto:${PLATFORM.supportEmail}`} className="underline font-medium">
                 {PLATFORM.supportEmail}
               </a>
@@ -138,15 +129,18 @@ export function VerificationBanner({
             }`}
           >
             {loading ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                {vt.submitting}
+              </>
             ) : verificationStatus === 'rejected' ? (
               <>
                 <RefreshCw className="w-3.5 h-3.5" />
-                Resubmit
+                {vt.rejected.btn}
               </>
             ) : (
               <>
-                Submit for Review
+                {vt.unverified.btn}
                 <ArrowRight className="w-3.5 h-3.5" />
               </>
             )}

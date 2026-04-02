@@ -8,11 +8,25 @@ import { apiClient } from './client'
 export interface CreateBookingPayload {
   listingType: 'tour' | 'vehicle' | 'accommodation'
   listingId: string
+  // ── Tour-specific ──────────────────────────────────────────────────────────
   tourDepartureId?: string
+  // ── Vehicle-specific ───────────────────────────────────────────────────────
   vehicleAvailabilityId?: string
-  roomTypeId?: string
-  startDate: string
+  /** startDate / endDate are used for VEHICLE bookings. */
+  startDate?: string
   endDate?: string
+  // ── Accommodation-specific ─────────────────────────────────────────────────
+  roomTypeId?: string
+  /**
+   * checkIn / checkOut are the correct field names for ACCOMMODATION bookings.
+   * The backend booking service explicitly checks for input.checkIn and input.checkOut
+   * (not startDate/endDate) when listingType === 'accommodation'.
+   * Sending startDate/endDate instead causes 400: "roomTypeId, checkIn, and checkOut
+   * are required for accommodation bookings."
+   */
+  checkIn?: string
+  checkOut?: string
+  // ── Shared ─────────────────────────────────────────────────────────────────
   guests: number
   adults: number
   children: number
@@ -37,7 +51,11 @@ export interface BackendBooking {
   endDate?: string
   guests: number
 
-  provider?: { name: string; slug: string; logoUrl?: string | null } | null
+  /**
+   * provider.id is needed to call POST /conversations (startConversation).
+   * Added to backend listMyBookings select in booking.service.ts.
+   */
+  provider?: { id: string; name: string; slug: string; logoUrl?: string | null } | null
 
   listingSnapshot?: any
   cancelReason?: string | null
