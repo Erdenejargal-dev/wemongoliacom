@@ -8,15 +8,21 @@ async function getTourIdsWithRemainingSeats(
   startFrom: Date,
   maxDate: Date | null,
 ): Promise<string[]> {
+  /**
+   * IMPORTANT: Prisma does NOT auto-convert camelCase field names to
+   * snake_case column names. The actual PostgreSQL column for `tourId`
+   * is `"tourId"` (quoted camelCase), NOT `tour_id`.
+   * Same applies to startDate, availableSeats, bookedSeats.
+   */
   const rows = await prisma.$queryRaw<{ tour_id: string }[]>`
     SELECT DISTINCT t.id as tour_id
     FROM tours t
-    INNER JOIN tour_departures d ON d.tour_id = t.id
+    INNER JOIN tour_departures d ON d."tourId" = t.id
     WHERE t.status = 'active'
       AND d.status = 'scheduled'
-      AND d.start_date >= ${startFrom}
-      AND (d.available_seats - d.booked_seats) >= ${minRequired}
-      ${maxDate ? Prisma.sql`AND d.start_date <= ${maxDate}` : Prisma.empty}
+      AND d."startDate" >= ${startFrom}
+      AND (d."availableSeats" - d."bookedSeats") >= ${minRequired}
+      ${maxDate ? Prisma.sql`AND d."startDate" <= ${maxDate}` : Prisma.empty}
   `
   return rows.map((r) => r.tour_id)
 }
