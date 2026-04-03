@@ -2,29 +2,26 @@
 
 import Link from 'next/link'
 import { MapPin, ChevronRight } from 'lucide-react'
-import type { Destination } from '@/lib/mock-data/destinations'
+import type { BackendDestinationDetail } from '@/lib/api/destinations'
 
 interface DestinationHeroProps {
-  destination: Destination
+  destination: BackendDestinationDetail
 }
 
-const difficultyColor = {
-  Easy:        'bg-brand-500/20 text-brand-100 border-brand-400/40',
-  Moderate:    'bg-yellow-500/20 text-yellow-100 border-yellow-400/40',
-  Challenging: 'bg-orange-500/20 text-orange-100 border-orange-400/40',
-}
+const FALLBACK_IMAGE =
+  'https://images.unsplash.com/photo-1516912481808-3406841bd33c?w=1600'
 
 export function DestinationHero({ destination }: DestinationHeroProps) {
+  const imageUrl = destination.heroImageUrl ?? FALLBACK_IMAGE
+
   return (
     <section className="relative h-[70vh] min-h-[520px] overflow-hidden">
       {/* Hero image */}
       <img
-        src={destination.heroImage}
+        src={imageUrl}
         alt={destination.name}
         className="absolute inset-0 w-full h-full object-cover"
       />
-
-      {/* Gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
 
       {/* Breadcrumb */}
@@ -38,33 +35,44 @@ export function DestinationHero({ destination }: DestinationHeroProps) {
         </nav>
       </div>
 
-      {/* Content */}
+      {/* Bottom content */}
       <div className="absolute bottom-0 left-0 right-0 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
-        {/* Location pill */}
-        <div className="flex items-center gap-1.5 text-white/80 text-sm mb-3">
-          <MapPin className="w-4 h-4 text-brand-400" />
-          <span>{destination.region} · {destination.country}</span>
-        </div>
+        {/* Location */}
+        {(destination.region || destination.country) && (
+          <div className="flex items-center gap-1.5 text-white/80 text-sm mb-3">
+            <MapPin className="w-4 h-4 text-brand-400" />
+            <span>{[destination.region, destination.country].filter(Boolean).join(' · ')}</span>
+          </div>
+        )}
 
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-3 leading-tight">
           {destination.name}
         </h1>
 
-        <p className="text-white/80 text-lg sm:text-xl max-w-2xl leading-relaxed mb-6 italic">
-          &ldquo;{destination.tagline}&rdquo;
-        </p>
+        {/* Tagline from shortDescription */}
+        {destination.shortDescription && (
+          <p className="text-white/80 text-lg sm:text-xl max-w-2xl leading-relaxed mb-6 italic">
+            &ldquo;{destination.shortDescription}&rdquo;
+          </p>
+        )}
 
-        {/* Meta chips */}
+        {/* Meta chips — only real backend fields */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className={`text-xs font-semibold px-3 py-1.5 rounded-full border backdrop-blur-sm ${difficultyColor[destination.difficulty]}`}>
-            {destination.difficulty}
-          </span>
-          <span className="text-xs font-semibold px-3 py-1.5 rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-sm">
-            Best: {destination.bestMonths.join(' · ')}
-          </span>
-          <span className="text-xs font-semibold px-3 py-1.5 rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-sm">
-            {destination.tourCount} tour{destination.tourCount !== 1 ? 's' : ''} available
-          </span>
+          {destination.bestTimeToVisit && (
+            <span className="text-xs font-semibold px-3 py-1.5 rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-sm">
+              Best time: {destination.bestTimeToVisit}
+            </span>
+          )}
+          {destination.weatherInfo && (
+            <span className="text-xs font-semibold px-3 py-1.5 rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-sm">
+              {destination.weatherInfo}
+            </span>
+          )}
+          {destination.featured && (
+            <span className="text-xs font-semibold px-3 py-1.5 rounded-full border border-brand-400/40 bg-brand-500/20 text-brand-100 backdrop-blur-sm">
+              Featured Destination
+            </span>
+          )}
         </div>
       </div>
     </section>

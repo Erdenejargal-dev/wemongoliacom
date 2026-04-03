@@ -19,6 +19,15 @@ import {
   setProviderStatusSchema,
   setVerificationStatusSchema,
   bookingListQuerySchema,
+  // ── Destinations ──────────────────────────────────────────────────────────────
+  adminListDestinations,
+  adminGetDestination,
+  adminCreateDestination,
+  adminUpdateDestination,
+  adminDeleteDestination,
+  adminToggleDestinationFeatured,
+  destinationCreateSchema,
+  destinationUpdateSchema,
 } from '../controllers/admin.controller'
 
 const router = Router()
@@ -43,5 +52,13 @@ router.patch('/providers/:providerId/verify',       validate(setVerificationStat
 // ── Bookings ───────────────────────────────────────────────────────────────
 router.get('/bookings',               validate(bookingListQuerySchema, 'query'), listBookings)
 router.get('/bookings/:bookingId',    getBooking)
+
+// ── Destinations ───────────────────────────────────────────────────────────
+router.get('/destinations',                               adminListDestinations)
+router.get('/destinations/:id',                           adminGetDestination)
+router.post('/destinations',                              validate(destinationCreateSchema), adminCreateDestination)
+router.put('/destinations/:id',                           validate(destinationUpdateSchema), adminUpdateDestination)
+router.delete('/destinations/:id',                        adminDeleteDestination)
+router.patch('/destinations/:id/featured',                adminToggleDestinationFeatured)
 
 export default router

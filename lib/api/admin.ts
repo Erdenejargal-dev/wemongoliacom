@@ -208,3 +208,92 @@ export async function fetchAdminBookings(
   const query = qs.toString()
   return apiClient.get<Paginated<AdminBooking>>(`/admin/bookings${query ? `?${query}` : ''}`, token)
 }
+
+// ─── Destinations ─────────────────────────────────────────────────────────────
+
+export interface AdminDestination {
+  id:               string
+  name:             string
+  slug:             string
+  country:          string
+  region:           string | null
+  shortDescription: string | null
+  heroImageUrl:     string | null
+  featured:         boolean
+  createdAt:        string
+  _count: {
+    tours:          number
+    accommodations: number
+  }
+}
+
+export interface AdminDestinationDetail {
+  id:               string
+  name:             string
+  slug:             string
+  country:          string
+  region:           string | null
+  shortDescription: string | null
+  description:      string | null
+  heroImageUrl:     string | null
+  gallery:          string[]
+  highlights:       string[]
+  activities:       string[]
+  tips:             string[]
+  bestTimeToVisit:  string | null
+  weatherInfo:      string | null
+  featured:         boolean
+  createdAt:        string
+  updatedAt:        string
+}
+
+export interface AdminDestinationInput {
+  name:             string
+  slug?:            string
+  country?:         string
+  region?:          string | null
+  shortDescription?: string | null
+  description?:     string | null
+  heroImageUrl?:    string | null
+  gallery?:         string[]
+  highlights?:      string[]
+  activities?:      string[]
+  tips?:            string[]
+  bestTimeToVisit?: string | null
+  weatherInfo?:     string | null
+  featured?:        boolean
+}
+
+export async function fetchAdminDestinations(token: string): Promise<AdminDestination[]> {
+  return apiClient.get<AdminDestination[]>('/admin/destinations', token)
+}
+
+export async function fetchAdminDestination(id: string, token: string): Promise<AdminDestinationDetail> {
+  return apiClient.get<AdminDestinationDetail>(`/admin/destinations/${id}`, token)
+}
+
+export async function createAdminDestination(
+  data: AdminDestinationInput,
+  token: string,
+): Promise<AdminDestinationDetail> {
+  return apiClient.post<AdminDestinationDetail>('/admin/destinations', data, token)
+}
+
+export async function updateAdminDestination(
+  id:    string,
+  data:  Partial<AdminDestinationInput>,
+  token: string,
+): Promise<AdminDestinationDetail> {
+  return apiClient.put<AdminDestinationDetail>(`/admin/destinations/${id}`, data, token)
+}
+
+export async function deleteAdminDestination(id: string, token: string): Promise<void> {
+  return apiClient.delete<void>(`/admin/destinations/${id}`, token)
+}
+
+export async function toggleAdminDestinationFeatured(
+  id:    string,
+  token: string,
+): Promise<AdminDestinationDetail> {
+  return apiClient.patch<AdminDestinationDetail>(`/admin/destinations/${id}/featured`, undefined, token)
+}

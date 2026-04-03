@@ -7,6 +7,7 @@ import {
   Users,
   Building2,
   BookOpen,
+  MapPin,
   ShieldCheck,
   X,
   ChevronRight,
@@ -28,10 +29,11 @@ export function AdminSidebar({ open = true, onClose, userName, userEmail }: Admi
   const { t } = useAdminLocale()
 
   const navItems = [
-    { href: '/admin',           label: t.sidebar.overview,   icon: LayoutDashboard, exact: true },
-    { href: '/admin/users',     label: t.sidebar.users,      icon: Users },
-    { href: '/admin/providers', label: t.sidebar.providers,  icon: Building2 },
-    { href: '/admin/bookings',  label: t.sidebar.bookings,   icon: BookOpen },
+    { href: '/admin',                label: t.sidebar.overview,      icon: LayoutDashboard, exact: true },
+    { href: '/admin/users',          label: t.sidebar.users,         icon: Users },
+    { href: '/admin/providers',      label: t.sidebar.providers,     icon: Building2 },
+    { href: '/admin/bookings',       label: t.sidebar.bookings,      icon: BookOpen },
+    { href: '/admin/destinations',   label: 'Destinations',          icon: MapPin },
   ]
 
   return (

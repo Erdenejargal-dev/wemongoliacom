@@ -149,3 +149,83 @@ export async function getPlatformAnalytics(req: Request, res: Response, next: Ne
     next(err)
   }
 }
+
+// ─── Destination schemas ──────────────────────────────────────────────────
+
+export const destinationCreateSchema = z.object({
+  name:             z.string().min(1).max(120).trim(),
+  slug:             z.string().min(1).max(120).trim().optional(),
+  country:          z.string().max(80).trim().optional(),
+  region:           z.string().max(120).trim().nullable().optional(),
+  shortDescription: z.string().max(500).trim().nullable().optional(),
+  description:      z.string().max(5000).trim().nullable().optional(),
+  heroImageUrl:     z.string().url().nullable().optional(),
+  gallery:          z.array(z.string().url()).max(20).optional(),
+  highlights:       z.array(z.string().max(500)).max(20).optional(),
+  activities:       z.array(z.string().max(300)).max(30).optional(),
+  tips:             z.array(z.string().max(500)).max(20).optional(),
+  bestTimeToVisit:  z.string().max(300).trim().nullable().optional(),
+  weatherInfo:      z.string().max(300).trim().nullable().optional(),
+  featured:         z.boolean().optional(),
+})
+
+export const destinationUpdateSchema = destinationCreateSchema.partial()
+
+// ─── Destination handlers ─────────────────────────────────────────────────
+
+import * as destinationService from '../services/destination.service'
+
+export async function adminListDestinations(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await destinationService.adminListDestinations()
+    return ok(res, result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function adminGetDestination(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await destinationService.adminGetDestination(String(req.params.id))
+    return ok(res, result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function adminCreateDestination(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await destinationService.adminCreateDestination(req.body)
+    res.status(201)
+    return ok(res, result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function adminUpdateDestination(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await destinationService.adminUpdateDestination(String(req.params.id), req.body)
+    return ok(res, result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function adminDeleteDestination(req: Request, res: Response, next: NextFunction) {
+  try {
+    await destinationService.adminDeleteDestination(String(req.params.id))
+    return ok(res, { deleted: true })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function adminToggleDestinationFeatured(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await destinationService.adminToggleDestinationFeatured(String(req.params.id))
+    return ok(res, result)
+  } catch (err) {
+    next(err)
+  }
+}

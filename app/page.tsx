@@ -1,8 +1,9 @@
 import HeroInteractive from '@/components/sections/HeroInteractive';
-import TravelSectionNew from '@/components/sections/TravelSectionNew';
 import Recommended from '@/components/sections/Recommended';
-import FindOutMoreSection from '@/components/sections/FindOutMoreSection';
+import RecommendedDestinations from '@/components/sections/RecommendedDestinations';
+import TravelSectionNew from '@/components/sections/TravelSectionNew';
 import CampandResorts from '@/components/sections/CampandResorts';
+import FindOutMoreSection from '@/components/sections/FindOutMoreSection';
 
 export default function Home() {
   return (
@@ -10,12 +11,12 @@ export default function Home() {
      * Homepage shell
      * ─────────────────────────────────────────────────────────────────────────
      * Layout rules:
-     *   • The hero lives inside a tight inset (px-3 pt-3) so its rounded
-     *     corners float off the viewport edges — modern editorial look.
-     *   • All body sections control only their internal content; the max-width
-     *     and horizontal padding are normalised inside each section to
-     *     max-w-7xl / px-4 sm:px-6 lg:px-8 so every content column aligns.
-     *   • Vertical spacing is owned by each section (py-16 sm:py-20).
+     *   • Hero lives inside a tight inset so its rounded corners float off
+     *     the viewport edges — modern editorial look.
+     *   • All body sections use max-w-7xl / px-4 sm:px-6 lg:px-8 internally
+     *     so content columns align consistently.
+     *   • Section spacing: py-16 sm:py-20 on every body section.
+     *   • Section order: Tours → Destinations → Editorial → Stays → Info
      */
     <main className="min-h-screen bg-white">
       {/* ── Hero — inset wrapper creates the premium rounded-card look ─────── */}
@@ -23,10 +24,19 @@ export default function Home() {
         <HeroInteractive />
       </div>
 
-      {/* ── Body sections — no extra wrappers; sections own their own width ─── */}
+      {/* ── Recommended Tours ────────────────────────────────────────────────── */}
       <Recommended />
+
+      {/* ── Recommended Destinations ─────────────────────────────────────────── */}
+      <RecommendedDestinations />
+
+      {/* ── WeMongolia Experiences (editorial) ───────────────────────────────── */}
       <TravelSectionNew />
+
+      {/* ── Ger Camps & Resorts ───────────────────────────────────────────────── */}
       <CampandResorts />
+
+      {/* ── Find Out More ─────────────────────────────────────────────────────── */}
       <FindOutMoreSection />
     </main>
   );
