@@ -1,113 +1,60 @@
-import { MapPin, Compass, Clock, Users, Camera, Utensils, Wind, Tent, Mountain, Star, Map, CalendarDays, Lightbulb, Wand2 } from 'lucide-react'
+/**
+ * components/layout/navbar/mega-menu-data.ts
+ *
+ * Main navigation item definitions.
+ * Desktop uses MegaMenu dropdowns; mobile reads the same data for accordions.
+ *
+ * Rules:
+ * - Every href must be a real, working route.
+ * - No '#' placeholder links.
+ * - Removed: Trip Planner, Travel Guides, Experiences — routes do not exist.
+ */
+
+import { MapPin, Compass, BedDouble } from 'lucide-react'
 
 export const navItems = [
+  // ── Destinations — mega menu with real destination slugs ──────────────────
   {
     label: 'Destinations',
-    key: 'destinations',
+    key:   'destinations',
     menu: {
       sections: [
         {
           title: 'Popular Destinations',
-          icon: MapPin,
+          icon:   MapPin,
           items: [
-            { label: 'Ulaanbaatar', href: '#', description: 'Mongolia\'s vibrant capital' },
-            { label: 'Gobi Desert', href: '#', description: 'Vast dunes & canyon landscapes' },
-            { label: 'Lake Khövsgöl', href: '#', description: 'Mongolia\'s Blue Pearl' },
-            { label: 'Terelj National Park', href: '#', description: 'Just 55km from the city' },
+            { label: 'Gobi Desert',          href: '/destinations/gobi-desert',          description: 'Dunes, canyons & ancient fossils' },
+            { label: 'Lake Khövsgöl',         href: '/destinations/lake-khovsgol',         description: "Mongolia's pristine Blue Pearl" },
+            { label: 'Altai Mountains',       href: '/destinations/altai-mountains',       description: 'Eagle hunters & glacier peaks' },
+            { label: 'Ulaanbaatar',           href: '/destinations/ulaanbaatar',           description: "The world's most surprising capital" },
+            { label: 'Terelj National Park',  href: '/destinations/terelj-national-park',  description: 'Dramatic granite, 55km from UB' },
+            { label: 'Orkhon Valley',         href: '/destinations/orkhon-valley',         description: 'UNESCO World Heritage landscape' },
           ],
         },
         {
-          title: 'Travel Regions',
-          icon: Map,
+          title: 'Browse',
+          icon:   Compass,
           items: [
-            { label: 'Central Mongolia', href: '#', description: 'Orkhon Valley & steppes' },
-            { label: 'Gobi Region', href: '#', description: 'Desert, fossils & camels' },
-            { label: 'Northern Mongolia', href: '#', description: 'Forests, lakes & reindeer' },
-            { label: 'Western Mongolia', href: '#', description: 'Eagle hunters & Altai' },
-          ],
-        },
-        {
-          title: 'Featured Trips',
-          icon: Star,
-          items: [
-            { label: 'Desert Adventures', href: '#', description: 'Camel treks & stargazing' },
-            { label: 'Nomadic Culture Tours', href: '#', description: 'Ger stays with local families' },
-            { label: 'Horse Trekking', href: '#', description: 'Ride across open steppes' },
-            { label: 'Winter Experiences', href: '#', description: 'Ice festivals & snow travel' },
+            { label: 'All Destinations', href: '/destinations', description: 'Explore every region of Mongolia' },
+            { label: 'All Tours',        href: '/tours',        description: 'Browse scheduled tours & packages' },
+            { label: 'All Stays',        href: '/stays',        description: 'Ger camps, hotels & lodges' },
           ],
         },
       ],
     },
   },
-  {
-    label: 'Experiences',
-    key: 'experiences',
-    menu: {
-      sections: [
-        {
-          title: 'What to Do',
-          icon: Compass,
-          items: [
-            { label: 'Cultural Experiences', href: '#', icon: Tent, description: 'Ger stays, ceremonies & traditions' },
-            { label: 'Nature Adventures', href: '#', icon: Mountain, description: 'Hiking, trekking & camping' },
-            { label: 'Horse Riding', href: '#', icon: Wind, description: 'Steppe rides & multi-day treks' },
-            { label: 'Nomadic Life', href: '#', icon: Tent, description: 'Live with herder families' },
-            { label: 'Photography Tours', href: '#', icon: Camera, description: 'Landscapes & golden light' },
-            { label: 'Food Experiences', href: '#', icon: Utensils, description: 'Local cuisine & cooking' },
-          ],
-        },
-      ],
-    },
-  },
+
+  // ── Tours — direct link (no dropdown needed until filter-page exists) ──────
   {
     label: 'Tours',
-    key: 'tours',
-    menu: {
-      sections: [
-        {
-          title: 'Browse by Duration',
-          icon: Clock,
-          items: [
-            { label: '1-Day Tours', href: '#', description: 'Perfect for short visits' },
-            { label: '3-Day Trips', href: '#', description: 'Weekend escapes' },
-            { label: '1-Week Adventures', href: '#', description: 'Deep cultural immersion' },
-            { label: '2-Week Expeditions', href: '#', description: 'The ultimate Mongolia' },
-          ],
-        },
-        {
-          title: 'Browse by Style',
-          icon: Users,
-          items: [
-            { label: 'Private Tours', href: '#', description: 'Tailored just for you' },
-            { label: 'Group Tours', href: '#', description: 'Meet fellow travellers' },
-            { label: 'Luxury Tours', href: '#', description: 'Premium lodges & guides' },
-            { label: 'Budget Tours', href: '#', description: 'Great value adventures' },
-          ],
-        },
-      ],
-    },
+    key:   'tours',
+    href:  '/tours',
   },
+
+  // ── Stays — direct link ───────────────────────────────────────────────────
   {
-    label: 'Trip Planner',
-    key: 'trip-planner',
-    menu: {
-      sections: [
-        {
-          title: 'Plan Your Journey',
-          icon: CalendarDays,
-          items: [
-            { label: 'Build Your Trip', href: '#', icon: Wand2, description: 'Create a custom itinerary' },
-            { label: 'Suggested Itineraries', href: '#', icon: Lightbulb, description: 'Curated routes & schedules' },
-            { label: 'Custom Tour Request', href: '#', icon: Map, description: 'We design your dream trip' },
-            { label: 'Travel Planning Tools', href: '#', icon: CalendarDays, description: 'Packing lists, visa info & more' },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    label: 'Travel Guides',
-    key: 'travel-guides',
-    href: '#',
+    label: 'Stays',
+    key:   'stays',
+    href:  '/stays',
   },
 ] as const

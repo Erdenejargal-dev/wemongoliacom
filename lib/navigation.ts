@@ -42,3 +42,44 @@ export function getHostCTAHref(session: { user?: { role?: string } } | null): st
 export function isProviderOrAdmin(role?: string | null): boolean {
   return role === 'provider_owner' || role === 'admin'
 }
+
+// ── Shared user navigation items ─────────────────────────────────────────────
+// Single source of truth used by both UserMenu (desktop dropdown) and
+// MobileMenu (drawer). Adding an item here propagates to both surfaces.
+
+export interface UserNavItem {
+  href:     string
+  label:    string
+  /** Lucide icon name (string) — caller maps to component */
+  iconName: string
+}
+
+export function getUserNavItems(role: string | null | undefined): UserNavItem[] {
+  if (role === 'admin') {
+    return [
+      { href: '/admin',   label: 'Admin Console', iconName: 'ShieldCheck'     },
+      { href: '/account', label: 'My Account',    iconName: 'CircleUserRound' },
+    ]
+  }
+
+  if (role === 'provider_owner') {
+    return [
+      { href: '/dashboard/business',           label: 'Business Portal',  iconName: 'Building2'     },
+      { href: '/dashboard/business/bookings',  label: 'Bookings',         iconName: 'CalendarCheck' },
+      { href: '/dashboard/business/messages',  label: 'Messages',         iconName: 'MessageSquare' },
+      { href: '/dashboard/business/settings',  label: 'Settings',         iconName: 'Settings'      },
+    ]
+  }
+
+  // Traveler (default)
+  return [
+    { href: '/account',          label: 'My Account', iconName: 'CircleUserRound' },
+    { href: '/account/trips',    label: 'My Trips',   iconName: 'CalendarCheck'   },
+    { href: '/account/messages', label: 'Messages',   iconName: 'MessageSquare'   },
+  ]
+}
+
+/** True if this role should see a "Become a Host" CTA */
+export function showBecomeAHost(role?: string | null): boolean {
+  return !role || role === 'traveler'
+}
