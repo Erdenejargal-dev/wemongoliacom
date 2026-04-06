@@ -71,7 +71,7 @@ export default function HeroInteractive() {
         className="absolute inset-0 bg-cover bg-center"
         style={{
           backgroundImage:
-            "url('https://images.unsplash.com/photo-1583037189850-1921ae7c6c22?q=80&w=2000')",
+            "url('https://res.cloudinary.com/drpexegxg/image/upload/f_auto,q_auto/usukhbayar-gankhuyag-fjCihZthrAo-unsplash_ggpu7u')",
         }}
         aria-hidden="true"
       />
