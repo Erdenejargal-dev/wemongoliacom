@@ -277,6 +277,7 @@ export interface ReadinessResult {
 export interface ProviderTourDetail extends ProviderTour {
   description:        string | null
   category:           string | null
+  difficulty:         string | null
   maxGuests:          number
   minGuests:          number
   meetingPoint:       string | null
@@ -313,14 +314,25 @@ export interface CreateTourInput {
 }
 
 export interface UpdateTourInput {
-  title?:             string
-  shortDescription?:  string
-  description?:       string
-  durationDays?:      number
-  basePrice?:         number
-  currency?:          string
-  destinationId?:     string | null
-  status?:            'draft' | 'active' | 'paused'
+  // Core info
+  title?:              string
+  shortDescription?:   string
+  description?:        string
+  // Trip setup
+  category?:           string
+  difficulty?:         'Easy' | 'Moderate' | 'Challenging' | null
+  durationDays?:       number
+  maxGuests?:          number
+  languages?:          string[]
+  // Location
+  destinationId?:      string | null
+  meetingPoint?:       string | null
+  // Pricing & policy
+  basePrice?:          number
+  currency?:           string
+  cancellationPolicy?: string | null
+  // Status
+  status?:             'draft' | 'active' | 'paused'
 }
 
 export async function fetchProviderTours(

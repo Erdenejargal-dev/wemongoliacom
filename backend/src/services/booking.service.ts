@@ -148,12 +148,16 @@ async function checkRoomAvailability(roomTypeId: string, checkIn: Date, checkOut
  * Must run inside a transaction. Returns true if allocation succeeded.
  */
 async function allocateDepartureSeats(tx: any, departureId: string, guests: number): Promise<boolean> {
+  /**
+   * Column names use camelCase in this Prisma schema.
+   * PostgreSQL requires quoted identifiers: "bookedSeats", not booked_seats.
+   */
   const rows = await tx.$executeRaw`
     UPDATE tour_departures
-    SET booked_seats = booked_seats + ${guests}
+    SET "bookedSeats" = "bookedSeats" + ${guests}
     WHERE id = ${departureId}
       AND status = 'scheduled'
-      AND (available_seats - booked_seats) >= ${guests}
+      AND ("availableSeats" - "bookedSeats") >= ${guests}
   `
   return Number(rows) > 0
 }

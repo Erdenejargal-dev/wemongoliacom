@@ -33,15 +33,19 @@ async function getTourIdsWithRemainingSeats(
   now.setHours(0, 0, 0, 0)
   const startFrom = minDate && minDate > now ? minDate : now
 
+  /**
+   * Column names use camelCase in this Prisma schema (no @map annotations).
+   * PostgreSQL requires quoted identifiers to preserve case: "tourId", not tour_id.
+   */
   const rows = await prisma.$queryRaw<{ tour_id: string }[]>`
     SELECT DISTINCT t.id as tour_id
     FROM tours t
-    INNER JOIN tour_departures d ON d.tour_id = t.id
+    INNER JOIN tour_departures d ON d."tourId" = t.id
     WHERE t.status = 'active'
       AND d.status = 'scheduled'
-      AND d.start_date >= ${startFrom}
-      AND (d.available_seats - d.booked_seats) >= ${minRequired}
-      ${maxDate ? Prisma.sql`AND d.start_date <= ${maxDate}` : Prisma.empty}
+      AND d."startDate" >= ${startFrom}
+      AND (d."availableSeats" - d."bookedSeats") >= ${minRequired}
+      ${maxDate ? Prisma.sql`AND d."startDate" <= ${maxDate}` : Prisma.empty}
   `
   return rows.map((r) => r.tour_id)
 }

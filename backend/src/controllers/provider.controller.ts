@@ -58,14 +58,25 @@ export const createTourSchema = z.object({
 })
 
 export const updateTourSchema = z.object({
-  title:            z.string().trim().min(2).max(300).optional(),
-  shortDescription: z.string().trim().max(500).optional(),
-  description:      z.string().trim().max(10000).optional(),
-  durationDays:     z.number().int().positive().max(365).optional(),
-  basePrice:        z.number().positive().optional(),
-  currency:         z.string().length(3).optional(),
-  destinationId:    z.string().nullable().optional(),
-  status:           z.enum(['draft', 'active', 'paused']).optional(),
+  // ── Core info ───────────────────────────────────────────────────────────────
+  title:              z.string().trim().min(2).max(300).optional(),
+  shortDescription:   z.string().trim().max(500).optional(),
+  description:        z.string().trim().max(10000).optional(),
+  // ── Trip setup ──────────────────────────────────────────────────────────────
+  category:           z.string().trim().max(100).optional(),
+  difficulty:         z.enum(['Easy', 'Moderate', 'Challenging']).nullable().optional(),
+  durationDays:       z.number().int().positive().max(365).optional(),
+  maxGuests:          z.number().int().positive().max(500).optional(),
+  languages:          z.array(z.string().trim().max(50)).max(20).optional(),
+  // ── Location ────────────────────────────────────────────────────────────────
+  destinationId:      z.string().nullable().optional(),
+  meetingPoint:       z.string().trim().max(500).nullable().optional(),
+  // ── Pricing & policy ────────────────────────────────────────────────────────
+  basePrice:          z.number().positive().optional(),
+  currency:           z.string().length(3).optional(),
+  cancellationPolicy: z.string().trim().max(5000).nullable().optional(),
+  // ── Status ──────────────────────────────────────────────────────────────────
+  status:             z.enum(['draft', 'active', 'paused']).optional(),
 })
 
 export const addTourImagesSchema = z.object({

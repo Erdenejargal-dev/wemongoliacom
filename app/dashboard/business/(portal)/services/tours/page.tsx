@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, Plus, MapPin, Clock, DollarSign, X, Pencil, ArrowLeft } from 'lucide-react'
+import { Loader2, Plus, MapPin, Clock, DollarSign, X, Pencil, ArrowLeft, Info } from 'lucide-react'
 import { PageHeader } from '@/components/dashboard/ui/PageHeader'
 import {
   fetchProviderTours,
@@ -17,7 +17,7 @@ import {
 import { getFreshAccessToken } from '@/lib/auth-utils'
 import { ApiError } from '@/lib/api/client'
 
-// ── Status badge ────────────────────────────────────────────────────────────
+// ── Status badge ─────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
@@ -32,7 +32,7 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-// ── Tour card ───────────────────────────────────────────────────────────────
+// ── Tour card ─────────────────────────────────────────────────────────────────
 
 function TourCard({ tour }: { tour: ProviderTour }) {
   const img = tour.images?.[0]?.imageUrl
@@ -83,26 +83,23 @@ function TourCard({ tour }: { tour: ProviderTour }) {
   )
 }
 
-// ── Create tour form (slide-over panel) ─────────────────────────────────────
+// ── Quick Create panel ────────────────────────────────────────────────────────
+// Intentionally minimal: just title + price + optional destination.
+// After creation the provider is redirected to the full edit page where
+// they add images, description, trip details, departures, etc.
 
 function CreateTourPanel({
   destinations,
-  onCreated,
   onClose,
 }: {
   destinations: Destination[]
-  onCreated: () => void
   onClose: () => void
 }) {
   const router = useRouter()
 
   const [title, setTitle] = useState('')
-  const [shortDescription, setShortDescription] = useState('')
-  const [description, setDescription] = useState('')
-  const [durationDays, setDurationDays] = useState('')
   const [basePrice, setBasePrice] = useState('')
   const [destinationId, setDestinationId] = useState('')
-  const [status, setStatus] = useState<'draft' | 'active'>('draft')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -120,16 +117,14 @@ function CreateTourPanel({
 
     try {
       const input: CreateTourInput = {
-        title: title.trim(),
-        shortDescription: shortDescription.trim() || undefined,
-        description: description.trim() || undefined,
-        durationDays: durationDays ? parseInt(durationDays, 10) : undefined,
-        basePrice: parseFloat(basePrice),
+        title:         title.trim(),
+        basePrice:     parseFloat(basePrice),
         destinationId: destinationId || undefined,
-        status,
+        status:        'draft',
       }
-      await createProviderTour(freshToken, input)
-      onCreated()
+      const newTour = await createProviderTour(freshToken, input)
+      // Redirect to the edit page so the provider can complete setup
+      router.push(`/dashboard/business/services/tours/${newTour.id}`)
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         signOut({ redirect: false })
@@ -150,9 +145,12 @@ function CreateTourPanel({
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
-      <div className="fixed right-0 top-0 h-full w-full max-w-lg bg-white z-50 shadow-2xl flex flex-col">
+      <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white z-50 shadow-2xl flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-bold text-gray-900">Add Tour</h2>
+          <div>
+            <h2 className="text-base font-bold text-gray-900">New Tour</h2>
+            <p className="text-xs text-gray-400 mt-0.5">You'll add photos, details & schedule on the next step.</p>
+          </div>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100">
             <X className="w-5 h-5 text-gray-500" />
           </button>
@@ -177,60 +175,25 @@ function CreateTourPanel({
               onChange={e => setTitle(e.target.value)}
               className={inputClass}
               placeholder="e.g. 3-Day Gobi Desert Adventure"
+              autoFocus
             />
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Short description</label>
+            <label className="text-sm font-medium text-gray-700 block mb-1">
+              Base price (USD) <span className="text-red-500">*</span>
+            </label>
             <input
-              maxLength={500}
-              value={shortDescription}
-              onChange={e => setShortDescription(e.target.value)}
+              required
+              type="number"
+              min={0.01}
+              step={0.01}
+              value={basePrice}
+              onChange={e => setBasePrice(e.target.value)}
               className={inputClass}
-              placeholder="One-line summary for search results"
+              placeholder="e.g. 350"
             />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Description</label>
-            <textarea
-              rows={4}
-              maxLength={10000}
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              className={`${inputClass} resize-none`}
-              placeholder="Tell travelers what makes this tour special…"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">Duration (days)</label>
-              <input
-                type="number"
-                min={1}
-                max={365}
-                value={durationDays}
-                onChange={e => setDurationDays(e.target.value)}
-                className={inputClass}
-                placeholder="e.g. 3"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">
-                Price (USD) <span className="text-red-500">*</span>
-              </label>
-              <input
-                required
-                type="number"
-                min={0.01}
-                step={0.01}
-                value={basePrice}
-                onChange={e => setBasePrice(e.target.value)}
-                className={inputClass}
-                placeholder="e.g. 350"
-              />
-            </div>
+            <p className="text-xs text-gray-400 mt-1">Per person. You can change currency and pricing details later.</p>
           </div>
 
           <div>
@@ -240,40 +203,22 @@ function CreateTourPanel({
               onChange={e => setDestinationId(e.target.value)}
               className={inputClass}
             >
-              <option value="">— None —</option>
+              <option value="">— None (add later) —</option>
               {destinations.map(d => (
                 <option key={d.id} value={d.id}>{d.name}</option>
               ))}
             </select>
-            <p className="text-xs text-gray-400 mt-1">Optional — helps travelers discover your tour by location.</p>
+            <p className="text-xs text-gray-400 mt-1">Optional — links your tour to a destination page.</p>
           </div>
 
-          <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Status</label>
-            <div className="flex gap-3">
-              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                <input
-                  type="radio"
-                  name="status"
-                  value="draft"
-                  checked={status === 'draft'}
-                  onChange={() => setStatus('draft')}
-                  className="accent-brand-600"
-                />
-                Draft
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                <input
-                  type="radio"
-                  name="status"
-                  value="active"
-                  checked={status === 'active'}
-                  onChange={() => setStatus('active')}
-                  className="accent-brand-600"
-                />
-                Active (visible to travelers)
-              </label>
-            </div>
+          {/* What happens next */}
+          <div className="flex items-start gap-2.5 p-3.5 bg-brand-50 border border-brand-100 rounded-xl text-xs text-brand-800">
+            <Info className="w-4 h-4 shrink-0 mt-0.5 text-brand-500" />
+            <p>
+              After creating, you&apos;ll be taken to the tour editor where you can add
+              photos, full description, trip details, languages, and schedule departures.
+              The tour starts as <strong>Draft</strong> and won&apos;t be visible to travelers until you publish it.
+            </p>
           </div>
         </form>
 
@@ -301,19 +246,19 @@ function CreateTourPanel({
   )
 }
 
-// ── Main page ───────────────────────────────────────────────────────────────
+// ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function ToursPage() {
   const router = useRouter()
   const { data: session } = useSession()
   const token = session?.user?.accessToken
 
-  const [tours, setTours] = useState<ProviderTour[]>([])
-  const [total, setTotal] = useState(0)
+  const [tours,        setTours]        = useState<ProviderTour[]>([])
+  const [total,        setTotal]        = useState(0)
   const [destinations, setDestinations] = useState<Destination[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [showCreate, setShowCreate] = useState(false)
+  const [loading,      setLoading]      = useState(true)
+  const [error,        setError]        = useState<string | null>(null)
+  const [showCreate,   setShowCreate]   = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -348,21 +293,6 @@ export default function ToursPage() {
     load()
     return () => { alive = false }
   }, [token])
-
-  async function handleCreated() {
-    setShowCreate(false)
-    const freshToken = await getFreshAccessToken()
-    if (!freshToken) return
-    try {
-      const [toursRes, destsRes] = await Promise.all([
-        fetchProviderTours(freshToken),
-        fetchDestinations(freshToken),
-      ])
-      setTours(toursRes.data)
-      setTotal(toursRes.total)
-      setDestinations(destsRes)
-    } catch { /* silent — user can reload */ }
-  }
 
   if (loading) {
     return (
@@ -406,7 +336,8 @@ export default function ToursPage() {
           </div>
           <h3 className="text-base font-bold text-gray-900 mb-1">No tours yet</h3>
           <p className="text-sm text-gray-500 mb-5 max-w-sm mx-auto">
-            Create your first tour so travelers can discover and book your experiences. You can save as draft and publish when ready.
+            Create your first tour so travelers can discover and book your experiences.
+            Start with a title and price — you&apos;ll add photos and details in the next step.
           </p>
           <button
             onClick={() => setShowCreate(true)}
@@ -429,7 +360,6 @@ export default function ToursPage() {
       {showCreate && (
         <CreateTourPanel
           destinations={destinations}
-          onCreated={handleCreated}
           onClose={() => setShowCreate(false)}
         />
       )}

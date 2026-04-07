@@ -71,7 +71,7 @@ export default function HeroInteractive() {
         className="absolute inset-0 bg-cover bg-center"
         style={{
           backgroundImage:
-            "url('https://res.cloudinary.com/drpexegxg/image/upload/f_auto,q_auto/usukhbayar-gankhuyag-fjCihZthrAo-unsplash_ggpu7u')",
+            "url('https://images.unsplash.com/photo-1711127016876-9a1b7e05126f?q=80&w=1074&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')",
         }}
         aria-hidden="true"
       />
@@ -270,8 +270,10 @@ export default function HeroInteractive() {
       </div>
 
       {/* Bottom page-blend */}
-<div className="absolute -bottom-24 -left-20 h-64 w-64 rounded-full bg-orange-500/30 blur-[100px]" />
-<div className="absolute -bottom-24 -right-20 h-64 w-64 rounded-full bg-orange-500/30 blur-[100px]" />
+      <div
+        className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white to-transparent pointer-events-none"
+        aria-hidden="true"
+      />
     </section>
   );
 }

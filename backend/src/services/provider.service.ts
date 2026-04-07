@@ -532,14 +532,25 @@ export async function createProviderTour(ownerUserId: string, input: CreateTourI
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface UpdateTourInput {
-  title?:            string
-  shortDescription?: string
-  description?:      string
-  durationDays?:     number
-  basePrice?:        number
-  currency?:         string
-  destinationId?:    string | null
-  status?:           'draft' | 'active' | 'paused'
+  // Core info
+  title?:              string
+  shortDescription?:   string
+  description?:        string
+  // Trip setup
+  category?:           string
+  difficulty?:         'Easy' | 'Moderate' | 'Challenging' | null
+  durationDays?:       number
+  maxGuests?:          number
+  languages?:          string[]
+  // Location
+  destinationId?:      string | null
+  meetingPoint?:       string | null
+  // Pricing & policy
+  basePrice?:          number
+  currency?:           string
+  cancellationPolicy?: string | null
+  // Status
+  status?:             'draft' | 'active' | 'paused'
 }
 
 export async function updateProviderTour(ownerUserId: string, tourId: string, input: UpdateTourInput) {
@@ -578,14 +589,25 @@ export async function updateProviderTour(ownerUserId: string, tourId: string, in
     where: { id: tourId },
     data: {
       slug,
-      ...(input.title !== undefined && { title: input.title }),
-      ...(input.shortDescription !== undefined && { shortDescription: input.shortDescription || null }),
-      ...(input.description !== undefined && { description: input.description || null }),
-      ...(input.durationDays !== undefined && { durationDays: input.durationDays }),
-      ...(input.basePrice !== undefined && { basePrice: input.basePrice }),
-      ...(input.currency !== undefined && { currency: input.currency }),
-      ...(input.destinationId !== undefined && { destinationId: input.destinationId || null }),
-      ...(input.status !== undefined && { status: input.status }),
+      // Core info
+      ...(input.title             !== undefined && { title:             input.title }),
+      ...(input.shortDescription  !== undefined && { shortDescription:  input.shortDescription  || null }),
+      ...(input.description       !== undefined && { description:       input.description       || null }),
+      // Trip setup
+      ...(input.category          !== undefined && { category:          input.category          || null }),
+      ...(input.difficulty        !== undefined && { difficulty:        input.difficulty }),
+      ...(input.durationDays      !== undefined && { durationDays:      input.durationDays }),
+      ...(input.maxGuests         !== undefined && { maxGuests:         input.maxGuests }),
+      ...(input.languages         !== undefined && { languages:         input.languages }),
+      // Location
+      ...(input.destinationId     !== undefined && { destinationId:     input.destinationId     || null }),
+      ...(input.meetingPoint      !== undefined && { meetingPoint:      input.meetingPoint      || null }),
+      // Pricing & policy
+      ...(input.basePrice         !== undefined && { basePrice:         input.basePrice }),
+      ...(input.currency          !== undefined && { currency:          input.currency }),
+      ...(input.cancellationPolicy !== undefined && { cancellationPolicy: input.cancellationPolicy || null }),
+      // Status
+      ...(input.status            !== undefined && { status:            input.status }),
     },
     select: providerTourSelect,
   })
@@ -617,6 +639,7 @@ const providerTourDetailSelect = {
   shortDescription:   true,
   description:        true,
   category:           true,
+  difficulty:         true,
   durationDays:       true,
   maxGuests:          true,
   minGuests:          true,
