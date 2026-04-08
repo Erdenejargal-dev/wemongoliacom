@@ -349,7 +349,7 @@ export function MobileMenu({ session, onClose }: MobileMenuProps) {
               className="flex items-center justify-center gap-2 w-full py-3 text-sm font-semibold text-brand-700 border border-brand-200 rounded-2xl hover:bg-brand-50 transition-colors"
             >
               <Sparkles className="w-4 h-4" />
-              Become a Host
+              Харилцагч болох
             </Link>
           </div>
         </>
