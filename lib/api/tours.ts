@@ -153,9 +153,14 @@ export interface TourListParams {
   limit?: number
 }
 
-function toQS(params: Record<string, string | number | undefined>): string {
+/**
+ * Serialise TourListParams to a query string.
+ * Accepts string | number | boolean — booleans are serialised as "true"/"false"
+ * which the /tours endpoint accepts via z.enum(['true','false']).transform(...).
+ */
+function toQS(params: Record<string, string | number | boolean | undefined>): string {
   const q = Object.entries(params)
-    .filter(([, v]) => v !== undefined && v !== '' && v !== null)
+    .filter(([, v]) => v !== undefined && v !== null && v !== '')
     .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`)
     .join('&')
   return q ? `?${q}` : ''
@@ -163,8 +168,12 @@ function toQS(params: Record<string, string | number | undefined>): string {
 
 // ── API functions ──────────────────────────────────────────────────────────
 
+/**
+ * Fetches tours from GET /api/v1/tours (direct endpoint, NOT /search).
+ * Used by homepage Recommended section and the /tours listing page.
+ */
 export async function fetchTours(params: TourListParams = {}): Promise<Paginated<BackendTour>> {
-  const qs = toQS(params as Record<string, string | number | undefined>)
+  const qs = toQS(params as Record<string, string | number | boolean | undefined>)
   return apiClient.get<Paginated<BackendTour>>(`/tours${qs}`)
 }
 
