@@ -332,11 +332,11 @@ export const mn: ProviderTranslations = {
     description: 'Аялал, буудал болон бусад үйлчилгээгээ удирдах.',
     tours: {
       title:       'Аялалууд',
-      description: 'Аялалын туршлагуудаа удирдах',
+      description: 'Тур үйлчилгээнүүд удирдах',
     },
     accommodations: {
       title:       'Буудлууд',
-      description: 'Өмчийн байршил болон өрөөнүүдийг удирдах',
+      description: 'Өрөө болон Камп удирдах',
     },
     errorLoading: 'Жагсаалт уншиж чадсангүй.',
   },
@@ -415,8 +415,8 @@ export const mn: ProviderTranslations = {
 
   messages: {
     title:              'Мессеж',
-    description:        'Аялагчийн лавлагаанд хариулах — яриануудаас хоцрохгүй байх',
-    conversations:      (n) => `${n} яриа`,
+    description:        'Захиалагчтай байнга холбоотой байж итгэлцэл үүсгэх нь чухал юм шүү',
+    conversations:      (n) => `${n} чат`,
     noMessages:         'Мессеж байхгүй',
     noMessagesDesc:     'Аялагчид таны үйлчилгээнд сонирхвол мессеж илгээнэ.',
     selectConversation: 'Мессеж харахын тулд яриа сонгоно уу',

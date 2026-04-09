@@ -53,7 +53,7 @@ const COPY = {
   host: {
     heading: "Бүртгүүлэх",
     subtitle:
-      "WeMongolia-д нэгдэж, аялалын үйлчилгээгээ санал болгож эхлээрэй.",
+      "WeMongolia-д нэгдэж, Дэлхийтэй хөл нийлүүлэн алхаарай.",
     nameLabel: "Овог нэр",
     namePlaceholder: "Таны бүтэн нэр",
     emailLabel: "Имэйл хаяг",
