@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, Plus, Building2, ArrowLeft, Star, Pencil, MapPin, ExternalLink } from 'lucide-react'
+import { Loader2, Plus, Building2, ArrowLeft, Star, Pencil, MapPin, ExternalLink, PlusCircle } from 'lucide-react'
 import { PageHeader } from '@/components/dashboard/ui/PageHeader'
 import {
   fetchProviderAccommodations,
@@ -85,14 +85,22 @@ function AccommodationCard({ acc }: { acc: AccommodationListItem }) {
           )}
         </div>
 
-        {/* Location row ── always shown (placeholder if empty) */}
+        {/* Location row ── always shown */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 text-xs min-w-0">
             <MapPin className={`w-3 h-3 shrink-0 ${locationLabel ? 'text-brand-500' : 'text-gray-300'}`} />
             {locationLabel ? (
               <span className="text-gray-600 truncate">{locationLabel}</span>
             ) : (
-              <span className="text-gray-300 italic text-[11px]">No location set</span>
+              /* Deep-link to Overview tab where LocationPicker lives (?tab=overview) */
+              <Link
+                href={`/dashboard/business/services/accommodations/${acc.id}?tab=overview`}
+                onClick={e => e.stopPropagation()}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-500 hover:text-brand-600 transition-colors"
+              >
+                <PlusCircle className="w-3 h-3 shrink-0" />
+                Set location
+              </Link>
             )}
           </div>
           {mapsUrl && (
