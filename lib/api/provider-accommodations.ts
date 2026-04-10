@@ -19,6 +19,12 @@ export interface AccommodationListItem {
   status:            string
   createdAt:         string
   updatedAt:         string
+  // Location fields — returned by the list endpoint when set
+  address:           string | null
+  city:              string | null
+  region:            string | null
+  latitude:          number | null
+  longitude:         number | null
   images:            { imageUrl: string }[]
   destination:       { id: string; name: string; slug: string } | null
   _count:            { roomTypes: number; images: number }

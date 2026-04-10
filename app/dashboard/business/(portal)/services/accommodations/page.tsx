@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, Plus, Building2, ArrowLeft, Star, Pencil } from 'lucide-react'
+import { Loader2, Plus, Building2, ArrowLeft, Star, Pencil, MapPin, ExternalLink } from 'lucide-react'
 import { PageHeader } from '@/components/dashboard/ui/PageHeader'
 import {
   fetchProviderAccommodations,
@@ -28,13 +28,30 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function AccommodationCard({ acc }: { acc: AccommodationListItem }) {
-  const img = acc.images?.[0]?.imageUrl
+  const img      = acc.images?.[0]?.imageUrl
   const typeName = ACCOMMODATION_TYPES.find(t => t.value === acc.accommodationType)?.label ?? acc.accommodationType
+
+  // Build the best available location label
+  const locationLabel =
+    acc.address?.trim() ||
+    [acc.city, acc.region].filter(Boolean).join(', ') ||
+    acc.destination?.name ||
+    null
+
+  // Build a Google Maps link — prefer exact coords, fall back to text search
+  const hasCoords = acc.latitude != null && acc.longitude != null
+  const mapsUrl   = hasCoords
+    ? `https://www.google.com/maps?q=${acc.latitude},${acc.longitude}`
+    : locationLabel
+      ? `https://www.google.com/maps/search/${encodeURIComponent(locationLabel)}`
+      : null
+
   return (
     <Link
       href={`/dashboard/business/services/accommodations/${acc.id}`}
       className="block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md hover:border-brand-200 transition-all group"
     >
+      {/* Thumbnail */}
       <div className="h-36 bg-gray-100 relative">
         {img ? (
           <img src={img} alt={acc.name} className="w-full h-full object-cover" />
@@ -50,9 +67,13 @@ function AccommodationCard({ acc }: { acc: AccommodationListItem }) {
           </span>
         </div>
       </div>
-      <div className="p-4 space-y-2">
+
+      {/* Content */}
+      <div className="p-4 space-y-2.5">
         <h3 className="text-sm font-bold text-gray-900 line-clamp-1">{acc.name}</h3>
-        <div className="flex items-center gap-3 text-xs text-gray-500">
+
+        {/* Type + destination + star rating */}
+        <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500">
           <span className="inline-flex items-center px-1.5 py-0.5 bg-gray-50 rounded text-[10px] font-medium text-gray-600">
             {typeName}
           </span>
@@ -63,9 +84,38 @@ function AccommodationCard({ acc }: { acc: AccommodationListItem }) {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-3 text-[11px] text-gray-400">
+
+        {/* Location row ── always shown (placeholder if empty) */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-xs min-w-0">
+            <MapPin className={`w-3 h-3 shrink-0 ${locationLabel ? 'text-brand-500' : 'text-gray-300'}`} />
+            {locationLabel ? (
+              <span className="text-gray-600 truncate">{locationLabel}</span>
+            ) : (
+              <span className="text-gray-300 italic text-[11px]">No location set</span>
+            )}
+          </div>
+          {mapsUrl && (
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="flex items-center gap-0.5 text-[10px] font-semibold text-brand-600 hover:text-brand-700 transition-colors shrink-0 whitespace-nowrap"
+            >
+              <ExternalLink className="w-3 h-3" />
+              Map
+            </a>
+          )}
+        </div>
+
+        {/* Stats row */}
+        <div className="flex items-center gap-3 text-[11px] text-gray-400 pt-0.5 border-t border-gray-50">
           <span>{acc._count.roomTypes} room type{acc._count.roomTypes !== 1 ? 's' : ''}</span>
           <span>{acc._count.images} image{acc._count.images !== 1 ? 's' : ''}</span>
+          {hasCoords && (
+            <span className="text-green-500 font-medium">📍 Pinned</span>
+          )}
         </div>
       </div>
     </Link>
