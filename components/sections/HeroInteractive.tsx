@@ -270,10 +270,7 @@ export default function HeroInteractive() {
       </div>
 
       {/* Bottom page-blend */}
-      <div
-        className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white to-transparent pointer-events-none"
-        aria-hidden="true"
-      />
+      
     </section>
   );
 }

@@ -17,6 +17,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "We Mongolia",
   description: "Explore Mongolia with We Mongolia",
+  // Adding the favicon here
+  icons: {
+    icon: "/favicon.ico",
+    // Optional: If you have a shortcut icon or apple-touch-icon
+    // shortcut: "/assets/favicon.ico",
+    // apple: "/assets/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({
@@ -30,8 +37,6 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SessionProvider>
-          {/* ConditionalShell shows Navbar + Footer on public routes,
-              but strips them for /admin/* so admin gets its own layout */}
           <ConditionalShell>
             {children}
           </ConditionalShell>

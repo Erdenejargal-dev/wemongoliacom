@@ -30,6 +30,7 @@ import { ApiError } from '@/lib/api/client'
 import {
   ACCOMMODATION_TYPES, PROPERTY_AMENITIES, ROOM_AMENITIES, BED_TYPES,
 } from '@/lib/constants/amenities'
+import { LocationPicker } from '@/components/ui/LocationPicker'
 
 const inputClass = 'w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-colors'
 const TABS = ['overview', 'rooms', 'calendar', 'images'] as const
@@ -204,6 +205,9 @@ function OverviewTab({ acc, destinations, onUpdated }: {
   const [checkOutTime, setCheckOutTime] = useState(acc.checkOutTime ?? '')
   const [cancellationPolicy, setCancellationPolicy] = useState(acc.cancellationPolicy ?? '')
   const [starRating, setStarRating] = useState(acc.starRating?.toString() ?? '')
+  const [address, setAddress] = useState(acc.address ?? '')
+  const [latitude, setLatitude] = useState<number | null>(acc.latitude ?? null)
+  const [longitude, setLongitude] = useState<number | null>(acc.longitude ?? null)
   const [amenities, setAmenities] = useState<string[]>(acc.amenities)
   const [status, setStatus] = useState(acc.status)
   const [saving, setSaving] = useState(false)
@@ -219,6 +223,9 @@ function OverviewTab({ acc, destinations, onUpdated }: {
     setCheckOutTime(acc.checkOutTime ?? '')
     setCancellationPolicy(acc.cancellationPolicy ?? '')
     setStarRating(acc.starRating?.toString() ?? '')
+    setAddress(acc.address ?? '')
+    setLatitude(acc.latitude ?? null)
+    setLongitude(acc.longitude ?? null)
     setAmenities(acc.amenities)
     setStatus(acc.status)
   }, [acc])
@@ -226,6 +233,26 @@ function OverviewTab({ acc, destinations, onUpdated }: {
   async function handleSave() {
     const freshToken = await getFreshAccessToken()
     if (!freshToken) { signOut({ redirect: false }); router.push('/auth/login'); return }
+
+    // ── Coordinate validation ────────────────────────────────────────────────
+    // Both must be set together or both null — partial state is invalid.
+    const hasLat = latitude !== null && isFinite(latitude)
+    const hasLng = longitude !== null && isFinite(longitude)
+    if (hasLat !== hasLng) {
+      setErr('Both latitude and longitude are required together. Use the location picker.')
+      return
+    }
+    if (hasLat && hasLng) {
+      if (latitude! < -90 || latitude! > 90) {
+        setErr('Latitude must be between -90 and 90. Use the location picker to re-pin.')
+        return
+      }
+      if (longitude! < -180 || longitude! > 180) {
+        setErr('Longitude must be between -180 and 180. Use the location picker to re-pin.')
+        return
+      }
+    }
+
     setSaving(true); setMsg(null); setErr(null)
     try {
       const input: UpdateAccommodationInput = {
@@ -237,6 +264,9 @@ function OverviewTab({ acc, destinations, onUpdated }: {
         checkOutTime: checkOutTime || undefined,
         cancellationPolicy: cancellationPolicy.trim() || undefined,
         starRating: starRating ? parseInt(starRating) : null,
+        address:   address.trim() || undefined,
+        latitude,
+        longitude,
         amenities,
         status: status as any,
       }
@@ -308,6 +338,27 @@ function OverviewTab({ acc, destinations, onUpdated }: {
             {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} star{n > 1 ? 's' : ''}</option>)}
           </select>
         </div>
+        {/* Location */}
+        <div>
+          <label className="text-sm font-medium text-gray-700 block mb-1">
+            Location pin
+          </label>
+          <p className="text-xs text-gray-400 mb-2">
+            Enter your property address or area name to pin it on the map for guests.
+            Click <strong>Find</strong> to geocode, then save.
+          </p>
+          <LocationPicker
+            initialAddress={address || null}
+            initialLat={latitude}
+            initialLng={longitude}
+            onChange={(r) => {
+              setAddress(r?.address ?? '')
+              setLatitude(r?.lat ?? null)
+              setLongitude(r?.lng ?? null)
+            }}
+          />
+        </div>
+
         <AmenitySelect options={PROPERTY_AMENITIES} selected={amenities} onChange={setAmenities} label="Property amenities" />
         <div>
           <label className="text-sm font-medium text-gray-700 block mb-1">Status</label>

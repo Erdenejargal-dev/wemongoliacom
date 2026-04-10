@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { TourGallery } from '@/components/tours/TourGallery'
 import { StayBookingCard } from '@/components/stays/StayBookingCard'
+import { PropertyMap } from '@/components/stays/PropertyMap'
 import { fetchStayBySlug, ACCOMMODATION_TYPE_LABELS } from '@/lib/api/stays'
 
 interface Props {
@@ -160,6 +161,15 @@ export default async function StayDetailPage({ params }: Props) {
                   ))}
                 </div>
               </div>
+            )}
+
+            {/* ── Map — only rendered when coordinates are set ── */}
+            {stay.latitude != null && stay.longitude != null && (
+              <PropertyMap
+                lat={stay.latitude}
+                lng={stay.longitude}
+                label={locationLabel}
+              />
             )}
 
             {/* Room types */}
