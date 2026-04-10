@@ -68,7 +68,7 @@ const COPY = {
     errorMismatch: "Нууц үг таарахгүй байна.",
     errorGeneric: "Бүртгэл амжилтгүй боллоо. Дахин оролдоно уу.",
     panelBadge: "Итгэлтэй түншлэл",
-    panelHeading: "Дэлхийд гарцгаая",
+    panelHeading: "Хамтдаа Дэлхийд гарцгаая",
     panelSubtitle:
       "Эх орноо олон улсад сурталчилж борлуулалтын сувгаа тэлээрэй.",
     trustItems: [
