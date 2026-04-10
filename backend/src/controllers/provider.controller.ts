@@ -67,6 +67,7 @@ export const updateTourSchema = z.object({
   difficulty:         z.enum(['Easy', 'Moderate', 'Challenging']).nullable().optional(),
   durationDays:       z.number().int().positive().max(365).optional(),
   maxGuests:          z.number().int().positive().max(500).optional(),
+  minGuests:          z.number().int().positive().max(500).optional(),
   languages:          z.array(z.string().trim().max(50)).max(20).optional(),
   // ── Location ────────────────────────────────────────────────────────────────
   destinationId:      z.string().nullable().optional(),

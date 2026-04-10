@@ -40,7 +40,6 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-// Tour categories — these match common Mongolia tour types
 const TOUR_CATEGORIES = [
   'Adventure',
   'Cultural',
@@ -60,11 +59,27 @@ const CURRENCIES = ['USD', 'EUR', 'MNT', 'CNY', 'GBP']
 
 // ── Section wrapper ───────────────────────────────────────────────────────────
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  description,
+  children,
+  icon,
+}: {
+  title: string
+  description?: string
+  children: React.ReactNode
+  icon?: React.ReactNode
+}) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
       <div className="px-5 pt-5 pb-1">
-        <h2 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-3">{title}</h2>
+        <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
+          {icon && <span className="text-gray-400">{icon}</span>}
+          <div>
+            <h2 className="text-sm font-bold text-gray-900">{title}</h2>
+            {description && <p className="text-xs text-gray-400 mt-0.5">{description}</p>}
+          </div>
+        </div>
       </div>
       <div className="px-5 pt-4 pb-5 space-y-4">{children}</div>
     </div>
@@ -100,10 +115,14 @@ function ReadinessBanner({ readiness }: { readiness: ProviderTourDetail['readine
 // ── Departure section ─────────────────────────────────────────────────────────
 
 function DepartureSection({
-  tourId, departures, onRefresh,
+  tourId,
+  departures,
+  tourCurrency,
+  onRefresh,
 }: {
   tourId: string
   departures: TourDeparture[]
+  tourCurrency: string
   onRefresh: () => void
 }) {
   const [showAdd,       setShowAdd]       = useState(false)
@@ -111,6 +130,7 @@ function DepartureSection({
   const [endDate,       setEndDate]       = useState('')
   const [seats,         setSeats]         = useState('12')
   const [priceOverride, setPriceOverride] = useState('')
+  const [currency,      setCurrency]      = useState(tourCurrency)
   const [saving,        setSaving]        = useState(false)
   const [deleting,      setDeleting]      = useState<string | null>(null)
   const [error,         setError]         = useState<string | null>(null)
@@ -125,9 +145,11 @@ function DepartureSection({
       await createTourDeparture(freshToken, tourId, {
         startDate, endDate,
         availableSeats: parseInt(seats, 10),
-        priceOverride: priceOverride ? parseFloat(priceOverride) : undefined,
+        priceOverride:  priceOverride ? parseFloat(priceOverride) : undefined,
+        currency:       currency || tourCurrency,
       })
-      setShowAdd(false); setStartDate(''); setEndDate(''); setSeats('12'); setPriceOverride('')
+      setShowAdd(false)
+      setStartDate(''); setEndDate(''); setSeats('12'); setPriceOverride('')
       onRefresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create departure.')
@@ -137,7 +159,7 @@ function DepartureSection({
   }
 
   async function handleDelete(depId: string) {
-    if (!confirm('Delete this departure?')) return
+    if (!confirm('Delete this departure? This cannot be undone.')) return
     const freshToken = await getFreshAccessToken()
     if (!freshToken) return
     setDeleting(depId)
@@ -152,9 +174,7 @@ function DepartureSection({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-gray-400" /> Departures
-        </h3>
+        <p className="text-xs text-gray-500">At least one upcoming departure is required to publish.</p>
         <button
           onClick={() => setShowAdd(v => !v)}
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700"
@@ -168,22 +188,28 @@ function DepartureSection({
           {error && <p className="text-xs text-red-600">{error}</p>}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-gray-600 block mb-1">Start date *</label>
+              <label className="text-xs font-medium text-gray-600 block mb-1">Start date <span className="text-red-500">*</span></label>
               <input type="date" required value={startDate} onChange={e => setStartDate(e.target.value)} className={inputClass} />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-600 block mb-1">End date *</label>
+              <label className="text-xs font-medium text-gray-600 block mb-1">End date <span className="text-red-500">*</span></label>
               <input type="date" required value={endDate} onChange={e => setEndDate(e.target.value)} className={inputClass} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-xs font-medium text-gray-600 block mb-1">Available seats *</label>
+              <label className="text-xs font-medium text-gray-600 block mb-1">Available seats <span className="text-red-500">*</span></label>
               <input type="number" min={1} max={500} required value={seats} onChange={e => setSeats(e.target.value)} className={inputClass} />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-600 block mb-1">Price override (optional)</label>
-              <input type="number" min={0} step={0.01} value={priceOverride} onChange={e => setPriceOverride(e.target.value)} className={inputClass} placeholder="Leave blank for base price" />
+              <label className="text-xs font-medium text-gray-600 block mb-1">Price override</label>
+              <input type="number" min={0} step={0.01} value={priceOverride} onChange={e => setPriceOverride(e.target.value)} className={inputClass} placeholder="Base price" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-600 block mb-1">Currency</label>
+              <select value={currency} onChange={e => setCurrency(e.target.value)} className={inputClass}>
+                {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
           </div>
           <div className="flex gap-2">
@@ -205,7 +231,7 @@ function DepartureSection({
                 <p className="text-sm font-medium text-gray-900">{fmtDate(d.startDate)} — {fmtDate(d.endDate)}</p>
                 <p className="text-xs text-gray-500">
                   {d.bookedSeats}/{d.availableSeats} seats booked
-                  {d.priceOverride != null && <> · ${d.priceOverride}</>}
+                  {d.priceOverride != null && <> · {d.currency} {d.priceOverride}</>}
                 </p>
               </div>
               <span className="text-[10px] font-semibold text-brand-700 bg-brand-50 border border-brand-200 px-2 py-0.5 rounded-full">{d.status}</span>
@@ -227,7 +253,7 @@ function DepartureSection({
 
       {past.length > 0 && (
         <details className="text-xs text-gray-400">
-          <summary className="cursor-pointer hover:text-gray-500">{past.length} past/cancelled departure{past.length !== 1 ? 's' : ''}</summary>
+          <summary className="cursor-pointer hover:text-gray-500">{past.length} past / cancelled departure{past.length !== 1 ? 's' : ''}</summary>
           <div className="mt-2 space-y-1">
             {past.map(d => (
               <div key={d.id} className="flex items-center gap-3 px-3 py-2 bg-gray-50 rounded-lg">
@@ -262,24 +288,25 @@ export default function TourDetailPage() {
   const [success,      setSuccess]      = useState<string | null>(null)
 
   // ── Form state ──────────────────────────────────────────────────────────────
-  // Section 1: Basic info
+  // § 1: Basic info
   const [title,       setTitle]       = useState('')
   const [shortDesc,   setShortDesc]   = useState('')
   const [description, setDescription] = useState('')
-  // Section 2: Trip details
-  const [category,   setCategory]   = useState('')
-  const [difficulty, setDifficulty] = useState('')
+  // § 2: Trip details
+  const [category,    setCategory]    = useState('')
+  const [difficulty,  setDifficulty]  = useState('')
   const [durationDays, setDurationDays] = useState('')
-  const [maxGuests,  setMaxGuests]  = useState('')
-  const [languages,  setLanguages]  = useState('')  // comma-separated
-  // Section 3: Location
+  const [maxGuests,   setMaxGuests]   = useState('')
+  const [minGuests,   setMinGuests]   = useState('')
+  const [languages,   setLanguages]   = useState('')   // comma-separated
+  // § 3: Location
   const [destinationId, setDestinationId] = useState('')
   const [meetingPoint,  setMeetingPoint]  = useState('')
-  // Section 4: Pricing & policy
+  // § 4: Pricing & policy
   const [basePrice,          setBasePrice]          = useState('')
   const [currency,           setCurrency]           = useState('USD')
   const [cancellationPolicy, setCancellationPolicy] = useState('')
-  // Section 5: Status
+  // § 5: Status
   const [status, setStatus] = useState<'draft' | 'active' | 'paused'>('draft')
 
   // ── Load tour ───────────────────────────────────────────────────────────────
@@ -296,14 +323,15 @@ export default function TourDetailPage() {
       setTour(t)
       setDepartures(deps)
       setDestinations(dests)
-      // Populate form
+      // Populate form fields
       setTitle(t.title)
       setShortDesc(t.shortDescription ?? '')
       setDescription(t.description ?? '')
       setCategory(t.category ?? '')
       setDifficulty(t.difficulty ?? '')
       setDurationDays(t.durationDays ? String(t.durationDays) : '')
-      setMaxGuests(String(t.maxGuests ?? 12))
+      setMaxGuests(t.maxGuests ? String(t.maxGuests) : '')
+      setMinGuests(t.minGuests ? String(t.minGuests) : '')
       setLanguages(t.languages?.join(', ') ?? '')
       setDestinationId(t.destination?.id ?? '')
       setMeetingPoint(t.meetingPoint ?? '')
@@ -333,26 +361,22 @@ export default function TourDetailPage() {
     setSaving(true)
     try {
       const input: UpdateTourInput = {
-        // Core info
         title:             title.trim(),
         shortDescription:  shortDesc.trim() || undefined,
         description:       description.trim() || undefined,
-        // Trip details
         category:          category.trim() || undefined,
         difficulty:        (difficulty as 'Easy' | 'Moderate' | 'Challenging') || null,
         durationDays:      durationDays ? parseInt(durationDays, 10) : undefined,
         maxGuests:         maxGuests ? parseInt(maxGuests, 10) : undefined,
+        minGuests:         minGuests ? parseInt(minGuests, 10) : undefined,
         languages:         languages.trim()
           ? languages.split(',').map(l => l.trim()).filter(Boolean)
           : [],
-        // Location
         destinationId:     destinationId || null,
         meetingPoint:      meetingPoint.trim() || null,
-        // Pricing & policy
         basePrice:         parseFloat(basePrice),
         currency,
         cancellationPolicy: cancellationPolicy.trim() || null,
-        // Status
         status,
       }
       await updateProviderTour(freshToken, tourId, input)
@@ -369,7 +393,7 @@ export default function TourDetailPage() {
   // ── Archive ─────────────────────────────────────────────────────────────────
 
   async function handleArchive() {
-    if (!confirm('Archive this tour? It will be hidden from travelers.')) return
+    if (!confirm('Archive this tour? It will be hidden from travelers and cannot be re-activated from here.')) return
     const freshToken = await getFreshAccessToken()
     if (!freshToken) return
     setArchiving(true)
@@ -432,7 +456,7 @@ export default function TourDetailPage() {
   return (
     <div className="space-y-5 max-w-2xl">
 
-      {/* Header */}
+      {/* ── Page header ── */}
       <div className="flex items-center gap-3">
         <Link href="/dashboard/business/services/tours" className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
           <ArrowLeft className="w-4 h-4 text-gray-500" />
@@ -451,38 +475,94 @@ export default function TourDetailPage() {
         </button>
       </div>
 
-      {/* Readiness banner */}
+      {/* ── Readiness banner ── */}
       <ReadinessBanner readiness={tour.readiness} />
 
-      {/* Messages */}
+      {/* ── Messages ── */}
       {error   && <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{error}</div>}
       {success && <div className="p-3 bg-brand-50 border border-brand-200 rounded-xl text-sm text-brand-700">{success}</div>}
 
-      {/* ── Section 1: Basic Info ── */}
-      <Section title="Basic Info">
+      {/* ── § 1: Photos ── shown first — required to publish ── */}
+      <Section
+        title="Photos"
+        description={`${tour.images.length} uploaded — at least 1 required to publish`}
+        icon={<ImageIcon className="w-4 h-4" />}
+      >
+        {tour.images.length > 0 && (
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            {tour.images.map((img, idx) => (
+              <div key={img.id} className="relative group aspect-square rounded-xl overflow-hidden border border-gray-200">
+                <img src={img.imageUrl} alt={img.altText ?? `Tour image ${idx + 1}`} className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => handleImageRemove(img.id)}
+                  className="absolute top-1 right-1 p-1 bg-black/60 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="w-3 h-3 text-white" />
+                </button>
+                {idx === 0 && (
+                  <span className="absolute bottom-1 left-1 text-[10px] font-bold text-white bg-black/50 px-1.5 py-0.5 rounded">Cover</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {token ? (
+          <MultiImageUpload
+            entity="tour"
+            token={token}
+            value={[]}
+            onChange={handleImagesUploaded}
+            maxImages={10 - tour.images.length}
+            hint={`Up to ${10 - tour.images.length} more photos. JPEG, PNG, WebP — max 10 MB each. First photo becomes the cover.`}
+          />
+        ) : (
+          <p className="text-xs text-gray-400">Sign in to upload photos.</p>
+        )}
+      </Section>
+
+      {/* ── § 2: Basic Info ── */}
+      <Section title="Basic Info" description="The title and description travelers see on listing cards and the tour detail page.">
         <div>
           <label className={labelClass}>Title <span className="text-red-500">*</span></label>
-          <input required minLength={2} maxLength={300} value={title} onChange={e => setTitle(e.target.value)} className={inputClass} />
+          <input
+            required minLength={2} maxLength={300}
+            value={title} onChange={e => setTitle(e.target.value)}
+            className={inputClass}
+          />
         </div>
         <div>
           <label className={labelClass}>Short description</label>
-          <input maxLength={500} value={shortDesc} onChange={e => setShortDesc(e.target.value)} className={inputClass} placeholder="One-line summary shown on listing cards…" />
-          <p className={hintClass}>Keep this under 100 characters for best display on search results.</p>
+          <input
+            maxLength={500}
+            value={shortDesc} onChange={e => setShortDesc(e.target.value)}
+            className={inputClass}
+            placeholder="One-line summary shown on search and listing cards…"
+          />
+          <p className={hintClass}>Keep this under 100 characters for best display in search results.</p>
         </div>
         <div>
-          <label className={labelClass}>Full description <span className="text-xs text-gray-400 font-normal">(min 50 chars to publish)</span></label>
+          <label className={labelClass}>
+            Full description
+            <span className="text-xs text-gray-400 font-normal ml-1">(min 50 chars to publish)</span>
+          </label>
           <textarea
-            rows={5} maxLength={10000}
+            rows={6} maxLength={10000}
             value={description} onChange={e => setDescription(e.target.value)}
             className={`${inputClass} resize-none`}
             placeholder="Describe what makes this tour special — the experience, landscapes, culture, what's included…"
           />
-          <p className={hintClass}>{description.length}/10000 · {description.length < 50 ? `${50 - description.length} more chars needed to publish` : '✓ Long enough to publish'}</p>
+          <p className={hintClass}>
+            {description.length}/10 000 ·{' '}
+            {description.length < 50
+              ? `${50 - description.length} more characters needed to publish`
+              : '✓ Long enough to publish'}
+          </p>
         </div>
       </Section>
 
-      {/* ── Section 2: Trip Details ── */}
-      <Section title="Trip Details">
+      {/* ── § 3: Trip Details ── */}
+      <Section title="Trip Details" description="Helps travelers filter and compare your tour against others.">
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Category</label>
@@ -495,64 +575,88 @@ export default function TourDetailPage() {
             <label className={labelClass}>Difficulty</label>
             <select value={difficulty} onChange={e => setDifficulty(e.target.value)} className={inputClass}>
               <option value="">— Select —</option>
-              <option value="Easy">Easy — suitable for all fitness levels</option>
-              <option value="Moderate">Moderate — some physical activity required</option>
-              <option value="Challenging">Challenging — good fitness needed</option>
+              <option value="Easy">Easy</option>
+              <option value="Moderate">Moderate</option>
+              <option value="Challenging">Challenging</option>
             </select>
+            <p className={hintClass}>
+              {difficulty === 'Easy'        && 'Suitable for all fitness levels.'}
+              {difficulty === 'Moderate'    && 'Some physical activity required.'}
+              {difficulty === 'Challenging' && 'Good fitness level needed.'}
+            </p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Duration (days)</label>
-            <input type="number" min={1} max={365} value={durationDays} onChange={e => setDurationDays(e.target.value)} className={inputClass} placeholder="e.g. 3" />
+            <input
+              type="number" min={1} max={365}
+              value={durationDays} onChange={e => setDurationDays(e.target.value)}
+              className={inputClass} placeholder="e.g. 3"
+            />
           </div>
           <div>
             <label className={labelClass}>Max group size</label>
-            <input type="number" min={1} max={500} value={maxGuests} onChange={e => setMaxGuests(e.target.value)} className={inputClass} placeholder="e.g. 12" />
-            <p className={hintClass}>Maximum number of travelers per departure.</p>
+            <input
+              type="number" min={1} max={500}
+              value={maxGuests} onChange={e => setMaxGuests(e.target.value)}
+              className={inputClass} placeholder="e.g. 12"
+            />
+            <p className={hintClass}>Maximum travelers per departure.</p>
           </div>
+        </div>
+        <div>
+          <label className={labelClass}>Minimum group size</label>
+          <input
+            type="number" min={1} max={500}
+            value={minGuests} onChange={e => setMinGuests(e.target.value)}
+            className={inputClass} placeholder="e.g. 2"
+          />
+          <p className={hintClass}>Minimum travelers required to run this tour. Leave blank if any group size is fine.</p>
         </div>
         <div>
           <label className={labelClass}>Languages spoken by guides</label>
           <input
-            value={languages}
-            onChange={e => setLanguages(e.target.value)}
+            value={languages} onChange={e => setLanguages(e.target.value)}
             className={inputClass}
             placeholder="e.g. English, Mongolian, Chinese"
           />
-          <p className={hintClass}>Separate languages with commas.</p>
+          <p className={hintClass}>Separate with commas.</p>
         </div>
       </Section>
 
-      {/* ── Section 3: Location ── */}
-      <Section title="Location">
+      {/* ── § 4: Location ── */}
+      <Section title="Location" description="Where this tour takes place and where travelers should meet you.">
         <div>
           <label className={labelClass}>Destination</label>
           <select value={destinationId} onChange={e => setDestinationId(e.target.value)} className={inputClass}>
             <option value="">— None —</option>
             {destinations.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
-          <p className={hintClass}>Links your tour to a destination discovery page. Optional but recommended.</p>
+          <p className={hintClass}>Links your tour to a destination discovery page. Optional but recommended for discoverability.</p>
         </div>
         <div>
           <label className={labelClass}>Meeting point</label>
           <input
             maxLength={500}
-            value={meetingPoint}
-            onChange={e => setMeetingPoint(e.target.value)}
+            value={meetingPoint} onChange={e => setMeetingPoint(e.target.value)}
             className={inputClass}
-            placeholder="e.g. Chinggis Khaan International Airport, or your hotel lobby in UB"
+            placeholder="e.g. Chinggis Khaan International Airport, or hotel lobby in Ulaanbaatar"
           />
           <p className={hintClass}>Where should travelers meet you on day 1?</p>
         </div>
       </Section>
 
-      {/* ── Section 4: Pricing & Policy ── */}
-      <Section title="Pricing & Policy">
+      {/* ── § 5: Pricing & Policy ── */}
+      <Section title="Pricing & Policy" description="Set your per-person price and cancellation terms.">
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Base price <span className="text-red-500">*</span></label>
-            <input required type="number" min={0.01} step={0.01} value={basePrice} onChange={e => setBasePrice(e.target.value)} className={inputClass} />
+            <input
+              required type="number" min={0.01} step={0.01}
+              value={basePrice} onChange={e => setBasePrice(e.target.value)}
+              className={inputClass}
+            />
             <p className={hintClass}>Price per person per departure.</p>
           </div>
           <div>
@@ -566,20 +670,36 @@ export default function TourDetailPage() {
           <label className={labelClass}>Cancellation policy</label>
           <textarea
             rows={3} maxLength={5000}
-            value={cancellationPolicy}
-            onChange={e => setCancellationPolicy(e.target.value)}
+            value={cancellationPolicy} onChange={e => setCancellationPolicy(e.target.value)}
             className={`${inputClass} resize-none`}
             placeholder="e.g. Full refund if cancelled more than 14 days before departure. 50% refund within 14 days. No refund within 48 hours."
           />
-          <p className={hintClass}>Describe your refund and cancellation terms clearly.</p>
+          <p className={hintClass}>Describe your refund and cancellation terms clearly so travelers know what to expect.</p>
         </div>
       </Section>
 
-      {/* ── Section 5: Publish Status ── */}
-      <Section title="Publish Status">
+      {/* ── § 6: Schedule / Departures ── */}
+      <Section
+        title="Schedule"
+        description="Upcoming departures travelers can book. At least one is required to publish."
+        icon={<Calendar className="w-4 h-4" />}
+      >
+        <DepartureSection
+          tourId={tourId}
+          departures={departures}
+          tourCurrency={currency}
+          onRefresh={loadTour}
+        />
+      </Section>
+
+      {/* ── § 7: Publish Status + Save ── always last ── */}
+      <Section title="Publish Status" description="Control whether this tour is visible to travelers.">
         <div className="space-y-2">
           {(['draft', 'active', 'paused'] as const).map(s => (
-            <label key={s} className="flex items-start gap-3 cursor-pointer p-3 rounded-xl border border-gray-200 hover:border-gray-300 transition-colors has-[:checked]:border-brand-400 has-[:checked]:bg-brand-50">
+            <label
+              key={s}
+              className="flex items-start gap-3 cursor-pointer p-3 rounded-xl border border-gray-200 hover:border-gray-300 transition-colors has-[:checked]:border-brand-400 has-[:checked]:bg-brand-50"
+            >
               <input
                 type="radio" name="status" value={s}
                 checked={status === s} onChange={() => setStatus(s)}
@@ -598,8 +718,11 @@ export default function TourDetailPage() {
             </label>
           ))}
         </div>
+
         {status === 'active' && !tour.readiness.ready && (
-          <p className="text-xs text-amber-600 mt-1">⚠ This tour won&apos;t go active until all readiness requirements above are met.</p>
+          <p className="text-xs text-amber-600">
+            ⚠ This tour won&apos;t go live until all readiness requirements above are met.
+          </p>
         )}
 
         <div className="flex gap-3 pt-2">
@@ -611,63 +734,16 @@ export default function TourDetailPage() {
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {saving ? 'Saving…' : 'Save Changes'}
           </button>
+          <button
+            onClick={handleArchive}
+            disabled={archiving}
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-500 border border-gray-200 hover:border-red-300 hover:text-red-600 rounded-xl transition-colors"
+          >
+            {archiving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+            Archive
+          </button>
         </div>
       </Section>
-
-      {/* ── Section 6: Photos ── */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
-        <div className="px-5 pt-5 pb-1">
-          <h2 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-3 flex items-center gap-2">
-            <ImageIcon className="w-4 h-4 text-gray-400" />
-            Photos
-            <span className="text-xs font-normal text-gray-400">({tour.images.length} uploaded — 1 required to publish)</span>
-          </h2>
-        </div>
-        <div className="px-5 pt-4 pb-5 space-y-3">
-          {/* Existing images */}
-          {tour.images.length > 0 && (
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-              {tour.images.map((img, idx) => (
-                <div key={img.id} className="relative group aspect-square rounded-xl overflow-hidden border border-gray-200">
-                  <img src={img.imageUrl} alt={img.altText ?? `Tour image ${idx + 1}`} className="w-full h-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => handleImageRemove(img.id)}
-                    className="absolute top-1 right-1 p-1 bg-black/60 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <X className="w-3 h-3 text-white" />
-                  </button>
-                  {idx === 0 && (
-                    <span className="absolute bottom-1 left-1 text-[10px] font-bold text-white bg-black/50 px-1.5 py-0.5 rounded">Cover</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-          {/* Upload */}
-          {token && (
-            <MultiImageUpload
-              entity="tour"
-              token={token}
-              value={[]}
-              onChange={handleImagesUploaded}
-              maxImages={10 - tour.images.length}
-              hint={`Up to ${10 - tour.images.length} more images. JPEG, PNG, WebP — max 10MB each. First image becomes the cover.`}
-            />
-          )}
-        </div>
-      </div>
-
-      {/* ── Section 7: Schedule ── */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        {token && (
-          <DepartureSection
-            tourId={tourId}
-            departures={departures}
-            onRefresh={loadTour}
-          />
-        )}
-      </div>
 
     </div>
   )

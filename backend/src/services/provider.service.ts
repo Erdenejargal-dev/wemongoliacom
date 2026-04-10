@@ -541,6 +541,7 @@ export interface UpdateTourInput {
   difficulty?:         'Easy' | 'Moderate' | 'Challenging' | null
   durationDays?:       number
   maxGuests?:          number
+  minGuests?:          number
   languages?:          string[]
   // Location
   destinationId?:      string | null
@@ -598,6 +599,7 @@ export async function updateProviderTour(ownerUserId: string, tourId: string, in
       ...(input.difficulty        !== undefined && { difficulty:        input.difficulty }),
       ...(input.durationDays      !== undefined && { durationDays:      input.durationDays }),
       ...(input.maxGuests         !== undefined && { maxGuests:         input.maxGuests }),
+      ...(input.minGuests         !== undefined && { minGuests:         input.minGuests }),
       ...(input.languages         !== undefined && { languages:         input.languages }),
       // Location
       ...(input.destinationId     !== undefined && { destinationId:     input.destinationId     || null }),

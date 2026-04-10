@@ -323,6 +323,7 @@ export interface UpdateTourInput {
   difficulty?:         'Easy' | 'Moderate' | 'Challenging' | null
   durationDays?:       number
   maxGuests?:          number
+  minGuests?:          number
   languages?:          string[]
   // Location
   destinationId?:      string | null

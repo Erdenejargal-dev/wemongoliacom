@@ -80,6 +80,13 @@ const accommodationListSelect = {
   status:            true,
   createdAt:         true,
   updatedAt:         true,
+  // Location — needed by the provider list page to build exact-coordinate
+  // Google Maps links, and later by the "nearby accommodations" query
+  address:           true,
+  city:              true,
+  region:            true,
+  latitude:          true,
+  longitude:         true,
   images:            { orderBy: { sortOrder: 'asc' as const }, take: 1, select: { imageUrl: true } },
   destination:       { select: { id: true, name: true, slug: true } },
   _count:            { select: { roomTypes: true, images: true } },

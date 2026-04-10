@@ -4,6 +4,7 @@ import { Star, MapPin, Clock, Users, Globe, Zap, CheckCircle2, XCircle, ChevronL
 import { TourGallery } from '@/components/tours/TourGallery'
 import { TourItinerary } from '@/components/tours/TourItinerary'
 import { TourBookingCard } from '@/components/tours/TourBookingCard'
+import { TourLocationSection } from '@/components/tours/TourLocationSection'
 import { fetchTourBySlug } from '@/lib/api/tours'
 
 interface Props {
@@ -140,6 +141,12 @@ export default async function TourDetailPage({ params }: Props) {
                 Highlights will appear here once providers add them.
               </p>
             </div>
+
+            {/* Location */}
+            <TourLocationSection
+              destination={tour.destination ?? null}
+              meetingPoint={tour.meetingPoint ?? null}
+            />
 
             {/* Itinerary */}
             <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
