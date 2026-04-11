@@ -339,7 +339,7 @@ export const mn: AdminTranslations = {
       unverified:    'Баталгаажаагүй',
       pendingReview: 'Хяналт хүлээж буй',
       verified:      'Баталгаажсан',
-      rejected:      'Татгаасан',
+      rejected:      'Түдгэлзсэн',
     },
     table: {
       business:     'Бизнес',
@@ -353,7 +353,7 @@ export const mn: AdminTranslations = {
       unverified:     'Баталгаажаагүй',
       pending_review: 'Хяналт хүлээж буй',
       verified:       'Баталгаажсан',
-      rejected:       'Татгаасан',
+      rejected:       'Түдгэлзсэн',
     },
     statusLabels: {
       draft:    'Ноорог',
