@@ -3,13 +3,10 @@
 import { useEffect, useState } from "react";
 
 const contributors = [
-  "Alice Johnson",
-  "Michael Chen",
-  "Sofia Martinez",
-  "David Kim",
-  "Emma Wilson",
-  "Liam Brown",
-  "Olivia Davis",
+  "Mijid Munkhtulga",
+  "Bilguunbaatar",
+  "Bat-erdene",
+  "Bachka Anbat",
 ];
 
 export default function GratitudePage() {
