@@ -7,6 +7,7 @@ const contributors = [
   "Bilguunbaatar",
   "Bat-erdene",
   "Bachka Anbat",
+   "Bilguun Alzakhguibaatar",
 ];
 
 export default function GratitudePage() {
