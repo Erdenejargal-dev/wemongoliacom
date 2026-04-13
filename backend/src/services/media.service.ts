@@ -104,6 +104,7 @@ export function resolveFolder(entity: string): CloudinaryFolder {
     destination:   FOLDERS.DESTINATIONS,
     user:          FOLDERS.USERS,
     accommodation: FOLDERS.ACCOMMODATIONS,
+    room:          FOLDERS.ROOMS,
     vehicle:       FOLDERS.VEHICLES,
     gallery:       FOLDERS.GALLERY,
   }

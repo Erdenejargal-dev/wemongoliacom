@@ -37,6 +37,7 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
     name: string
     email?: string | null
     providerTypes: ProviderType[]
+    plan?: string | null
   } | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeId, setActiveId] = useState<string | null>(() => {
@@ -65,10 +66,11 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
         const p = await apiClient.get<any>('/provider/profile', token)
         if (!alive) return
         setProvider({
-          id: p.id,
-          name: p.name,
-          email: p.email ?? null,
+          id:            p.id,
+          name:          p.name,
+          email:         p.email ?? null,
           providerTypes: (p.providerTypes ?? []) as ProviderType[],
+          plan:          p.plan ?? 'FREE',
         })
       } catch {
         if (!alive) return
@@ -113,7 +115,17 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
         {/* Provider info */}
         {provider && (
           <div className="px-4 py-3 border-b border-gray-50 bg-gray-50/40">
-            <p className="text-xs font-bold text-gray-900 truncate">{provider.name}</p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-bold text-gray-900 truncate">{provider.name}</p>
+              {/* Plan badge */}
+              <span className={`shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${
+                provider.plan === 'PRO'
+                  ? 'text-amber-700 bg-amber-50 border-amber-200'
+                  : 'text-gray-500 bg-white border-gray-200'
+              }`}>
+                {provider.plan === 'PRO' ? '⭐ PRO' : 'FREE'}
+              </span>
+            </div>
             <div className="flex flex-wrap gap-1 mt-1">
               {providerTypes.map(pt => (
                 <span key={pt} className="text-[9px] font-semibold text-gray-500 bg-white border border-gray-200 px-1.5 py-0.5 rounded-full">

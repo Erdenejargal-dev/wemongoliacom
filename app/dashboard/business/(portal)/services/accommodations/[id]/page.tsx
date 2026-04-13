@@ -20,8 +20,11 @@ import {
   createRoomType as apiCreateRoom,
   updateRoomType as apiUpdateRoom,
   deleteRoomType as apiDeleteRoom,
+  addRoomTypeImages as apiAddRoomImages,
+  removeRoomTypeImage as apiRemoveRoomImage,
   type AccommodationDetail,
   type RoomTypeItem,
+  type RoomTypeImage,
   type UpdateAccommodationInput,
 } from '@/lib/api/provider-accommodations'
 import { fetchDestinations, type Destination } from '@/lib/api/provider'
@@ -184,7 +187,7 @@ export default function AccommodationManagePage() {
 
       {/* Tab content */}
       {activeTab === 'overview' && <OverviewTab acc={acc} destinations={destinations} onUpdated={loadData} />}
-      {activeTab === 'rooms' && <RoomTypesTab accId={accId} roomTypes={acc.roomTypes} onUpdated={loadData} />}
+      {activeTab === 'rooms' && <RoomTypesTab accId={accId} roomTypes={acc.roomTypes} token={token ?? ''} onUpdated={loadData} />}
       {activeTab === 'calendar' && <CalendarTab />}
       {activeTab === 'images' && <ImagesTab accId={accId} images={acc.images} token={token ?? ''} onUpdated={loadData} />}
     </div>
@@ -387,8 +390,8 @@ function OverviewTab({ acc, destinations, onUpdated }: {
 
 // ── Room Types tab ───────────────────────────────────────────────────────────
 
-function RoomTypesTab({ accId, roomTypes, onUpdated }: {
-  accId: string; roomTypes: RoomTypeItem[]; onUpdated: () => void
+function RoomTypesTab({ accId, roomTypes, token, onUpdated }: {
+  accId: string; roomTypes: RoomTypeItem[]; token: string; onUpdated: () => void
 }) {
   const router = useRouter()
   const [editing, setEditing] = useState<RoomTypeItem | null>(null)
@@ -401,12 +404,16 @@ function RoomTypesTab({ accId, roomTypes, onUpdated }: {
     setErr(null)
     try {
       if (isNew) {
-        await apiCreateRoom(freshToken, accId, {
+        // After creation, keep the slide-over open in edit mode so the
+        // "Room photos" upload section becomes immediately accessible.
+        const created = await apiCreateRoom(freshToken, accId, {
           name: rt.name, description: rt.description || undefined,
           maxGuests: rt.maxGuests, bedType: rt.bedType || undefined,
           quantity: rt.quantity, basePricePerNight: rt.basePricePerNight,
           currency: rt.currency, amenities: rt.amenities.length ? rt.amenities : undefined,
         })
+        setEditing({ ...created, images: created.images ?? [] })
+        setIsNew(false)
       } else {
         await apiUpdateRoom(freshToken, accId, rt.id, {
           name: rt.name, description: rt.description || undefined,
@@ -414,8 +421,8 @@ function RoomTypesTab({ accId, roomTypes, onUpdated }: {
           quantity: rt.quantity, basePricePerNight: rt.basePricePerNight,
           currency: rt.currency, amenities: rt.amenities,
         })
+        setEditing(null); setIsNew(false)
       }
-      setEditing(null); setIsNew(false)
       onUpdated()
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Failed to save room type.')
@@ -494,17 +501,61 @@ function RoomTypesTab({ accId, roomTypes, onUpdated }: {
       )}
 
       {editing && (
-        <RoomSlideOver room={editing} isNew={isNew} onSave={handleSave} onClose={() => { setEditing(null); setIsNew(false) }} />
+        <RoomSlideOver
+          room={editing}
+          isNew={isNew}
+          accId={accId}
+          token={token}
+          onSave={handleSave}
+          onClose={() => { setEditing(null); setIsNew(false) }}
+        />
       )}
     </div>
   )
 }
 
-function RoomSlideOver({ room, isNew, onSave, onClose }: {
-  room: RoomTypeItem; isNew: boolean; onSave: (r: RoomTypeItem, isNew: boolean) => void; onClose: () => void
+function RoomSlideOver({ room, isNew, accId, token, onSave, onClose }: {
+  room:    RoomTypeItem
+  isNew:   boolean
+  accId:   string
+  token:   string
+  onSave:  (r: RoomTypeItem, isNew: boolean) => void
+  onClose: () => void
 }) {
-  const [local, setLocal] = useState<RoomTypeItem>({ ...room })
+  const router = useRouter()
+  const [local,       setLocal]       = useState<RoomTypeItem>({ ...room })
+  const [localImages, setLocalImages] = useState<{ id: string; url: string; publicId?: string }[]>(
+    (room.images ?? []).map(i => ({ id: i.id, url: i.imageUrl, publicId: i.publicId ?? undefined })),
+  )
+  const [imgErr, setImgErr] = useState<string | null>(null)
   const set = (k: string, v: any) => setLocal(prev => ({ ...prev, [k]: v }))
+
+  async function handleImagesChange(newImages: { id: string; url: string; publicId?: string }[]) {
+    const freshToken = await getFreshAccessToken()
+    if (!freshToken) { signOut({ redirect: false }); router.push('/auth/login'); return }
+    setImgErr(null)
+
+    const currentIds = new Set(localImages.map(i => i.id))
+    const newIds     = new Set(newImages.map(i => i.id))
+
+    const removed = localImages.filter(i => !newIds.has(i.id))
+    const added   = newImages.filter(i => !currentIds.has(i.id))
+
+    try {
+      for (const img of removed) {
+        await apiRemoveRoomImage(freshToken, accId, local.id, img.id)
+      }
+      if (added.length > 0) {
+        await apiAddRoomImages(freshToken, accId, local.id, added.map(a => ({
+          imageUrl: a.url,
+          publicId: a.publicId,
+        })))
+      }
+      setLocalImages(newImages)
+    } catch (e) {
+      setImgErr(e instanceof Error ? e.message : 'Failed to update room images.')
+    }
+  }
 
   return (
     <>
@@ -546,6 +597,38 @@ function RoomSlideOver({ room, isNew, onSave, onClose }: {
               <input type="number" min={0.01} step={0.01} value={local.basePricePerNight} onChange={e => set('basePricePerNight', parseFloat(e.target.value) || 0)} className={inputClass} />
             </div>
           </div>
+          {/* ── Room images — shown before amenities so it's always in view ── */}
+          <div className="pt-2 border-t border-gray-100">
+            <label className="text-sm font-medium text-gray-700 block mb-1">
+              Room photos
+              <span className="text-xs font-normal text-gray-400 ml-1.5">(optional · max 10)</span>
+            </label>
+            {isNew ? (
+              <p className="text-xs text-gray-400">
+                Fill in the details above and click <strong>Add room type</strong> — you can upload photos immediately after.
+              </p>
+            ) : (
+              <>
+                <p className="text-xs text-gray-400 mb-2.5">
+                  Photos of this specific room type — shown on the booking page alongside the room details.
+                </p>
+                {imgErr && (
+                  <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 mb-2">
+                    {imgErr}
+                  </div>
+                )}
+                <MultiImageUpload
+                  entity="room"
+                  token={token}
+                  value={localImages}
+                  onChange={handleImagesChange}
+                  maxImages={10}
+                  hint="JPG, PNG, WebP · max 10 MB each"
+                />
+              </>
+            )}
+          </div>
+
           <AmenitySelect options={ROOM_AMENITIES} selected={local.amenities} onChange={v => set('amenities', v)} label="Room amenities" />
         </div>
         <div className="px-6 py-4 border-t border-gray-100 flex gap-3">

@@ -77,6 +77,12 @@ export interface BackendStayRoomType {
   basePricePerNight: number
   currency: string
   amenities: string[]
+  /**
+   * Room-level photos (ger interior, suite view, etc.).
+   * Distinct from AccommodationImage (property gallery).
+   * Never use accommodation images as fallback for room images.
+   */
+  images: { imageUrl: string; sortOrder: number }[]
   /** Next ~60 days of availability returned by the detail endpoint. */
   availability: BackendStayRoomAvailability[]
 }

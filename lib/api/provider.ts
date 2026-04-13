@@ -26,6 +26,7 @@ export interface ProviderProfile {
   country?: string | null
   languages?: string[]
   providerTypes: string[]
+  plan?: 'FREE' | 'PRO'
   ratingAverage?: number
   reviewsCount?: number
   totalGuestsHosted?: number
@@ -36,6 +37,33 @@ export interface ProviderProfile {
   status?: string
   createdAt?: string
   updatedAt?: string
+}
+
+/**
+ * Provider listing limits from GET /provider/limits.
+ * current = non-archived count (draft + active + paused).
+ * limit = null means unlimited (PRO plan).
+ */
+export interface ProviderLimits {
+  plan: string
+  tours: {
+    current: number
+    limit:   number | null  // null = unlimited
+  }
+  accommodations: {
+    current: number
+    limit:   number | null
+  }
+}
+
+/** Returns true if the usage is at or above the limit. */
+export function isAtLimit(usage: { current: number; limit: number | null }): boolean {
+  return usage.limit !== null && usage.current >= usage.limit
+}
+
+/** Returns true if the usage is exactly one below the limit (warn before blocking). */
+export function isNearLimit(usage: { current: number; limit: number | null }): boolean {
+  return usage.limit !== null && !isAtLimit(usage) && usage.current >= usage.limit - 1
 }
 
 /** Update profile input — matches backend updateProfileSchema */
@@ -433,6 +461,21 @@ export async function deleteTourDeparture(
   departureId: string,
 ): Promise<{ deleted: boolean }> {
   return apiClient.delete<{ deleted: boolean }>(`/provider/tours/${tourId}/departures/${departureId}`, token)
+}
+
+// ── Provider Limits ─────────────────────────────────────────────────────────
+
+/**
+ * Fetch the provider's current plan and listing usage.
+ * Returns null if the request fails (provider not found, auth error, etc.)
+ * Never throws — safe to call without try/catch.
+ */
+export async function fetchProviderLimits(token: string): Promise<ProviderLimits | null> {
+  try {
+    return await apiClient.get<ProviderLimits>('/provider/limits', token)
+  } catch {
+    return null
+  }
 }
 
 // ── Destinations (for create-tour dropdown) ─────────────────────────────────

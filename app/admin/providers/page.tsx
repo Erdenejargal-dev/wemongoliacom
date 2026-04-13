@@ -8,7 +8,7 @@ import {
   CheckCircle2, XCircle, Building2,
 } from 'lucide-react'
 import { useDebounce } from '@/lib/hooks/useDebounce'
-import { fetchAdminProviders, setAdminProviderVerification } from '@/lib/api/admin'
+import { fetchAdminProviders, setAdminProviderVerification, setAdminProviderPlan } from '@/lib/api/admin'
 import type { AdminProvider } from '@/lib/api/admin'
 import { useAdminLocale } from '@/lib/i18n/admin/context'
 
@@ -51,18 +51,21 @@ function VerifyBadge({ status, label }: { status: string; label: string }) {
 function ProviderDetailPanel({
   provider,
   onVerify,
+  onPlanChange,
   onClose,
   saving,
 }: {
-  provider:  AdminProvider
-  onVerify:  (id: string, status: 'verified' | 'rejected', rejectionReason?: string) => void
-  onClose:   () => void
-  saving:    boolean
+  provider:      AdminProvider
+  onVerify:      (id: string, status: 'verified' | 'rejected', rejectionReason?: string) => void
+  onPlanChange:  (id: string, plan: 'FREE' | 'PRO') => Promise<void>
+  onClose:       () => void
+  saving:        boolean
 }) {
   const { t }       = useAdminLocale()
   const tp          = t.providers
   const [rejectStep,   setRejectStep]   = useState(false)
   const [rejectReason, setRejectReason] = useState('')
+  const [planSaving,   setPlanSaving]   = useState(false)
 
   function fmtDate(iso: string) {
     return new Date(iso).toLocaleDateString(t.dateLocale, {
@@ -203,6 +206,40 @@ function ProviderDetailPanel({
                 <p className="text-[10px] text-gray-500">{tp.detail.reviews}</p>
               </div>
             </div>
+          </div>
+
+          {/* Plan */}
+          <div>
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+              Plan
+            </p>
+            <div className="flex gap-2">
+              {(['FREE', 'PRO'] as const).map((plan) => (
+                <button
+                  key={plan}
+                  onClick={async () => {
+                    if (provider.plan === plan || planSaving) return
+                    setPlanSaving(true)
+                    try { await onPlanChange(provider.id, plan) }
+                    finally { setPlanSaving(false) }
+                  }}
+                  disabled={planSaving || provider.plan === plan}
+                  className={`flex-1 px-3 py-2 text-xs font-bold rounded-lg border transition-colors ${
+                    provider.plan === plan
+                      ? plan === 'PRO'
+                        ? 'bg-amber-100 text-amber-800 border-amber-300 cursor-default'
+                        : 'bg-gray-100 text-gray-700 border-gray-300 cursor-default'
+                      : plan === 'PRO'
+                        ? 'border-amber-200 text-amber-600 hover:bg-amber-50'
+                        : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  {plan === 'PRO' ? '⭐ PRO' : 'FREE'}
+                  {provider.plan === plan && ' ✓'}
+                </button>
+              ))}
+            </div>
+            {planSaving && <p className="text-[10px] text-gray-400 mt-1.5 text-center">Updating plan…</p>}
           </div>
 
           <p className="text-xs text-gray-400">{tp.detail.joined(fmtDate(provider.createdAt))}</p>
@@ -360,6 +397,19 @@ export default function AdminProvidersPage() {
     }
   }
 
+  async function handlePlanChange(providerId: string, plan: 'FREE' | 'PRO') {
+    if (!token) return
+    try {
+      await setAdminProviderPlan(providerId, plan, token)
+      // Optimistic: update selected provider in-panel immediately
+      setSelected(prev => prev && prev.id === providerId ? { ...prev, plan } : prev)
+      // Refresh table row in background
+      load()
+    } catch (e: any) {
+      alert(e?.message ?? 'Failed to update plan.')
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -427,7 +477,16 @@ export default function AdminProvidersPage() {
                         </div>
                         <div className="min-w-0">
                           <p className="font-medium text-gray-900 truncate">{p.name}</p>
-                          {p.city && <p className="text-xs text-gray-400">{p.city}</p>}
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {p.city && <p className="text-xs text-gray-400">{p.city}</p>}
+                            <span className={`inline-flex text-[10px] font-bold px-1 py-px rounded-full border ${
+                              p.plan === 'PRO'
+                                ? 'text-amber-700 bg-amber-50 border-amber-200'
+                                : 'text-gray-400 bg-gray-50 border-gray-200'
+                            }`}>
+                              {p.plan === 'PRO' ? '⭐PRO' : 'FREE'}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -497,6 +556,7 @@ export default function AdminProvidersPage() {
         <ProviderDetailPanel
           provider={selected}
           onVerify={handleVerify}
+          onPlanChange={handlePlanChange}
           onClose={() => setSelected(null)}
           saving={saving}
         />

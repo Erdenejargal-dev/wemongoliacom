@@ -26,6 +26,7 @@ export type EntityType =
   | 'destination'
   | 'user'
   | 'accommodation'
+  | 'room'
   | 'vehicle'
   | 'gallery'
 

@@ -27,6 +27,10 @@ export const setProviderStatusSchema = z.object({
   status: z.enum(['draft', 'active', 'paused', 'archived']),
 })
 
+export const setProviderPlanSchema = z.object({
+  plan: z.enum(['FREE', 'PRO']),
+})
+
 export const setVerificationStatusSchema = z.object({
   verificationStatus: z.enum(['unverified', 'pending_review', 'verified', 'rejected']),
   rejectionReason:    z.string().max(1000).trim().optional(),
@@ -101,6 +105,15 @@ export async function setProviderStatus(req: Request, res: Response, next: NextF
   try {
     const result = await adminService.setProviderStatus(String(req.params.providerId), req.body.status)
     return ok(res, result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function setProviderPlan(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await adminService.setProviderPlan(String(req.params.providerId), req.body.plan)
+    return ok(res, result, `Provider plan updated to ${req.body.plan}.`)
   } catch (err) {
     next(err)
   }

@@ -77,6 +77,19 @@ export const updateRoomTypeSchema = z.object({
   amenities:         z.array(z.string().max(100)).max(20).optional(),
 })
 
+/** Schema for POST /accommodations/:accId/rooms/:roomId/images */
+export const addRoomImagesSchema = z.object({
+  images: z.array(z.object({
+    imageUrl:  z.string().url(),
+    publicId:  z.string().optional(),
+    altText:   z.string().max(300).optional(),
+    width:     z.number().int().optional(),
+    height:    z.number().int().optional(),
+    format:    z.string().optional(),
+    bytes:     z.number().int().optional(),
+  })).min(1).max(10),
+})
+
 // ─── Handlers ─────────────────────────────────────────────────────────────
 
 export async function listAccommodations(req: Request, res: Response, next: NextFunction) {
@@ -152,6 +165,32 @@ export async function updateRoom(req: Request, res: Response, next: NextFunction
 export async function deleteRoom(req: Request, res: Response, next: NextFunction) {
   try {
     const result = await accService.deleteRoomType(req.user!.userId, String(req.params.accId), String(req.params.roomId))
+    return ok(res, result)
+  } catch (err) { next(err) }
+}
+
+// ─── Room type image handlers ─────────────────────────────────────────────
+
+export async function addRoomImages(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await accService.addRoomTypeImages(
+      req.user!.userId,
+      String(req.params.accId),
+      String(req.params.roomId),
+      req.body.images,
+    )
+    return ok(res, result, 'Room images added.')
+  } catch (err) { next(err) }
+}
+
+export async function removeRoomImage(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await accService.removeRoomTypeImage(
+      req.user!.userId,
+      String(req.params.accId),
+      String(req.params.roomId),
+      String(req.params.imgId),
+    )
     return ok(res, result)
   } catch (err) { next(err) }
 }

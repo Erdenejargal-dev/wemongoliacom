@@ -131,6 +131,12 @@ export async function getAccommodationBySlug(slug: string) {
       images:      { orderBy: { sortOrder: 'asc' } },
       roomTypes: {
         include: {
+          // Room-level images — separate from the property gallery (AccommodationImage).
+          // Never mix these two. Room images show the specific ger/room interior.
+          images: {
+            orderBy: { sortOrder: 'asc' as const },
+            take:    5,
+          },
           availability: {
             where:   { date: { gte: new Date() }, status: 'available' },
             orderBy: { date: 'asc' },

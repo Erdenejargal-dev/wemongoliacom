@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma'
 import { AppError } from '../middleware/error'
 import { uniqueSlug } from '../utils/slug'
+import { getListingLimit, type PlanType } from '../config/limits'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Verification submission (provider self-service)
@@ -483,7 +484,7 @@ export async function listProviderTours(ownerUserId: string, query: ProviderTour
 }
 
 export async function createProviderTour(ownerUserId: string, input: CreateTourInput) {
-  const provider = await prisma.provider.findUnique({ where: { ownerUserId }, select: { id: true } })
+  const provider = await prisma.provider.findUnique({ where: { ownerUserId }, select: { id: true, plan: true } })
   if (!provider) throw new AppError('Provider not found.', 404)
 
   if (input.destinationId) {
@@ -491,6 +492,7 @@ export async function createProviderTour(ownerUserId: string, input: CreateTourI
     if (!dest) throw new AppError('Destination not found.', 400)
   }
 
+  // Pre-compute slug outside transaction (relies on @unique constraint as final guard)
   const slug = await uniqueSlug(input.title, async (s) => {
     const exists = await prisma.tour.findUnique({ where: { slug: s } })
     return !!exists
@@ -508,20 +510,39 @@ export async function createProviderTour(ownerUserId: string, input: CreateTourI
     })
   }
 
-  const tour = await prisma.tour.create({
-    data: {
-      providerId:       provider.id,
-      slug,
-      title:            input.title,
-      shortDescription: input.shortDescription || null,
-      description:      input.description || null,
-      durationDays:     input.durationDays ?? 1,
-      basePrice:        input.basePrice,
-      currency:         input.currency ?? 'USD',
-      destinationId:    input.destinationId || null,
-      status,
-    },
-    select: providerTourSelect,
+  // ── Plan limit check + create in one transaction (prevents race conditions) ─
+  const plan  = (provider.plan as PlanType) ?? 'FREE'
+  const limit = getListingLimit(plan, 'tours')
+
+  const tour = await prisma.$transaction(async (tx) => {
+    if (limit !== Infinity) {
+      const currentCount = await tx.tour.count({
+        where: { providerId: provider.id, status: { not: 'archived' } },
+      })
+      if (currentCount >= limit) {
+        throw new AppError(
+          `You have reached the maximum of ${limit} tours on the ${plan} plan. ` +
+          `Archive an existing tour or upgrade your plan to add more.`,
+          403,
+        )
+      }
+    }
+
+    return tx.tour.create({
+      data: {
+        providerId:       provider.id,
+        slug,
+        title:            input.title,
+        shortDescription: input.shortDescription || null,
+        description:      input.description || null,
+        durationDays:     input.durationDays ?? 1,
+        basePrice:        input.basePrice,
+        currency:         input.currency ?? 'USD',
+        destinationId:    input.destinationId || null,
+        status,
+      },
+      select: providerTourSelect,
+    })
   })
 
   return tour
@@ -896,6 +917,65 @@ async function getProviderTour(tourId: string, ownerUserId: string) {
   if (!tour) throw new AppError('Tour not found.', 404)
   if (tour.providerId !== provider.id) throw new AppError('Forbidden.', 403)
   return tour
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Provider plan limits — current usage + per-plan caps
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ProviderLimitsResponse {
+  plan: string
+  tours: {
+    current: number
+    limit:   number | null  // null = unlimited (PRO)
+  }
+  accommodations: {
+    current: number
+    limit:   number | null
+  }
+}
+
+/**
+ * Returns the provider's current plan, current listing counts (non-archived),
+ * and the per-type limits from the centralized config.
+ *
+ * Used by GET /provider/limits — consumed by the dashboard
+ * to show usage indicators and disable Add buttons at limit.
+ */
+export async function getMyProviderLimits(ownerUserId: string): Promise<ProviderLimitsResponse> {
+  const provider = await prisma.provider.findUnique({
+    where: { ownerUserId },
+    select: { id: true, plan: true },
+  })
+  if (!provider) throw new AppError('Provider not found.', 404)
+
+  const plan = (provider.plan as PlanType) ?? 'FREE'
+
+  // Count non-archived listings (draft + active + paused all count)
+  const [tourCurrent, accommodationCurrent] = await Promise.all([
+    prisma.tour.count({
+      where: { providerId: provider.id, status: { not: 'archived' } },
+    }),
+    prisma.accommodation.count({
+      where: { providerId: provider.id, status: { not: 'archived' } },
+    }),
+  ])
+
+  const tourLimit          = getListingLimit(plan, 'tours')
+  const accommodationLimit = getListingLimit(plan, 'accommodations')
+
+  return {
+    plan,
+    tours: {
+      current: tourCurrent,
+      // Infinity does not serialize cleanly in JSON — use null to signal "unlimited"
+      limit: tourLimit === Infinity ? null : tourLimit,
+    },
+    accommodations: {
+      current: accommodationCurrent,
+      limit: accommodationLimit === Infinity ? null : accommodationLimit,
+    },
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

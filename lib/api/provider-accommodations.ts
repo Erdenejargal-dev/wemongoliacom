@@ -38,6 +38,13 @@ export interface AccommodationImage {
   sortOrder: number
 }
 
+export interface RoomTypeImage {
+  id:        string
+  imageUrl:  string
+  publicId:  string | null
+  sortOrder: number
+}
+
 export interface RoomTypeItem {
   id:                string
   accommodationId:   string
@@ -52,6 +59,11 @@ export interface RoomTypeItem {
   createdAt:         string
   updatedAt:         string
   activeBookings?:   number
+  /**
+   * Room-level images — distinct from the property gallery (AccommodationImage).
+   * Only populated when editing an existing room type (not on creation).
+   */
+  images?:           RoomTypeImage[]
 }
 
 export interface AccommodationReadiness {
@@ -189,4 +201,31 @@ export async function updateRoomType(token: string, accId: string, roomId: strin
 
 export async function deleteRoomType(token: string, accId: string, roomId: string): Promise<{ deleted: boolean }> {
   return apiClient.delete<{ deleted: boolean }>(`/provider/accommodations/${accId}/rooms/${roomId}`, token)
+}
+
+// ── Room type images (distinct from accommodation-level gallery) ────────────
+
+export async function addRoomTypeImages(
+  token: string,
+  accId: string,
+  roomId: string,
+  images: { imageUrl: string; publicId?: string; altText?: string; width?: number; height?: number; format?: string; bytes?: number }[],
+): Promise<RoomTypeImage[]> {
+  return apiClient.post<RoomTypeImage[]>(
+    `/provider/accommodations/${accId}/rooms/${roomId}/images`,
+    { images },
+    token,
+  )
+}
+
+export async function removeRoomTypeImage(
+  token: string,
+  accId: string,
+  roomId: string,
+  imgId: string,
+): Promise<{ deleted: boolean; publicId: string | null }> {
+  return apiClient.delete<{ deleted: boolean; publicId: string | null }>(
+    `/provider/accommodations/${accId}/rooms/${roomId}/images/${imgId}`,
+    token,
+  )
 }

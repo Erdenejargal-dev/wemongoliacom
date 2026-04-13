@@ -11,6 +11,7 @@ import {
   completeBooking,
   cancelBooking,
   getAnalytics,
+  getLimits,
   listReviews,
   replyToReview,
   listTours,
@@ -58,6 +59,9 @@ router.patch('/bookings/:bookingCode/cancel',   validate(cancelSchema), cancelBo
 
 // Analytics
 router.get('/analytics', getAnalytics)
+
+// Listing limits (plan usage)
+router.get('/limits', getLimits)
 
 // Reviews
 router.get('/reviews', validate(reviewListQuerySchema, 'query'), listReviews)

@@ -9,6 +9,7 @@ import {
   listProviders,
   getProvider,
   setProviderStatus,
+  setProviderPlan,
   setProviderVerificationStatus,
   listBookings,
   getBooking,
@@ -17,6 +18,7 @@ import {
   setRoleSchema,
   providerListQuerySchema,
   setProviderStatusSchema,
+  setProviderPlanSchema,
   setVerificationStatusSchema,
   bookingListQuerySchema,
   // ── Destinations ──────────────────────────────────────────────────────────────
@@ -47,6 +49,7 @@ router.patch('/users/:userId/role',   validate(setRoleSchema), setUserRole)
 router.get('/providers',                            validate(providerListQuerySchema, 'query'), listProviders)
 router.get('/providers/:providerId',                getProvider)
 router.patch('/providers/:providerId/status',       validate(setProviderStatusSchema), setProviderStatus)
+router.patch('/providers/:providerId/plan',         validate(setProviderPlanSchema),   setProviderPlan)
 router.patch('/providers/:providerId/verify',       validate(setVerificationStatusSchema), setProviderVerificationStatus)
 
 // ── Bookings ───────────────────────────────────────────────────────────────

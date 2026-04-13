@@ -58,6 +58,7 @@ export interface AdminProvider {
   city?: string | null
   region?: string | null
   providerTypes: string[]
+  plan: 'FREE' | 'PRO'
   status: string
   verificationStatus: string
   rejectionReason?: string | null
@@ -183,6 +184,15 @@ export async function setAdminProviderStatus(
   token: string,
 ) {
   return apiClient.patch(`/admin/providers/${providerId}/status`, { status }, token)
+}
+
+/** Admin-only: change a provider's plan (FREE → PRO or PRO → FREE). */
+export async function setAdminProviderPlan(
+  providerId: string,
+  plan: 'FREE' | 'PRO',
+  token: string,
+): Promise<{ id: string; name: string; plan: 'FREE' | 'PRO' }> {
+  return apiClient.patch(`/admin/providers/${providerId}/plan`, { plan }, token)
 }
 
 // ─── Bookings ────────────────────────────────────────────────────────────────

@@ -160,6 +160,18 @@ export async function getProvider(providerId: string) {
   return provider
 }
 
+/** Set provider plan (FREE / PRO) — admin-only action */
+export async function setProviderPlan(providerId: string, plan: string) {
+  const provider = await prisma.provider.findUnique({ where: { id: providerId } })
+  if (!provider) throw new AppError('Provider not found.', 404)
+
+  return prisma.provider.update({
+    where: { id: providerId },
+    data:  { plan: plan as any },
+    select: { id: true, name: true, plan: true },
+  })
+}
+
 /** Set operational status (draft/active/paused/archived) — independent of verification */
 export async function setProviderStatus(providerId: string, status: string) {
   const provider = await prisma.provider.findUnique({ where: { id: providerId } })

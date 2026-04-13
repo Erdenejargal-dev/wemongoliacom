@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma'
 import { AppError } from '../middleware/error'
 import { uniqueSlug } from '../utils/slug'
+import { getListingLimit, type PlanType } from '../config/limits'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Input types
@@ -122,6 +123,11 @@ const accommodationDetailSelect = {
       id: true, name: true, description: true, maxGuests: true,
       bedType: true, quantity: true, basePricePerNight: true,
       currency: true, amenities: true, createdAt: true, updatedAt: true,
+      // Room-level images — distinct from property gallery (AccommodationImage)
+      images: {
+        orderBy: { sortOrder: 'asc' as const },
+        select: { id: true, imageUrl: true, publicId: true, sortOrder: true },
+      },
     },
   },
   _count: { select: { roomTypes: true, images: true } },
@@ -132,6 +138,10 @@ const roomTypeSelect = {
   maxGuests: true, bedType: true, quantity: true,
   basePricePerNight: true, currency: true, amenities: true,
   createdAt: true, updatedAt: true,
+  images: {
+    orderBy: { sortOrder: 'asc' as const },
+    select: { id: true, imageUrl: true, publicId: true, sortOrder: true },
+  },
 } as const
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -139,7 +149,7 @@ const roomTypeSelect = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function getProvider(ownerUserId: string) {
-  const provider = await prisma.provider.findUnique({ where: { ownerUserId }, select: { id: true } })
+  const provider = await prisma.provider.findUnique({ where: { ownerUserId }, select: { id: true, plan: true } })
   if (!provider) throw new AppError('Provider not found.', 404)
   return provider
 }
@@ -199,27 +209,46 @@ export async function createProviderAccommodation(ownerUserId: string, input: Cr
     })
   }
 
-  const acc = await prisma.accommodation.create({
-    data: {
-      providerId:         provider.id,
-      slug,
-      name:               input.name,
-      description:        input.description || null,
-      accommodationType:  input.accommodationType as any,
-      destinationId:      input.destinationId || null,
-      address:            input.address || null,
-      city:               input.city || null,
-      region:             input.region || null,
-      latitude:           input.latitude ?? null,
-      longitude:          input.longitude ?? null,
-      checkInTime:        input.checkInTime || null,
-      checkOutTime:       input.checkOutTime || null,
-      amenities:          input.amenities ?? [],
-      cancellationPolicy: input.cancellationPolicy || null,
-      starRating:         input.starRating ?? null,
-      status,
-    },
-    select: accommodationListSelect,
+  // ── Plan limit check + create in one transaction (prevents race conditions) ─
+  const plan  = (provider.plan as PlanType) ?? 'FREE'
+  const limit = getListingLimit(plan, 'accommodations')
+
+  const acc = await prisma.$transaction(async (tx) => {
+    if (limit !== Infinity) {
+      const currentCount = await tx.accommodation.count({
+        where: { providerId: provider.id, status: { not: 'archived' } },
+      })
+      if (currentCount >= limit) {
+        throw new AppError(
+          `You have reached the maximum of ${limit} accommodations on the ${plan} plan. ` +
+          `Archive an existing property or upgrade your plan to add more.`,
+          403,
+        )
+      }
+    }
+
+    return tx.accommodation.create({
+      data: {
+        providerId:         provider.id,
+        slug,
+        name:               input.name,
+        description:        input.description || null,
+        accommodationType:  input.accommodationType as any,
+        destinationId:      input.destinationId || null,
+        address:            input.address || null,
+        city:               input.city || null,
+        region:             input.region || null,
+        latitude:           input.latitude ?? null,
+        longitude:          input.longitude ?? null,
+        checkInTime:        input.checkInTime || null,
+        checkOutTime:       input.checkOutTime || null,
+        amenities:          input.amenities ?? [],
+        cancellationPolicy: input.cancellationPolicy || null,
+        starRating:         input.starRating ?? null,
+        status,
+      },
+      select: accommodationListSelect,
+    })
   })
 
   return acc
@@ -443,6 +472,73 @@ export async function deleteRoomType(ownerUserId: string, accId: string, roomId:
 
   await prisma.roomType.delete({ where: { id: roomId } })
   return { deleted: true }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Room type images
+// Separate from accommodation-level images (AccommodationImage).
+// These are room-specific photos — ger interior, suite layout, etc.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function addRoomTypeImages(
+  ownerUserId: string,
+  accId: string,
+  roomId: string,
+  images: { imageUrl: string; publicId?: string; altText?: string; width?: number; height?: number; format?: string; bytes?: number }[],
+) {
+  // Verify provider owns accommodation
+  await getOwnedAccommodation(accId, ownerUserId)
+
+  // Verify room belongs to accommodation
+  const room = await prisma.roomType.findUnique({ where: { id: roomId } })
+  if (!room || room.accommodationId !== accId) throw new AppError('Room type not found.', 404)
+
+  const maxSort = await prisma.roomTypeImage.findFirst({
+    where: { roomTypeId: roomId },
+    orderBy: { sortOrder: 'desc' },
+    select: { sortOrder: true },
+  })
+  let nextSort = (maxSort?.sortOrder ?? -1) + 1
+
+  const created = await prisma.$transaction(
+    images.map(img =>
+      prisma.roomTypeImage.create({
+        data: {
+          roomTypeId: roomId,
+          imageUrl:   img.imageUrl,
+          publicId:   img.publicId ?? null,
+          altText:    img.altText ?? null,
+          width:      img.width ?? null,
+          height:     img.height ?? null,
+          format:     img.format ?? null,
+          bytes:      img.bytes ?? null,
+          sortOrder:  nextSort++,
+        },
+      }),
+    ),
+  )
+
+  return created
+}
+
+export async function removeRoomTypeImage(
+  ownerUserId: string,
+  accId: string,
+  roomId: string,
+  imgId: string,
+) {
+  // Verify provider owns accommodation
+  await getOwnedAccommodation(accId, ownerUserId)
+
+  // Verify room belongs to accommodation
+  const room = await prisma.roomType.findUnique({ where: { id: roomId } })
+  if (!room || room.accommodationId !== accId) throw new AppError('Room type not found.', 404)
+
+  const image = await prisma.roomTypeImage.findUnique({ where: { id: imgId } })
+  if (!image || image.roomTypeId !== roomId) throw new AppError('Image not found.', 404)
+
+  await prisma.roomTypeImage.delete({ where: { id: imgId } })
+  return { deleted: true, publicId: image.publicId }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

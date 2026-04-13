@@ -139,6 +139,11 @@ enum AccommodationType {
   homestay
 }
 
+enum PlanType {
+  FREE
+  PRO
+}
+
 // ─────────────────────────────────────────────
 // MODEL: User
 // ─────────────────────────────────────────────
@@ -251,6 +256,7 @@ model Provider {
   verificationStatus  VerificationStatus @default(unverified)
   rejectionReason     String?
   reviewedAt          DateTime?
+  plan                PlanType           @default(FREE)
   status              ListingStatus      @default(draft)
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
@@ -595,9 +601,35 @@ model RoomType {
   accommodation Accommodation     @relation(fields: [accommodationId], references: [id], onDelete: Cascade)
   availability  RoomAvailability[]
   bookings      Booking[]
+  images        RoomTypeImage[]
 
   @@index([accommodationId])
   @@map("room_types")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: RoomTypeImage
+// Separate from AccommodationImage — room-level
+// photos (specific ger/room interior), not the
+// property-level gallery.
+// ─────────────────────────────────────────────
+
+model RoomTypeImage {
+  id         String  @id @default(cuid())
+  roomTypeId String
+  imageUrl   String
+  publicId   String?
+  altText    String?
+  width      Int?
+  height     Int?
+  format     String?
+  bytes      Int?
+  sortOrder  Int     @default(0)
+
+  roomType RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+
+  @@index([roomTypeId])
+  @@map("room_type_images")
 }
 
 // ─────────────────────────────────────────────

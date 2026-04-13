@@ -4,13 +4,17 @@ import { useEffect, useState } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, Plus, MapPin, Clock, DollarSign, X, Pencil, ArrowLeft, Info } from 'lucide-react'
+import { Loader2, Plus, MapPin, Clock, DollarSign, X, Pencil, ArrowLeft, Info, AlertTriangle, Lock } from 'lucide-react'
 import { PageHeader } from '@/components/dashboard/ui/PageHeader'
 import {
   fetchProviderTours,
+  fetchProviderLimits,
   createProviderTour,
   fetchDestinations,
+  isAtLimit,
+  isNearLimit,
   type ProviderTour,
+  type ProviderLimits,
   type CreateTourInput,
   type Destination,
 } from '@/lib/api/provider'
@@ -29,6 +33,48 @@ function StatusBadge({ status }: { status: string }) {
     <span className={`inline-flex items-center px-2 py-0.5 text-[11px] font-semibold rounded-full border ${styles[status] ?? styles.draft}`}>
       {status}
     </span>
+  )
+}
+
+// ── Usage banner ──────────────────────────────────────────────────────────────
+
+function UsageBanner({ limits }: { limits: ProviderLimits }) {
+  const usage    = limits.tours
+  const atLimit  = isAtLimit(usage)
+  const nearLimit = isNearLimit(usage)
+
+  if (!atLimit && !nearLimit) return null
+
+  if (atLimit) {
+    return (
+      <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+        <Lock className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-red-800">
+            Tour limit reached ({usage.current} / {usage.limit} on the {limits.plan} plan)
+          </p>
+          <p className="text-xs text-red-600 mt-0.5">
+            Archive an existing tour to free up a slot, or upgrade your plan for unlimited tours.
+          </p>
+        </div>
+        <a
+          href="mailto:hello@wemongolia.com?subject=Upgrade Plan"
+          className="shrink-0 inline-flex items-center px-3 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+        >
+          Upgrade Plan
+        </a>
+      </div>
+    )
+  }
+
+  // Near limit (1 slot remaining)
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+      <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+      <p className="text-sm text-amber-800">
+        <span className="font-semibold">1 tour slot remaining</span> — you are using {usage.current} of {usage.limit} tours on the {limits.plan} plan.
+      </p>
+    </div>
   )
 }
 
@@ -83,37 +129,34 @@ function TourCard({ tour }: { tour: ProviderTour }) {
   )
 }
 
-// ── Quick Create panel ────────────────────────────────────────────────────────
-// Intentionally minimal: just title + price + optional destination.
-// After creation the provider is redirected to the full edit page where
-// they add images, description, trip details, departures, etc.
+// ── Create tour panel ─────────────────────────────────────────────────────────
 
 function CreateTourPanel({
   destinations,
   onClose,
+  onCreated,
 }: {
   destinations: Destination[]
   onClose: () => void
+  onCreated: () => void
 }) {
   const router = useRouter()
 
-  const [title, setTitle] = useState('')
-  const [basePrice, setBasePrice] = useState('')
+  const [title,         setTitle]         = useState('')
+  const [basePrice,     setBasePrice]     = useState('')
   const [destinationId, setDestinationId] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [saving,        setSaving]        = useState(false)
+  const [error,         setError]         = useState<string | null>(null)
+  const [limitError,    setLimitError]    = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const freshToken = await getFreshAccessToken()
-    if (!freshToken) {
-      signOut({ redirect: false })
-      router.push('/auth/login')
-      return
-    }
+    if (!freshToken) { signOut({ redirect: false }); router.push('/auth/login'); return }
 
     setSaving(true)
     setError(null)
+    setLimitError(false)
 
     try {
       const input: CreateTourInput = {
@@ -122,13 +165,16 @@ function CreateTourPanel({
         destinationId: destinationId || undefined,
         status:        'draft',
       }
-      const newTour = await createProviderTour(freshToken, input)
-      // Redirect to the edit page so the provider can complete setup
-      router.push(`/dashboard/business/services/tours/${newTour.id}`)
+      await createProviderTour(freshToken, input)
+      onCreated()          // refresh list + limits
+      onClose()
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
-        signOut({ redirect: false })
-        router.push('/auth/login')
+        signOut({ redirect: false }); router.push('/auth/login')
+      } else if (err instanceof ApiError && err.status === 403) {
+        // Limit exceeded — show specific upgrade message
+        setLimitError(true)
+        setError(err.message || 'Tour limit reached. Archive an existing tour or upgrade your plan.')
       } else {
         setError(err instanceof Error ? err.message : 'Failed to create tour.')
       }
@@ -149,7 +195,7 @@ function CreateTourPanel({
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
             <h2 className="text-base font-bold text-gray-900">New Tour</h2>
-            <p className="text-xs text-gray-400 mt-0.5">You'll add photos, details & schedule on the next step.</p>
+            <p className="text-xs text-gray-400 mt-0.5">You&apos;ll add photos, details &amp; schedule on the next step.</p>
           </div>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100">
             <X className="w-5 h-5 text-gray-500" />
@@ -158,8 +204,22 @@ function CreateTourPanel({
 
         <form id="create-tour-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+            <div className={`p-3 border rounded-xl text-sm ${
+              limitError
+                ? 'bg-red-50 border-red-200 text-red-700'
+                : 'bg-red-50 border-red-200 text-red-700'
+            }`}>
               {error}
+              {limitError && (
+                <div className="mt-2">
+                  <a
+                    href="mailto:hello@wemongolia.com?subject=Upgrade Plan"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-red-700 underline hover:no-underline"
+                  >
+                    Contact us to upgrade →
+                  </a>
+                </div>
+              )}
             </div>
           )}
 
@@ -211,7 +271,6 @@ function CreateTourPanel({
             <p className="text-xs text-gray-400 mt-1">Optional — links your tour to a destination page.</p>
           </div>
 
-          {/* What happens next */}
           <div className="flex items-start gap-2.5 p-3.5 bg-brand-50 border border-brand-100 rounded-xl text-xs text-brand-800">
             <Info className="w-4 h-4 shrink-0 mt-0.5 text-brand-500" />
             <p>
@@ -256,33 +315,35 @@ export default function ToursPage() {
   const [tours,        setTours]        = useState<ProviderTour[]>([])
   const [total,        setTotal]        = useState(0)
   const [destinations, setDestinations] = useState<Destination[]>([])
+  const [limits,       setLimits]       = useState<ProviderLimits | null>(null)
   const [loading,      setLoading]      = useState(true)
   const [error,        setError]        = useState<string | null>(null)
   const [showCreate,   setShowCreate]   = useState(false)
+
+  async function loadData(freshToken: string) {
+    const [toursRes, destsRes, limitsRes] = await Promise.all([
+      fetchProviderTours(freshToken),
+      fetchDestinations(freshToken),
+      fetchProviderLimits(freshToken),
+    ])
+    setTours(toursRes.data)
+    setTotal(toursRes.total)
+    setDestinations(destsRes)
+    setLimits(limitsRes)
+  }
 
   useEffect(() => {
     let alive = true
     async function load() {
       const freshToken = token ? await getFreshAccessToken() : null
-      if (!freshToken) {
-        if (alive) setLoading(false)
-        return
-      }
+      if (!freshToken) { if (alive) setLoading(false); return }
       if (alive) { setLoading(true); setError(null) }
       try {
-        const [toursRes, destsRes] = await Promise.all([
-          fetchProviderTours(freshToken),
-          fetchDestinations(freshToken),
-        ])
-        if (!alive) return
-        setTours(toursRes.data)
-        setTotal(toursRes.total)
-        setDestinations(destsRes)
+        await loadData(freshToken)
       } catch (err) {
         if (!alive) return
         if (err instanceof ApiError && err.status === 401) {
-          signOut({ redirect: false })
-          router.push('/auth/login')
+          signOut({ redirect: false }); router.push('/auth/login')
         } else {
           setError(err instanceof Error ? err.message : 'Failed to load tours.')
         }
@@ -293,6 +354,16 @@ export default function ToursPage() {
     load()
     return () => { alive = false }
   }, [token])
+
+  // Called after a tour is successfully created — refresh everything
+  async function handleCreated() {
+    const freshToken = await getFreshAccessToken()
+    if (!freshToken) return
+    try { await loadData(freshToken) } catch { /* silent */ }
+  }
+
+  const atLimit   = limits ? isAtLimit(limits.tours) : false
+  const nearLimit = limits ? isNearLimit(limits.tours) : false
 
   if (loading) {
     return (
@@ -316,14 +387,35 @@ export default function ToursPage() {
         title="Tours"
         description="Manage your tour experiences visible to travelers."
         actions={
-          <button
-            onClick={() => setShowCreate(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 rounded-xl transition-colors"
-          >
-            <Plus className="w-4 h-4" /> Add Tour
-          </button>
+          atLimit ? (
+            <div className="flex items-center gap-2">
+              <button
+                disabled
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-400 bg-gray-100 rounded-xl cursor-not-allowed"
+                title="Tour limit reached — archive a tour or upgrade your plan"
+              >
+                <Lock className="w-4 h-4" /> Add Tour
+              </button>
+              <a
+                href="mailto:hello@wemongolia.com?subject=Upgrade Plan"
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 rounded-xl transition-colors"
+              >
+                Upgrade Plan
+              </a>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowCreate(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 rounded-xl transition-colors"
+            >
+              <Plus className="w-4 h-4" /> Add Tour
+            </button>
+          )
         }
       />
+
+      {/* Usage banner — shown when at or near limit */}
+      {limits && (atLimit || nearLimit) && <UsageBanner limits={limits} />}
 
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{error}</div>
@@ -339,16 +431,23 @@ export default function ToursPage() {
             Create your first tour so travelers can discover and book your experiences.
             Start with a title and price — you&apos;ll add photos and details in the next step.
           </p>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 rounded-xl transition-colors"
-          >
-            <Plus className="w-4 h-4" /> Create your first tour
-          </button>
+          {!atLimit && (
+            <button
+              onClick={() => setShowCreate(true)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 rounded-xl transition-colors"
+            >
+              <Plus className="w-4 h-4" /> Create your first tour
+            </button>
+          )}
         </div>
       ) : (
         <>
-          <p className="text-xs text-gray-500">{total} tour{total !== 1 ? 's' : ''}</p>
+          <p className="text-xs text-gray-500">
+            {total} tour{total !== 1 ? 's' : ''}
+            {limits?.tours.limit !== null && (
+              <span className="ml-1 text-gray-400">· {limits!.tours.current} / {limits!.tours.limit} used</span>
+            )}
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {tours.map(tour => (
               <TourCard key={tour.id} tour={tour} />
@@ -361,6 +460,7 @@ export default function ToursPage() {
         <CreateTourPanel
           destinations={destinations}
           onClose={() => setShowCreate(false)}
+          onCreated={handleCreated}
         />
       )}
     </div>

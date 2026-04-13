@@ -22,6 +22,7 @@ export const FOLDERS = {
   DESTINATIONS:   'wemongolia/destinations',
   USERS:          'wemongolia/users',
   ACCOMMODATIONS: 'wemongolia/accommodations',
+  ROOMS:          'wemongolia/rooms',
   VEHICLES:       'wemongolia/vehicles',
   GALLERY:        'wemongolia/gallery',
 } as const

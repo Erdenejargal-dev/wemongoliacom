@@ -5,6 +5,7 @@ import { TourGallery } from '@/components/tours/TourGallery'
 import { TourItinerary } from '@/components/tours/TourItinerary'
 import { TourBookingCard } from '@/components/tours/TourBookingCard'
 import { TourLocationSection } from '@/components/tours/TourLocationSection'
+import { ContactProviderButton } from '@/components/ui/ContactProviderButton'
 import { fetchTourBySlug } from '@/lib/api/tours'
 
 interface Props {
@@ -236,10 +237,18 @@ export default async function TourDetailPage({ params }: Props) {
               {/* Contact card */}
               <div className="mt-4 bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
                 <p className="text-sm font-semibold text-gray-900 mb-1">Have questions?</p>
-                <p className="text-xs text-gray-500 mb-3">Our Mongolia travel experts reply within 2 hours.</p>
-                <button className="w-full py-2.5 border border-gray-200 text-sm font-medium text-gray-700 rounded-xl hover:bg-gray-50 transition-colors">
-                  Message Us
-                </button>
+                <p className="text-xs text-gray-500 mb-3">
+                  {tour.provider?.name
+                    ? `Message ${tour.provider.name} directly — they typically reply within 2 hours.`
+                    : 'Our Mongolia travel experts reply within 2 hours.'}
+                </p>
+                <ContactProviderButton
+                  providerId={tour.provider?.id ?? null}
+                  providerName={tour.provider?.name ?? 'Provider'}
+                  listingType="tour"
+                  listingId={tour.id}
+                  label="Message Us"
+                />
               </div>
             </div>
           </div>

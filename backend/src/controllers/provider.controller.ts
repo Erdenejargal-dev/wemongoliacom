@@ -193,6 +193,15 @@ export async function getAnalytics(req: Request, res: Response, next: NextFuncti
   }
 }
 
+export async function getLimits(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await providerService.getMyProviderLimits(req.user!.userId)
+    return ok(res, result)
+  } catch (err) {
+    next(err)
+  }
+}
+
 export async function listReviews(req: Request, res: Response, next: NextFunction) {
   try {
     const result = await providerService.listProviderReviews(req.user!.userId, req.query as any)
