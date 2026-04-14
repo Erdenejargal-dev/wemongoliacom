@@ -26,8 +26,11 @@
   --radius: 0.5rem;
 }
 
-/* ── Map to Tailwind v4 color tokens ─────────────────────────────── */
+/* ── Map to Tailwind v4 tokens ───────────────────────────────────── */
 @theme inline {
+--font-sans: var(--font-manrope);
+  --font-mono: var(--font-geist-mono);
+
   --color-brand-50: #e8f5fc;
   --color-brand-100: #c7e8f6;
   --color-brand-200: #a0d8ef;
@@ -39,6 +42,7 @@
   --color-brand-800: #0a4a6e;
   --color-brand-900: #0d3d5c;
   --color-brand-950: #0a283d;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -67,9 +71,15 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+  font-family: var(--font-manrope), sans-serif;
+}
+
 body {
   background-color: var(--background);
   color: var(--foreground);
+  font-family: var(--font-manrope), sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -87,5 +97,3 @@ body {
 
 .animate-fade-in-up { animation: fade-in-up 1s ease-out; }
 .animate-fade-in    { animation: fade-in 1s ease-out; }
-
-html { scroll-behavior: smooth; }

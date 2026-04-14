@@ -1,45 +1,43 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Manrope, Geist_Mono } from "next/font/google";
 import "./globals.css";
+
 import SessionProvider from "@/components/providers/SessionProvider";
 import { ConditionalShell } from "@/components/layout/ConditionalShell";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// ✅ Manrope
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
 });
 
+// mono stays
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
   title: "We Mongolia",
   description: "Explore Mongolia with We Mongolia",
-  // Adding the favicon here
   icons: {
     icon: "/favicon.ico",
-    // Optional: If you have a shortcut icon or apple-touch-icon
-    // shortcut: "/assets/favicon.ico",
-    // apple: "/assets/apple-touch-icon.png",
   },
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+    <html lang="en" className={`${manrope.variable} ${geistMono.variable}`}>
+      <body className="antialiased">
         <SessionProvider>
-          <ConditionalShell>
-            {children}
-          </ConditionalShell>
+          <ConditionalShell>{children}</ConditionalShell>
         </SessionProvider>
       </body>
     </html>
