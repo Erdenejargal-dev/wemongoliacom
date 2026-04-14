@@ -5,6 +5,7 @@ import {
   CheckCircle2, Building2, Phone,
 } from 'lucide-react'
 import { TourGallery } from '@/components/tours/TourGallery'
+import { RoomImageGallery } from '@/components/stays/RoomImageGallery'
 import { StayBookingCard } from '@/components/stays/StayBookingCard'
 import { PropertyMap } from '@/components/stays/PropertyMap'
 import { ContactProviderButton } from '@/components/ui/ContactProviderButton'
@@ -187,51 +188,8 @@ export default async function StayDetailPage({ params }: Props) {
                         key={room.id}
                         className="border border-gray-200 rounded-xl overflow-hidden hover:border-brand-300 transition-colors"
                       >
-                        {/* Room images — 1 = full-width, 2 = columns, 3+ = main + stacked right */}
-                        {room.images && room.images.length > 0 && (() => {
-                          const imgs = room.images
-                          if (imgs.length === 1) {
-                            return (
-                              <div className="h-44 bg-gray-100 overflow-hidden">
-                                <img src={imgs[0].imageUrl} alt={room.name} className="w-full h-full object-cover" />
-                              </div>
-                            )
-                          }
-                          if (imgs.length === 2) {
-                            return (
-                              <div className="h-44 flex gap-0.5 bg-gray-100">
-                                <div className="flex-1 overflow-hidden">
-                                  <img src={imgs[0].imageUrl} alt={room.name} className="w-full h-full object-cover" />
-                                </div>
-                                <div className="flex-1 overflow-hidden">
-                                  <img src={imgs[1].imageUrl} alt={room.name} className="w-full h-full object-cover" />
-                                </div>
-                              </div>
-                            )
-                          }
-                          // 3+ images: large left + two stacked right
-                          const extra = imgs.length - 3
-                          return (
-                            <div className="h-44 flex gap-0.5 bg-gray-100">
-                              <div className="flex-[2] overflow-hidden">
-                                <img src={imgs[0].imageUrl} alt={room.name} className="w-full h-full object-cover" />
-                              </div>
-                              <div className="flex-1 flex flex-col gap-0.5">
-                                <div className="flex-1 overflow-hidden">
-                                  <img src={imgs[1].imageUrl} alt={room.name} className="w-full h-full object-cover" />
-                                </div>
-                                <div className="flex-1 overflow-hidden relative">
-                                  <img src={imgs[2].imageUrl} alt={room.name} className="w-full h-full object-cover" />
-                                  {extra > 0 && (
-                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                      <span className="text-white text-sm font-bold">+{extra}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          )
-                        })()}
+                        {/* Room images with lightbox */}
+                        <RoomImageGallery images={room.images ?? []} roomName={room.name} />
                         <div className="p-4">
                         <div className="flex items-start justify-between gap-4 mb-2">
                           <div className="min-w-0">
