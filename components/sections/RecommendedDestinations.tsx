@@ -139,15 +139,15 @@ export default function RecommendedDestinations() {
         </div>
 
         {/* View All */}
-        <div className="text-center mt-12">
-          <Link
-            href="/destinations"
-            className="inline-flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-8 py-4 font-bold text-sm transition-colors shadow-lg uppercase tracking-wide"
-          >
-            View All Destinations
-            <MapPin className="w-5 h-5" />
-          </Link>
-        </div>
+      <div className="mt-12 text-center">
+  <Link
+    href="/destinations"
+    className="inline-flex items-center gap-2 rounded-full bg-[#0489d1] px-6 py-3 text-sm font-semibold text-white transition-all duration-200 hover:bg-[#037ab9] hover:scale-[1.02]"
+  >
+    View All Destinations
+    <MapPin className="h-4 w-4" />
+  </Link>
+</div>
       </div>
     </section>
   )
