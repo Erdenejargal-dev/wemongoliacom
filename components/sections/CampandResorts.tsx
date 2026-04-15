@@ -1,348 +1,431 @@
-'use client';
+"use client";
 
-/**
- * components/sections/CampandResorts.tsx
- *
- * Shows the top-rated ger camps and resorts from the backend's public /stays endpoint.
- * Uses the multi-type filter implemented in Option C (backend extended to accept
- * ?accommodationTypes=ger_camp,resort).
- *
- * Data source: GET /api/v1/stays?accommodationTypes=ger_camp,resort&sort=rating&limit=10
- */
-
-import React, { useEffect, useState } from 'react';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { Autoplay, Navigation, Pagination } from 'swiper/modules';
-import { Star, MapPin, ChevronLeft, ChevronRight, Search } from 'lucide-react';
-import Link from 'next/link';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import {
+  BedDouble,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  MapPin,
+  Search,
+  Star,
+} from "lucide-react";
 import {
   fetchStays,
   type BackendStay,
   type AccommodationType,
   ACCOMMODATION_TYPE_LABELS,
-} from '@/lib/api/stays';
+} from "@/lib/api/stays";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  type CarouselApi,
+} from "@/components/ui/carousel";
+import { cn } from "@/lib/utils";
 
-import 'swiper/css';
-import 'swiper/css/navigation';
-import 'swiper/css/pagination';
-
-// ── Card model ────────────────────────────────────────────────────────────
+type CampAndResortsStatus = "loading" | "success" | "empty" | "error";
 
 interface StayCardModel {
-  id:                string;
-  slug:              string;
-  name:              string;
+  id: string;
+  slug: string;
+  name: string;
   accommodationType: AccommodationType;
-  typeLabel:         string;
-  destinationName:   string;
-  starRating:        number | null;
-  ratingAverage:     number;
-  reviewsCount:      number;
-  images:            string[];
-  /** Lowest base price per night across all room types; null if no rooms yet. */
-  priceFrom:         number | null;
-  currency:          string;
+  typeLabel: string;
+  destinationName: string;
+  starRating: number | null;
+  ratingAverage: number;
+  reviewsCount: number;
+  imageUrl: string;
+  priceFrom: number | null;
+  currency: string;
 }
 
-function mapBackendStayToCard(s: BackendStay): StayCardModel {
-  const priceFrom =
-    s.roomTypes.length > 0
-      ? Math.min(...s.roomTypes.map((rt) => rt.basePricePerNight))
-      : null;
+const FALLBACK_IMAGE =
+  "https://images.unsplash.com/photo-1567191327852-25f4e5c1d0c4?q=80&w=1170&auto=format&fit=crop";
+
+const TYPE_BADGE_STYLES: Record<AccommodationType, string> = {
+  ger_camp: "bg-[#0489d1]",
+  hotel: "bg-blue-700",
+  lodge: "bg-green-700",
+  guesthouse: "bg-teal-600",
+  resort: "bg-purple-700",
+  hostel: "bg-gray-700",
+  homestay: "bg-rose-600",
+};
+
+function mapBackendStayToCard(stay: BackendStay): StayCardModel {
+  const validRoomPrices = (stay.roomTypes ?? [])
+    .map((room) => room.basePricePerNight)
+    .filter((price): price is number => typeof price === "number" && Number.isFinite(price));
+
+  const priceFrom = validRoomPrices.length > 0 ? Math.min(...validRoomPrices) : null;
 
   return {
-    id:                s.id,
-    slug:              s.slug,
-    name:              s.name,
-    accommodationType: s.accommodationType,
-    typeLabel:         ACCOMMODATION_TYPE_LABELS[s.accommodationType] ?? s.accommodationType,
-    destinationName:   s.destination?.name ?? 'Mongolia',
-    starRating:        s.starRating,
-    ratingAverage:     s.ratingAverage ?? 0,
-    reviewsCount:      s.reviewsCount ?? 0,
-    images:            (s.images ?? []).map((i) => i.imageUrl).filter(Boolean),
+    id: stay.id,
+    slug: stay.slug,
+    name: stay.name ?? "Untitled Stay",
+    accommodationType: stay.accommodationType,
+    typeLabel:
+      ACCOMMODATION_TYPE_LABELS[stay.accommodationType] ?? stay.accommodationType,
+    destinationName: stay.destination?.name ?? "Mongolia",
+    starRating:
+      typeof stay.starRating === "number" && Number.isFinite(stay.starRating)
+        ? stay.starRating
+        : null,
+    ratingAverage:
+      typeof stay.ratingAverage === "number" && Number.isFinite(stay.ratingAverage)
+        ? stay.ratingAverage
+        : 0,
+    reviewsCount:
+      typeof stay.reviewsCount === "number" && Number.isFinite(stay.reviewsCount)
+        ? stay.reviewsCount
+        : 0,
+    imageUrl:
+      stay.images?.find((image) => Boolean(image?.imageUrl))?.imageUrl ??
+      FALLBACK_IMAGE,
     priceFrom,
-    currency:          s.roomTypes[0]?.currency ?? 'USD',
+    currency: stay.roomTypes?.[0]?.currency ?? "USD",
   };
 }
 
-// ── Type badge colours ────────────────────────────────────────────────────
+function formatPrice(value: number | null, currency: string): string {
+  if (value === null || !Number.isFinite(value) || value <= 0) {
+    return "Price on request";
+  }
 
-const TYPE_COLOURS: Record<AccommodationType, string> = {
-  ger_camp:   'bg-amber-600',
-  hotel:      'bg-blue-700',
-  lodge:      'bg-green-700',
-  guesthouse: 'bg-teal-600',
-  resort:     'bg-purple-700',
-  hostel:     'bg-gray-700',
-  homestay:   'bg-rose-600',
-};
+  if (currency === "USD") {
+    return `$${value.toLocaleString()}`;
+  }
 
-// ── Stay card ─────────────────────────────────────────────────────────────
+  return `${value.toLocaleString()} ${currency}`;
+}
 
-const FALLBACK_IMAGE =
-  'https://images.unsplash.com/photo-1567191327852-25f4e5c1d0c4?q=80&w=1170&auto=format&fit=crop';
+function MetaPill({
+  icon,
+  children,
+}: {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/14 px-3 py-1.5 text-xs font-medium text-white backdrop-blur">
+      {icon}
+      {children}
+    </span>
+  );
+}
 
-const StayCard = ({ stay }: { stay: StayCardModel }) => {
+function StayCard({ stay }: { stay: StayCardModel }) {
   const [imageError, setImageError] = useState(false);
-  const imageUrl = stay.images?.[0] || FALLBACK_IMAGE;
-  const badgeColour = TYPE_COLOURS[stay.accommodationType] ?? 'bg-gray-700';
+  const badgeColor =
+    TYPE_BADGE_STYLES[stay.accommodationType] ?? "bg-gray-700";
 
   return (
-    <div className="bg-white shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden h-full flex flex-col border-2 border-gray-200 hover:border-orange-500 group">
-
-      {/* Image */}
-      <div className="relative h-48 overflow-hidden bg-gray-200">
-        <img
-          src={imageError ? FALLBACK_IMAGE : imageUrl}
-          alt={stay.name}
-          onError={() => setImageError(true)}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-        />
-        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-all duration-300" />
-
-        {/* Accommodation type badge */}
-        <div className="absolute top-0 left-0">
-          <span className={`${badgeColour} text-white px-4 py-2 text-xs font-bold uppercase tracking-wide`}>
-            {stay.typeLabel}
-          </span>
-        </div>
-
-        {/* User rating badge */}
-        {stay.ratingAverage > 0 && (
-          <div className="absolute bottom-0 right-0 bg-orange-600 text-white px-4 py-2">
-            <div className="flex items-center gap-2">
-              <Star className="w-4 h-4 fill-white" />
-              <span className="font-bold text-lg">{stay.ratingAverage.toFixed(1)}</span>
-            </div>
-          </div>
+    <Link
+      href={`/stays/${stay.slug}`}
+      className="group block h-full rounded-[28px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0489d1] focus-visible:ring-offset-4"
+    >
+      <article
+        className={cn(
+          "h-full overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm",
+          "transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
         )}
-      </div>
+      >
+        <div className="relative aspect-[3/4] overflow-hidden bg-zinc-100">
+          <img
+            src={imageError ? FALLBACK_IMAGE : stay.imageUrl}
+            alt={stay.name}
+            onError={() => setImageError(true)}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+          />
 
-      {/* Content */}
-      <div className="p-3 flex-1 flex flex-col">
-        <h3 className="text-base font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-orange-600 transition-colors leading-tight">
-          {stay.name}
-        </h3>
+          <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/35 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
 
-        {/* Location */}
-        <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-gray-200">
-          <MapPin className="w-3.5 h-3.5 text-orange-600 flex-shrink-0" />
-          <span className="text-xs text-gray-600 line-clamp-1">{stay.destinationName}</span>
-        </div>
-
-        {/* Hotel star rating (property quality, not user rating) */}
-        {stay.starRating && stay.starRating > 0 && (
-          <div className="flex items-center gap-1 mb-2">
-            {[...Array(Math.min(stay.starRating, 5))].map((_, i) => (
-              <Star key={i} className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-            ))}
-            <span className="text-[10px] text-gray-500 ml-1">{stay.starRating}-star property</span>
-          </div>
-        )}
-
-        {/* User reviews */}
-        {stay.reviewsCount > 0 && (
-          <div className="flex items-center gap-1 mb-2">
-            <div className="flex text-yellow-400">
-              {[...Array(5)].map((_, i) => (
-                <Star
-                  key={i}
-                  className={`w-3 h-3 ${i < Math.floor(stay.ratingAverage) ? 'fill-current' : 'fill-gray-300'}`}
-                />
-              ))}
-            </div>
-            <span className="text-[10px] text-gray-600 font-medium ml-1">
-              ({stay.reviewsCount} review{stay.reviewsCount !== 1 ? 's' : ''})
+          <div className="absolute left-4 top-4 flex items-center gap-2">
+            <span
+              className={cn(
+                "rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-white",
+                badgeColor
+              )}
+            >
+              {stay.typeLabel}
             </span>
           </div>
-        )}
 
-        <div className="flex-1" />
+          {stay.ratingAverage > 0 ? (
+            <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-black/35 px-3 py-1.5 text-white backdrop-blur">
+              <Star className="h-4 w-4 fill-current" />
+              <span className="text-sm font-semibold">
+                {stay.ratingAverage.toFixed(1)}
+              </span>
+            </div>
+          ) : null}
 
-        {/* Price + CTA */}
-        <div className="flex items-center justify-between pt-3 border-t-2 border-gray-900 mt-auto">
-          <div>
-            {stay.priceFrom !== null ? (
-              <>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-0.5">From</p>
-                <div className="flex items-baseline gap-0.5">
-                  <span className="text-xl font-bold text-orange-600">
-                    ${stay.priceFrom.toLocaleString()}
-                  </span>
-                  <span className="text-[10px] text-gray-500">/night</span>
-                </div>
-              </>
-            ) : (
-              <span className="text-xs text-gray-400 italic">Price on request</span>
-            )}
-          </div>
-          <Link
-            href={`/stays/${stay.slug}`}
-            className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 font-bold text-xs transition-colors uppercase tracking-wide"
-          >
-            View Details
-          </Link>
-        </div>
+          <div className="absolute inset-x-0 bottom-0 p-4">
+  <div className="max-w-full">
+    <div className="flex items-start justify-between gap-3">
+      <h3 className="line-clamp-1 min-w-0 flex-1 text-lg font-semibold leading-tight text-white md:text-xl">
+        {stay.name}
+      </h3>
+
+      <div className="shrink-0 text-right">
+        <p className="text-xl font-bold leading-none text-white">
+          {formatPrice(stay.priceFrom, stay.currency)}
+        </p>
+        {stay.priceFrom !== null ? (
+          <p className="mt-1 text-[11px] text-white/60">/night</p>
+        ) : null}
       </div>
     </div>
-  );
-};
 
-// ── Skeletons ─────────────────────────────────────────────────────────────
+    <div className="mt-2 flex items-center justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-1.5 text-sm text-white/85">
+        <MapPin className="h-4 w-4 shrink-0" />
+        <span className="line-clamp-1">{stay.destinationName}</span>
+      </div>
 
-const SkeletonCards = () => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-    {[1, 2, 3, 4].map((i) => (
-      <div key={i} className="bg-gray-200 animate-pulse h-96 rounded" />
-    ))}
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
+        {stay.starRating && stay.starRating > 0 ? (
+          <MetaPill icon={<Star className="h-3.5 w-3.5 fill-current" />}>
+            {Math.min(stay.starRating, 5)}-star
+          </MetaPill>
+        ) : null}
+
+        {stay.reviewsCount > 0 ? (
+          <MetaPill icon={<BedDouble className="h-3.5 w-3.5" />}>
+            {stay.reviewsCount} review{stay.reviewsCount !== 1 ? "s" : ""}
+          </MetaPill>
+        ) : null}
+      </div>
+    </div>
   </div>
-);
+</div>
+        </div>
+      </article>
+    </Link>
+  );
+}
 
-// ── Main section ──────────────────────────────────────────────────────────
+function CampAndResortsSkeleton() {
+  return (
+    <section className="py-16 sm:py-20">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-10 text-center">
+          <div className="mx-auto h-10 w-64 animate-pulse rounded-xl bg-zinc-200" />
+          <div className="mx-auto mt-4 h-5 w-[32rem] max-w-full animate-pulse rounded-lg bg-zinc-100" />
+        </div>
 
-const CampandResorts = () => {
-  const [stays, setStays]     = useState<StayCardModel[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(false);
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="aspect-[3/4] animate-pulse rounded-[28px] bg-zinc-100"
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default function CampandResorts() {
+  const [status, setStatus] = useState<CampAndResortsStatus>("loading");
+  const [stays, setStays] = useState<StayCardModel[]>([]);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [api, setApi] = useState<CarouselApi>();
+  const [canScrollPrev, setCanScrollPrev] = useState(false);
+  const [canScrollNext, setCanScrollNext] = useState(false);
+
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    const load = async () => {
+    isMountedRef.current = true;
+
+    const loadStays = async () => {
+      setStatus("loading");
+      setErrorMessage("");
+
       try {
-        // Fetch ger camps AND resorts using the multi-type filter (Option C):
-        // backend now supports ?accommodationTypes=ger_camp,resort via { in: [...] }
-        const res = await fetchStays({
-          accommodationTypes: ['ger_camp', 'resort'],
-          sort: 'rating',
+        const response = await fetchStays({
+          accommodationTypes: ["ger_camp", "resort"],
+          sort: "rating",
           limit: 10,
         });
-        setStays(res.data.map(mapBackendStayToCard));
-      } catch (err) {
-        console.error('[CampandResorts] Failed to load stays:', err);
-        setError(true);
-      } finally {
-        setLoading(false);
+
+        const data = Array.isArray(response?.data) ? response.data : [];
+
+        if (!isMountedRef.current) return;
+
+        if (data.length > 0) {
+          setStays(data.map(mapBackendStayToCard));
+          setStatus("success");
+          return;
+        }
+
+        setStays([]);
+        setStatus("empty");
+      } catch (error) {
+        console.error("[CampandResorts] failed to load stays", error);
+
+        if (!isMountedRef.current) return;
+
+        setStays([]);
+        setStatus("error");
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Something went wrong while loading accommodations."
+        );
       }
     };
 
-    load();
+    loadStays();
+
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
-  if (loading) {
-    return (
-    <section className="py-16 sm:py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4 uppercase tracking-tight">
-              Ger Camps &amp; Resorts
-            </h2>
-            <div className="w-24 h-1 bg-orange-600 mx-auto mb-6" />
-            <p className="text-gray-600 max-w-2xl mx-auto">Loading accommodations…</p>
-          </div>
-          <SkeletonCards />
-        </div>
-      </section>
-    );
-  }
+  useEffect(() => {
+    if (!api) return;
 
-  if (error || stays.length === 0) {
-    return (
-    <section className="py-16 sm:py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4 uppercase tracking-tight">
-            Ger Camps &amp; Resorts
-          </h2>
-          <p className="text-gray-600">
-            {error
-              ? 'Unable to load accommodations right now. Please try again later.'
-              : 'No accommodations listed yet. Check back soon!'}
-          </p>
-        </div>
-      </section>
-    );
+    const updateNavState = () => {
+      setCanScrollPrev(api.canScrollPrev());
+      setCanScrollNext(api.canScrollNext());
+    };
+
+    api.on("select", updateNavState);
+    api.on("reInit", updateNavState);
+    updateNavState();
+
+    return () => {
+      api.off("select", updateNavState);
+      api.off("reInit", updateNavState);
+    };
+  }, [api]);
+
+  const subtitle = useMemo(() => {
+    return "The top-rated ger camps and resorts in Mongolia — iconic stays selected from real traveler reviews.";
+  }, []);
+
+  if (status === "loading") {
+    return <CampAndResortsSkeleton />;
   }
 
   return (
-    <section className="py-16 sm:py-20 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4 uppercase tracking-tight">
-            Ger Camps &amp; Resorts
+    <section className="py-16 sm:py-20">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-10 text-center sm:mb-12">
+          <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl lg:text-5xl">
+            Ger Camps & Resorts
           </h2>
-          <div className="w-24 h-1 bg-orange-600 mx-auto mb-6" />
-          <p className="text-gray-600 max-w-2xl mx-auto text-lg">
-            The top-rated ger camps and resorts in Mongolia — iconic stays sorted by traveller reviews.
+          <div className="mx-auto mt-4 h-1.5 w-20 rounded-full bg-[#0489d1]" />
+          <p className="mx-auto mt-5 max-w-2xl text-sm leading-6 text-zinc-600 sm:text-base">
+            {subtitle}
           </p>
         </div>
 
-        {/* Carousel */}
-        <div className="relative">
-          <Swiper
-            modules={[Autoplay, Navigation, Pagination]}
-            spaceBetween={24}
-            slidesPerView={1}
-            autoplay={{ delay: 4500, disableOnInteraction: false, pauseOnMouseEnter: true }}
-            navigation={{ prevEl: '.stays-swiper-prev', nextEl: '.stays-swiper-next' }}
-            pagination={{ clickable: true, dynamicBullets: true }}
-            breakpoints={{
-              640:  { slidesPerView: 2, spaceBetween: 20 },
-              1024: { slidesPerView: 3, spaceBetween: 24 },
-              1280: { slidesPerView: 4, spaceBetween: 24 },
-            }}
-            loop={stays.length > 3}
-            className="!pb-12"
-          >
-            {stays.map((stay) => (
-              <SwiperSlide key={stay.id} className="h-auto">
-                <StayCard stay={stay} />
-              </SwiperSlide>
-            ))}
-          </Swiper>
+        {status === "error" ? (
+          <div className="rounded-3xl border border-red-200 bg-red-50 px-6 py-10 text-center">
+            <h3 className="text-lg font-semibold text-zinc-900">
+              Couldn’t load accommodations
+            </h3>
+            <p className="mx-auto mt-2 max-w-xl text-sm text-zinc-600">
+              {errorMessage || "Please try again later."}
+            </p>
+            <div className="mt-6">
+              <Link
+                href="/stays"
+                className="inline-flex items-center rounded-full bg-[#0489d1] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#037ab9]"
+              >
+                Browse all stays
+              </Link>
+            </div>
+          </div>
+        ) : status === "empty" ? (
+          <div className="rounded-3xl border border-zinc-200 bg-zinc-50 px-6 py-10 text-center">
+            <h3 className="text-lg font-semibold text-zinc-900">
+              No stays available right now
+            </h3>
+            <p className="mx-auto mt-2 max-w-xl text-sm text-zinc-600">
+              We do not have any ger camps or resorts to show yet.
+            </p>
+            <div className="mt-6">
+              <Link
+                href="/stays"
+                className="inline-flex items-center rounded-full bg-[#0489d1] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#037ab9]"
+              >
+                Explore stays
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="relative">
+              <button
+                onClick={() => api?.scrollPrev()}
+                disabled={!canScrollPrev}
+                className={cn(
+                  "absolute left-0 top-1/2 z-20 hidden -translate-x-5 -translate-y-1/2 rounded-full border border-zinc-200 bg-white p-3 shadow-lg transition md:flex",
+                  canScrollPrev
+                    ? "opacity-100 hover:scale-105"
+                    : "pointer-events-none opacity-0"
+                )}
+                aria-label="Previous stay"
+              >
+                <ChevronLeft className="h-5 w-5 text-zinc-700" />
+              </button>
 
-          <button
-            className="stays-swiper-prev absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white hover:bg-orange-600 text-gray-800 hover:text-white p-3 shadow-lg transition-all duration-200 border-2 border-gray-300 hover:border-orange-600"
-            aria-label="Previous slide"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-          <button
-            className="stays-swiper-next absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white hover:bg-orange-600 text-gray-800 hover:text-white p-3 shadow-lg transition-all duration-200 border-2 border-gray-300 hover:border-orange-600"
-            aria-label="Next slide"
-          >
-            <ChevronRight className="w-6 h-6" />
-          </button>
-        </div>
+              <button
+                onClick={() => api?.scrollNext()}
+                disabled={!canScrollNext}
+                className={cn(
+                  "absolute right-0 top-1/2 z-20 hidden translate-x-5 -translate-y-1/2 rounded-full border border-zinc-200 bg-white p-3 shadow-lg transition md:flex",
+                  canScrollNext
+                    ? "opacity-100 hover:scale-105"
+                    : "pointer-events-none opacity-0"
+                )}
+                aria-label="Next stay"
+              >
+                <ChevronRight className="h-5 w-5 text-zinc-700" />
+              </button>
 
-        {/* View All */}
-        <div className="text-center mt-12">
-          <Link
-            href="/explore"
-            className="inline-flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-8 py-4 font-bold text-sm transition-colors shadow-lg uppercase tracking-wide"
-          >
-            Browse All Stays
-            <Search className="w-5 h-5" />
-          </Link>
-        </div>
+              <Carousel
+                setApi={setApi}
+                opts={{
+                  align: "start",
+                  loop: stays.length > 4,
+                }}
+                className="w-full"
+              >
+                <CarouselContent className="-ml-4">
+                  {stays.map((stay) => (
+                    <CarouselItem
+                      key={stay.id}
+                      className="pl-4 sm:basis-1/2 xl:basis-1/4"
+                    >
+                      <StayCard stay={stay} />
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+              </Carousel>
+            </div>
+
+            <div className="mt-10 text-center">
+              <Link
+                href="/stays"
+                className="inline-flex items-center gap-2 rounded-full bg-[#0489d1] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#037ab9]"
+              >
+                Browse All Stays
+                <Search className="h-4 w-4" />
+              </Link>
+            </div>
+          </>
+        )}
       </div>
-
-      <style jsx global>{`
-        .stays-swiper .swiper-pagination-bullet {
-          background: #ea580c;
-          opacity: 0.4;
-          width: 10px;
-          height: 10px;
-          border-radius: 0;
-        }
-        .stays-swiper .swiper-pagination-bullet-active {
-          opacity: 1;
-          width: 30px;
-          height: 10px;
-        }
-      `}</style>
     </section>
   );
-};
-
-export default CampandResorts;
+}

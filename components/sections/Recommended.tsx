@@ -1,348 +1,447 @@
-'use client';
+"use client";
 
-/**
- * components/sections/Recommended.tsx
- *
- * Shows featured tours (admin-curated, featured=true in the DB) sorted by
- * review count.  If no featured tours exist yet, falls back to the top-rated
- * tours so the section is never empty while still being honest.
- *
- * Data source: GET /api/v1/tours?featured=true&sort=popular&limit=10
- * Fallback:    GET /api/v1/tours?sort=rating&limit=10
- */
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import {
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  MapPin,
+  Star,
+  Users,
+} from "lucide-react";
+import { fetchTours, type BackendTour } from "@/lib/api/tours";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  type CarouselApi,
+} from "@/components/ui/carousel";
+import { cn } from "@/lib/utils";
 
-import React, { useEffect, useState } from 'react';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { Autoplay, Navigation, Pagination } from 'swiper/modules';
-import { Star, Clock, MapPin, Calendar, Users, ChevronLeft, ChevronRight } from 'lucide-react';
-import Link from 'next/link';
-import { fetchTours, type BackendTour } from '@/lib/api/tours';
+type RecommendedStatus = "loading" | "success" | "empty" | "error";
 
-import 'swiper/css';
-import 'swiper/css/navigation';
-import 'swiper/css/pagination';
-
-// ── Card model ────────────────────────────────────────────────────────────
-
-interface TourCardModel {
+interface RecommendedTourCardModel {
   id: string;
   slug: string;
-  name: string;
+  title: string;
   category: string;
-  durationDays: number;
-  durationNights: number;
   destinationName: string;
   priceFrom: number;
-  images: string[];
+  imageUrl: string;
+  durationDays: number;
+  durationNights: number;
   difficulty: string;
   rating: number;
   totalReviews: number;
   featured: boolean;
-  /** Real value from tourCardSelect — null if backend didn't return it. */
   maxGuests: number | null;
 }
 
-function mapBackendTourToCard(t: BackendTour): TourCardModel {
+const FALLBACK_IMAGE =
+  "https://images.unsplash.com/photo-1569949381669-ecf31ae8e613?q=80&w=1170&auto=format&fit=crop";
+
+function normalizeDifficulty(value?: string | null): string {
+  const difficulty = (value ?? "moderate").toLowerCase();
+
+  if (difficulty === "easy") return "Easy";
+  if (difficulty === "moderate") return "Moderate";
+  if (difficulty === "challenging") return "Challenging";
+  if (difficulty === "hard") return "Hard";
+
+  return "Moderate";
+}
+
+function mapBackendTourToCard(t: BackendTour): RecommendedTourCardModel {
+  const durationDays =
+    typeof t.durationDays === "number" && Number.isFinite(t.durationDays)
+      ? Math.max(0, t.durationDays)
+      : 0;
+
   return {
-    id:              t.id,
-    slug:            t.slug,
-    name:            t.title,
-    category:        t.category ?? 'Tour',
-    durationDays:    t.durationDays ?? 0,
-    durationNights:  Math.max(0, (t.durationDays ?? 0) - 1),
-    destinationName: t.destination?.name ?? 'Mongolia',
-    priceFrom:       t.basePrice,
-    images:          (t.images ?? []).map(i => i.imageUrl).filter(Boolean),
-    difficulty:      (t.difficulty ?? 'moderate').toLowerCase(),
-    rating:          t.ratingAverage ?? 0,
-    totalReviews:    t.reviewsCount ?? 0,
-    featured:        t.featured ?? false,
-    maxGuests:       t.maxGuests ?? null,
+    id: t.id,
+    slug: t.slug,
+    title: t.title ?? "Untitled Tour",
+    category: t.category ?? "Tour",
+    destinationName: t.destination?.name ?? "Mongolia",
+    priceFrom:
+      typeof t.basePrice === "number" && Number.isFinite(t.basePrice)
+        ? t.basePrice
+        : 0,
+    imageUrl:
+      t.images?.find((image) => Boolean(image?.imageUrl))?.imageUrl ??
+      FALLBACK_IMAGE,
+    durationDays,
+    durationNights: Math.max(0, durationDays - 1),
+    difficulty: normalizeDifficulty(t.difficulty),
+    rating:
+      typeof t.ratingAverage === "number" && Number.isFinite(t.ratingAverage)
+        ? t.ratingAverage
+        : 0,
+    totalReviews:
+      typeof t.reviewsCount === "number" && Number.isFinite(t.reviewsCount)
+        ? t.reviewsCount
+        : 0,
+    featured: Boolean(t.featured),
+    maxGuests:
+      typeof t.maxGuests === "number" && Number.isFinite(t.maxGuests)
+        ? t.maxGuests
+        : null,
   };
 }
 
-// ── Tour card ─────────────────────────────────────────────────────────────
+function formatPrice(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return "Custom";
+  return `$${value.toLocaleString()}`;
+}
 
-const FALLBACK_IMAGE =
-  'https://images.unsplash.com/photo-1569949381669-ecf31ae8e613?q=80&w=1170&auto=format&fit=crop';
+function MetaPill({
+  icon,
+  children,
+}: {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/14 px-3 py-1.5 text-xs font-medium text-white backdrop-blur">
+      {icon}
+      {children}
+    </span>
+  );
+}
 
-const TourCard = ({ tour }: { tour: TourCardModel }) => {
+function TourCard({ tour }: { tour: RecommendedTourCardModel }) {
   const [imageError, setImageError] = useState(false);
-  const imageUrl = tour.images?.[0] || FALLBACK_IMAGE;
 
   return (
-    <Link href={`/tours/${tour.slug}`} className="group block h-full">
-      <div className="bg-white shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden h-full flex flex-col border-2 border-gray-200 hover:border-orange-500">
-
-        {/* Image */}
-        <div className="relative h-48 overflow-hidden bg-gray-200">
+    <Link
+      href={`/tours/${tour.slug}`}
+      className="group block h-full rounded-[28px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0489d1] focus-visible:ring-offset-4"
+    >
+      <article
+        className={cn(
+          "h-full overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm",
+          "transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+        )}
+      >
+        <div className="relative aspect-[3/4] overflow-hidden bg-zinc-100">
           <img
-            src={imageError ? FALLBACK_IMAGE : imageUrl}
-            alt={tour.name}
+            src={imageError ? FALLBACK_IMAGE : tour.imageUrl}
+            alt={tour.title}
             onError={() => setImageError(true)}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
           />
-          <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-all duration-300" />
 
-          {/* Category badge */}
-          <div className="absolute top-0 left-0">
-            <span className="bg-orange-600 text-white px-4 py-2 text-xs font-bold uppercase tracking-wide">
+          <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/35 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+
+          <div className="absolute left-4 top-4 flex items-center gap-2">
+            <span className="rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-900 backdrop-blur">
               {tour.category}
             </span>
-          </div>
 
-          {/* Featured badge */}
-          {tour.featured && (
-            <div className="absolute top-0 right-0">
-              <span className="bg-yellow-400 text-gray-900 px-4 py-2 text-xs font-bold uppercase tracking-wide flex items-center gap-1.5">
-                <Star className="w-3.5 h-3.5 fill-current" />
+            {tour.featured ? (
+              <span className="rounded-full bg-[#0489d1] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-white">
                 Featured
               </span>
-            </div>
-          )}
-
-          {/* Rating badge */}
-          {tour.rating > 0 && (
-            <div className="absolute bottom-0 right-0 bg-orange-600 text-white px-4 py-2">
-              <div className="flex items-center gap-2">
-                <Star className="w-4 h-4 fill-white" />
-                <span className="font-bold text-lg">{tour.rating.toFixed(1)}</span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Content */}
-        <div className="p-3 flex-1 flex flex-col">
-          <h3 className="text-base font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-orange-600 transition-colors leading-tight">
-            {tour.name}
-          </h3>
-
-          <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-gray-200">
-            <MapPin className="w-3.5 h-3.5 text-orange-600 flex-shrink-0" />
-            <span className="text-xs text-gray-600 line-clamp-1">{tour.destinationName}</span>
+            ) : null}
           </div>
 
-          {/* Duration + capacity row */}
-          <div className={`grid gap-2 mb-2 ${tour.maxGuests ? 'grid-cols-2' : 'grid-cols-1'}`}>
-            <div className="flex items-center gap-1.5 border border-gray-200 p-1.5">
-              <Clock className="w-3.5 h-3.5 text-gray-600" />
-              <span className="text-xs font-medium text-gray-700">
-                {tour.durationDays}D / {tour.durationNights}N
+          {tour.rating > 0 ? (
+            <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-black/35 px-3 py-1.5 text-white backdrop-blur">
+              <Star className="h-4 w-4 fill-current" />
+              <span className="text-sm font-semibold">
+                {tour.rating.toFixed(1)}
               </span>
             </div>
-            {tour.maxGuests && (
-              <div className="flex items-center gap-1.5 border border-gray-200 p-1.5">
-                <Users className="w-3.5 h-3.5 text-gray-600" />
-                <span className="text-xs font-medium text-gray-700">Max {tour.maxGuests}</span>
+          ) : null}
+
+          <div className="absolute inset-x-0 bottom-0 p-4">
+            <div className="max-w-full">
+              <h3 className="line-clamp-2 text-lg font-semibold leading-tight text-white md:text-xl">
+                {tour.title}
+              </h3>
+
+              <div className="mt-2 flex items-center gap-1.5 text-sm text-white/85">
+                <MapPin className="h-4 w-4 shrink-0" />
+                <span className="line-clamp-1">{tour.destinationName}</span>
               </div>
-            )}
-          </div>
 
-          {/* Difficulty + reviews */}
-          <div className="flex items-center justify-between mb-2">
-            <span className={`inline-block px-2 py-0.5 text-[10px] font-bold uppercase ${
-              tour.difficulty === 'easy'        ? 'bg-green-600 text-white'  :
-              tour.difficulty === 'moderate'    ? 'bg-yellow-500 text-white' :
-              tour.difficulty === 'challenging' ? 'bg-orange-500 text-white' :
-              'bg-red-600 text-white'
-            }`}>
-              {tour.difficulty}
-            </span>
+              <div className="mt-3 flex items-end justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <MetaPill icon={<Clock3 className="h-3.5 w-3.5" />}>
+                    {tour.durationDays}D / {tour.durationNights}N
+                  </MetaPill>
 
-            {tour.totalReviews > 0 && (
-              <div className="flex items-center gap-1">
-                <div className="flex text-yellow-400">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`w-3 h-3 ${i < Math.floor(tour.rating) ? 'fill-current' : 'fill-gray-300'}`}
-                    />
-                  ))}
+                  {tour.maxGuests ? (
+                    <MetaPill icon={<Users className="h-3.5 w-3.5" />}>
+                      Max {tour.maxGuests}
+                    </MetaPill>
+                  ) : null}
                 </div>
-                <span className="text-[10px] text-gray-600 font-medium">({tour.totalReviews})</span>
-              </div>
-            )}
-          </div>
 
-          <div className="flex-1" />
-
-          {/* Price + CTA */}
-          <div className="flex items-center justify-between pt-3 border-t-2 border-gray-900 mt-auto">
-            <div>
-              <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-0.5">From</p>
-              <div className="flex items-baseline gap-0.5">
-                <span className="text-xl font-bold text-orange-600">
-                  ${tour.priceFrom.toLocaleString()}
-                </span>
-                <span className="text-[10px] text-gray-500">/person</span>
+                <div className="shrink-0 text-right">
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-white/60">
+                    From
+                  </p>
+                  <p className="text-xl font-bold text-white">
+                    {formatPrice(tour.priceFrom)}
+                  </p>
+                </div>
               </div>
             </div>
-            <button className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 font-bold text-xs transition-colors uppercase tracking-wide">
-              Book Now
-            </button>
           </div>
         </div>
-      </div>
+      </article>
     </Link>
   );
-};
+}
 
-// ── Section skeletons ─────────────────────────────────────────────────────
+function RecommendedSkeleton() {
+  return (
+    <section className="py-16 sm:py-20">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-10 text-center">
+          <div className="mx-auto h-10 w-64 animate-pulse rounded-xl bg-zinc-200" />
+          <div className="mx-auto mt-4 h-5 w-[32rem] max-w-full animate-pulse rounded-lg bg-zinc-100" />
+        </div>
 
-const SkeletonCards = () => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-    {[1, 2, 3, 4].map((i) => (
-      <div key={i} className="bg-gray-200 animate-pulse h-96 rounded" />
-    ))}
-  </div>
-);
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="aspect-[3/4] animate-pulse rounded-[28px] bg-zinc-100"
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 
-// ── Main section ──────────────────────────────────────────────────────────
+export default function Recommended() {
+  const [status, setStatus] = useState<RecommendedStatus>("loading");
+  const [tours, setTours] = useState<RecommendedTourCardModel[]>([]);
+  const [isFallback, setIsFallback] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [api, setApi] = useState<CarouselApi>();
+  const [canScrollPrev, setCanScrollPrev] = useState(false);
+  const [canScrollNext, setCanScrollNext] = useState(false);
 
-const Recommended = () => {
-  const [tours, setTours]       = useState<TourCardModel[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [isFeatured, setIsFeatured] = useState(true); // tracks whether we're showing featured or fallback
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        // Step 1: ask the backend for featured tours (admin-curated) sorted by popularity
-        const res = await fetchTours({ featured: true, sort: 'popular', limit: 10 });
+    isMountedRef.current = true;
 
-        if (res.data.length > 0) {
-          setTours(res.data.map(mapBackendTourToCard));
-          setIsFeatured(true);
-        } else {
-          // Step 2: no featured tours in the DB yet — fall back to highest-rated tours
-          const fallback = await fetchTours({ sort: 'rating', limit: 10 });
-          setTours(fallback.data.map(mapBackendTourToCard));
-          setIsFeatured(false);
+    const loadTours = async () => {
+      setStatus("loading");
+      setErrorMessage("");
+
+      try {
+        const featuredResponse = await fetchTours({
+          featured: true,
+          sort: "popular",
+          limit: 10,
+        });
+
+        const featuredTours = Array.isArray(featuredResponse?.data)
+          ? featuredResponse.data
+          : [];
+
+        if (featuredTours.length > 0) {
+          if (!isMountedRef.current) return;
+
+          setTours(featuredTours.map(mapBackendTourToCard));
+          setIsFallback(false);
+          setStatus("success");
+          return;
         }
-      } catch (err) {
-        console.error('[Recommended] Failed to load tours:', err);
-      } finally {
-        setLoading(false);
+
+        const fallbackResponse = await fetchTours({
+          sort: "rating",
+          limit: 10,
+        });
+
+        const fallbackTours = Array.isArray(fallbackResponse?.data)
+          ? fallbackResponse.data
+          : [];
+
+        if (!isMountedRef.current) return;
+
+        if (fallbackTours.length > 0) {
+          setTours(fallbackTours.map(mapBackendTourToCard));
+          setIsFallback(true);
+          setStatus("success");
+          return;
+        }
+
+        setTours([]);
+        setIsFallback(true);
+        setStatus("empty");
+      } catch (error) {
+        console.error("[Recommended] failed to load tours", error);
+
+        if (!isMountedRef.current) return;
+
+        setTours([]);
+        setStatus("error");
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Something went wrong while loading tours."
+        );
       }
     };
 
-    load();
+    loadTours();
+
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
-  if (loading) {
-    return (
-      <section className="py-16 sm:py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4 uppercase tracking-tight">
-              Recommended Tours
-            </h2>
-            <div className="w-24 h-1 bg-orange-600 mx-auto mb-6" />
-            <p className="text-gray-600 max-w-2xl mx-auto">Loading amazing experiences…</p>
-          </div>
-          <SkeletonCards />
-        </div>
-      </section>
-    );
-  }
+  useEffect(() => {
+    if (!api) return;
 
-  if (tours.length === 0) {
-    return (
-      <section className="py-16 sm:py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4 uppercase tracking-tight">
-            Recommended Tours
-          </h2>
-          <p className="text-gray-600">No tours available at the moment. Check back soon!</p>
-        </div>
-      </section>
-    );
-  }
+    const updateNavState = () => {
+      setCanScrollPrev(api.canScrollPrev());
+      setCanScrollNext(api.canScrollNext());
+    };
 
-  const subtitle = isFeatured
-    ? 'Handpicked featured tours — expertly curated to give you the very best of Mongolia.'
-    : 'Our highest-rated tours, chosen by travellers who explored Mongolia with us.';
+    api.on("select", updateNavState);
+    api.on("reInit", updateNavState);
+    updateNavState();
+
+    return () => {
+      api.off("select", updateNavState);
+      api.off("reInit", updateNavState);
+    };
+  }, [api]);
+
+  const subtitle = useMemo(() => {
+    if (isFallback) {
+      return "Our highest-rated tours, selected from real traveler feedback while featured tours are being curated.";
+    }
+
+    return "Handpicked experiences across Mongolia, curated to help travelers discover the tours people love most.";
+  }, [isFallback]);
+
+  if (status === "loading") {
+    return <RecommendedSkeleton />;
+  }
 
   return (
-    <section className="py-16 sm:py-20 bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4 uppercase tracking-tight">
+    <section className="py-16 sm:py-20">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-10 text-center sm:mb-12">
+          <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl lg:text-5xl">
             Recommended Tours
           </h2>
-          <div className="w-24 h-1 bg-orange-600 mx-auto mb-6" />
-          <p className="text-gray-600 max-w-2xl mx-auto text-lg">{subtitle}</p>
+          <div className="mx-auto mt-4 h-1.5 w-20 rounded-full bg-[#0489d1]" />
+          <p className="mx-auto mt-5 max-w-2xl text-sm leading-6 text-zinc-600 sm:text-base">
+            {subtitle}
+          </p>
         </div>
 
-        {/* Carousel */}
-        <div className="relative">
-          <Swiper
-            modules={[Autoplay, Navigation, Pagination]}
-            spaceBetween={24}
-            slidesPerView={1}
-            autoplay={{ delay: 4000, disableOnInteraction: false, pauseOnMouseEnter: true }}
-            navigation={{ prevEl: '.rec-swiper-prev', nextEl: '.rec-swiper-next' }}
-            pagination={{ clickable: true, dynamicBullets: true }}
-            breakpoints={{
-              640:  { slidesPerView: 2, spaceBetween: 20 },
-              1024: { slidesPerView: 3, spaceBetween: 24 },
-              1280: { slidesPerView: 4, spaceBetween: 24 },
-            }}
-            loop={tours.length > 3}
-            className="!pb-12"
-          >
-            {tours.map((tour) => (
-              <SwiperSlide key={tour.id} className="h-auto">
-                <TourCard tour={tour} />
-              </SwiperSlide>
-            ))}
-          </Swiper>
+        {status === "error" ? (
+          <div className="rounded-3xl border border-red-200 bg-red-50 px-6 py-10 text-center">
+            <h3 className="text-lg font-semibold text-zinc-900">
+              Couldn’t load recommended tours
+            </h3>
+            <p className="mx-auto mt-2 max-w-xl text-sm text-zinc-600">
+              {errorMessage || "Please try again later."}
+            </p>
+            <div className="mt-6">
+              <Link
+                href="/tours"
+                className="inline-flex items-center rounded-full bg-[#0489d1] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#037ab9]"
+              >
+                Browse all tours
+              </Link>
+            </div>
+          </div>
+        ) : status === "empty" ? (
+          <div className="rounded-3xl border border-zinc-200 bg-zinc-50 px-6 py-10 text-center">
+            <h3 className="text-lg font-semibold text-zinc-900">
+              No tours available right now
+            </h3>
+            <p className="mx-auto mt-2 max-w-xl text-sm text-zinc-600">
+              We do not have any featured or fallback tours to show yet.
+            </p>
+            <div className="mt-6">
+              <Link
+                href="/tours"
+                className="inline-flex items-center rounded-full bg-[#0489d1] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#037ab9]"
+              >
+                Explore tours
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="relative">
+              <button
+                onClick={() => api?.scrollPrev()}
+                disabled={!canScrollPrev}
+                className={cn(
+                  "absolute left-0 top-1/2 z-20 hidden -translate-x-5 -translate-y-1/2 rounded-full border border-zinc-200 bg-white p-3 shadow-lg transition md:flex",
+                  canScrollPrev
+                    ? "opacity-100 hover:scale-105"
+                    : "pointer-events-none opacity-0"
+                )}
+                aria-label="Previous recommended tour"
+              >
+                <ChevronLeft className="h-5 w-5 text-zinc-700" />
+              </button>
 
-          <button
-            className="rec-swiper-prev absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white hover:bg-orange-600 text-gray-800 hover:text-white p-3 shadow-lg transition-all duration-200 border-2 border-gray-300 hover:border-orange-600"
-            aria-label="Previous slide"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-          <button
-            className="rec-swiper-next absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white hover:bg-orange-600 text-gray-800 hover:text-white p-3 shadow-lg transition-all duration-200 border-2 border-gray-300 hover:border-orange-600"
-            aria-label="Next slide"
-          >
-            <ChevronRight className="w-6 h-6" />
-          </button>
-        </div>
+              <button
+                onClick={() => api?.scrollNext()}
+                disabled={!canScrollNext}
+                className={cn(
+                  "absolute right-0 top-1/2 z-20 hidden translate-x-5 -translate-y-1/2 rounded-full border border-zinc-200 bg-white p-3 shadow-lg transition md:flex",
+                  canScrollNext
+                    ? "opacity-100 hover:scale-105"
+                    : "pointer-events-none opacity-0"
+                )}
+                aria-label="Next recommended tour"
+              >
+                <ChevronRight className="h-5 w-5 text-zinc-700" />
+              </button>
 
-        {/* View All */}
-        <div className="text-center mt-12">
-          <Link
-            href="/tours"
-            className="inline-flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-8 py-4 font-bold text-sm transition-colors shadow-lg uppercase tracking-wide"
-          >
-            View All Tours
-            <Calendar className="w-5 h-5" />
-          </Link>
-        </div>
+              <Carousel
+                setApi={setApi}
+                opts={{
+                  align: "start",
+                  loop: tours.length > 4,
+                }}
+                className="w-full"
+              >
+                <CarouselContent className="-ml-4">
+                  {tours.map((tour) => (
+                    <CarouselItem
+                      key={tour.id}
+                      className="pl-4 sm:basis-1/2 xl:basis-1/4"
+                    >
+                      <TourCard tour={tour} />
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+              </Carousel>
+            </div>
+
+            <div className="mt-10 text-center">
+              <Link
+                href="/tours"
+                className="inline-flex items-center gap-2 rounded-full bg-[#0489d1] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#037ab9]"
+              >
+                View All Tours
+                <Calendar className="h-4 w-4" />
+              </Link>
+            </div>
+          </>
+        )}
       </div>
-
-      <style jsx global>{`
-        .swiper-pagination-bullet {
-          background: #ea580c;
-          opacity: 0.4;
-          width: 10px;
-          height: 10px;
-          border-radius: 0;
-        }
-        .swiper-pagination-bullet-active {
-          opacity: 1;
-          width: 30px;
-          height: 10px;
-        }
-      `}</style>
     </section>
   );
-};
-
-export default Recommended;
+}
