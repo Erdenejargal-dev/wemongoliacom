@@ -6,7 +6,8 @@ import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { EyeIcon, EyeOffIcon } from 'lucide-react'
 import { apiClient } from '@/lib/api/client'
-
+import { DialogTitle } from "@/components/ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import {
   Dialog,
   DialogContent,
@@ -44,6 +45,7 @@ export function AuthModal({ defaultTab = 'login', trigger }: AuthModalProps) {
       </DialogTrigger>
 
       <DialogContent className='sm:max-w-lg p-0 gap-0 overflow-hidden border-0 shadow-xl' style={{ backgroundColor: '#ffffff' }}>
+        <DialogTitle className="sr-only">Auth Modal</DialogTitle>
         <div className='relative flex items-center justify-center overflow-hidden px-4 py-8 sm:px-6' style={{ backgroundColor: '#ffffff' }}>
           {/* Background decoration */}
           <div className='pointer-events-none absolute -top-20 -right-24 opacity-60'>

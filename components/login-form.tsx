@@ -52,7 +52,7 @@ const COPY = {
   host: {
     heading: "Тавтай морил",
     subtitle:
-      "Нэвтэрч, аялалын үйлчилгээгээ WeMongolia-р дамжуулан санал болгоорой.",
+      "Таны бизнесийн цахим хөтөч",
     emailLabel: "Имэйл хаяг",
     emailPlaceholder: "you@example.com",
     passwordLabel: "Нууц үг",
