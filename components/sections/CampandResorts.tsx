@@ -405,7 +405,8 @@ export default function CampandResorts() {
                   {stays.map((stay) => (
                     <CarouselItem
                       key={stay.id}
-                      className="pl-4 sm:basis-1/2 xl:basis-1/4"
+                                            className="pl-3 basis-1/2 sm:pl-4 lg:basis-1/3 xl:basis-1/4"
+
                     >
                       <StayCard stay={stay} />
                     </CarouselItem>
