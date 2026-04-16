@@ -42,6 +42,8 @@ interface RecommendedTourCardModel {
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1569949381669-ecf31ae8e613?q=80&w=1170&auto=format&fit=crop";
 
+const AUTOPLAY_INTERVAL = 4000;
+
 function normalizeDifficulty(value?: string | null): string {
   const difficulty = (value ?? "moderate").toLowerCase();
 
@@ -104,7 +106,7 @@ function MetaPill({
   children: React.ReactNode;
 }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/14 px-3 py-1.5 text-xs font-medium text-white backdrop-blur">
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/14 px-3 py-1.5 text-[11px] font-medium text-white backdrop-blur">
       {icon}
       {children}
     </span>
@@ -117,11 +119,11 @@ function TourCard({ tour }: { tour: RecommendedTourCardModel }) {
   return (
     <Link
       href={`/tours/${tour.slug}`}
-      className="group block h-full rounded-[28px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0489d1] focus-visible:ring-offset-4"
+      className="group block h-full rounded-[24px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0489d1] focus-visible:ring-offset-4"
     >
       <article
         className={cn(
-          "h-full overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm",
+          "h-full overflow-hidden rounded-[24px] border border-zinc-200 bg-white shadow-sm",
           "transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
         )}
       >
@@ -133,61 +135,58 @@ function TourCard({ tour }: { tour: RecommendedTourCardModel }) {
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
           />
 
-          <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/35 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+          <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/35 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
 
-          <div className="absolute left-4 top-4 flex items-center gap-2">
-            <span className="rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-900 backdrop-blur">
+          <div className="absolute left-3 top-3 flex items-center gap-2">
+            <span className="rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-900 backdrop-blur">
               {tour.category}
             </span>
 
             {tour.featured ? (
-              <span className="rounded-full bg-[#0489d1] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-white">
+              <span className="rounded-full bg-[#0489d1] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white">
                 Featured
               </span>
             ) : null}
           </div>
 
           {tour.rating > 0 ? (
-            <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-black/35 px-3 py-1.5 text-white backdrop-blur">
-              <Star className="h-4 w-4 fill-current" />
-              <span className="text-sm font-semibold">
-                {tour.rating.toFixed(1)}
-              </span>
+            <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-black/35 px-2.5 py-1.5 text-white backdrop-blur">
+              <Star className="h-3.5 w-3.5 fill-current" />
+              <span className="text-xs font-semibold">{tour.rating.toFixed(1)}</span>
             </div>
           ) : null}
 
-          <div className="absolute inset-x-0 bottom-0 p-4">
+          <div className="absolute inset-x-0 bottom-0 p-3">
             <div className="max-w-full">
-              <h3 className="line-clamp-2 text-lg font-semibold leading-tight text-white md:text-xl">
-                {tour.title}
-              </h3>
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="line-clamp-1 min-w-0 flex-1 text-sm font-semibold leading-tight text-white sm:text-base">
+                  {tour.title}
+                </h3>
 
-              <div className="mt-2 flex items-center gap-1.5 text-sm text-white/85">
-                <MapPin className="h-4 w-4 shrink-0" />
-                <span className="line-clamp-1">{tour.destinationName}</span>
+                <div className="shrink-0 text-right">
+                  <p className="text-base font-bold leading-none text-white sm:text-lg">
+                    {formatPrice(tour.priceFrom)}
+                  </p>
+                </div>
               </div>
 
-              <div className="mt-3 flex items-end justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <MetaPill icon={<Clock3 className="h-3.5 w-3.5" />}>
-                    {tour.durationDays}D / {tour.durationNights}N
+              <div className="mt-1.5 flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-1 text-xs text-white/85">
+                  <MapPin className="h-3.5 w-3.5 shrink-0" />
+                  <span className="line-clamp-1">{tour.destinationName}</span>
+                </div>
+
+                <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+                  <MetaPill icon={<Clock3 className="h-3 w-3" />}>
+                    {tour.durationDays}D
                   </MetaPill>
 
                   {tour.maxGuests ? (
-                    <MetaPill icon={<Users className="h-3.5 w-3.5" />}>
-                      Max {tour.maxGuests}
+                    <MetaPill icon={<Users className="h-3 w-3" />}>
+                      {tour.maxGuests}
                     </MetaPill>
                   ) : null}
-                </div>
-
-                <div className="shrink-0 text-right">
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-white/60">
-                    From
-                  </p>
-                  <p className="text-xl font-bold text-white">
-                    {formatPrice(tour.priceFrom)}
-                  </p>
                 </div>
               </div>
             </div>
@@ -207,11 +206,11 @@ function RecommendedSkeleton() {
           <div className="mx-auto mt-4 h-5 w-[32rem] max-w-full animate-pulse rounded-lg bg-zinc-100" />
         </div>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
-              className="aspect-[3/4] animate-pulse rounded-[28px] bg-zinc-100"
+              className="aspect-[3/4] animate-pulse rounded-[24px] bg-zinc-100"
             />
           ))}
         </div>
@@ -228,7 +227,12 @@ export default function Recommended() {
   const [api, setApi] = useState<CarouselApi>();
   const [canScrollPrev, setCanScrollPrev] = useState(false);
   const [canScrollNext, setCanScrollNext] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [scrollSnaps, setScrollSnaps] = useState<number[]>([]);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
+  const autoplayRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -307,6 +311,8 @@ export default function Recommended() {
     const updateNavState = () => {
       setCanScrollPrev(api.canScrollPrev());
       setCanScrollNext(api.canScrollNext());
+      setCurrentIndex(api.selectedScrollSnap());
+      setScrollSnaps(api.scrollSnapList());
     };
 
     api.on("select", updateNavState);
@@ -318,6 +324,31 @@ export default function Recommended() {
       api.off("reInit", updateNavState);
     };
   }, [api]);
+
+  useEffect(() => {
+    if (!api || isHovered || isPaused || tours.length <= 2) {
+      if (autoplayRef.current) {
+        clearInterval(autoplayRef.current);
+        autoplayRef.current = null;
+      }
+      return;
+    }
+
+    autoplayRef.current = setInterval(() => {
+      if (api.canScrollNext()) {
+        api.scrollNext();
+      } else {
+        api.scrollTo(0);
+      }
+    }, AUTOPLAY_INTERVAL);
+
+    return () => {
+      if (autoplayRef.current) {
+        clearInterval(autoplayRef.current);
+        autoplayRef.current = null;
+      }
+    };
+  }, [api, isHovered, isPaused, tours.length]);
 
   const subtitle = useMemo(() => {
     if (isFallback) {
@@ -380,7 +411,11 @@ export default function Recommended() {
           </div>
         ) : (
           <>
-            <div className="relative">
+            <div
+              className="relative"
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+            >
               <button
                 onClick={() => api?.scrollPrev()}
                 disabled={!canScrollPrev}
@@ -413,21 +448,48 @@ export default function Recommended() {
                 setApi={setApi}
                 opts={{
                   align: "start",
-                  loop: tours.length > 4,
+                  loop: tours.length > 2,
                 }}
                 className="w-full"
               >
-                <CarouselContent className="-ml-4">
+                <CarouselContent className="-ml-3 sm:-ml-4">
                   {tours.map((tour) => (
                     <CarouselItem
                       key={tour.id}
-                      className="pl-4 sm:basis-1/2 xl:basis-1/4"
+                      className="pl-3 basis-1/2 sm:pl-4 lg:basis-1/3 xl:basis-1/4"
                     >
                       <TourCard tour={tour} />
                     </CarouselItem>
                   ))}
                 </CarouselContent>
               </Carousel>
+
+              {scrollSnaps.length > 1 ? (
+                <div className="mt-6 flex items-center justify-center gap-2">
+                  {scrollSnaps.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => api?.scrollTo(index)}
+                      className={cn(
+                        "rounded-full transition-all duration-300",
+                        currentIndex === index
+                          ? "h-2.5 w-8 bg-[#0489d1]"
+                          : "h-2.5 w-2.5 bg-zinc-300 hover:bg-zinc-400"
+                      )}
+                      aria-label={`Go to slide ${index + 1}`}
+                    />
+                  ))}
+                </div>
+              ) : null}
+
+              <div className="mt-4 flex justify-center">
+                <button
+                  onClick={() => setIsPaused((prev) => !prev)}
+                  className="text-xs text-zinc-500 transition hover:text-zinc-700"
+                >
+                  {isPaused ? "Play carousel" : "Pause carousel"}
+                </button>
+              </div>
             </div>
 
             <div className="mt-10 text-center">
