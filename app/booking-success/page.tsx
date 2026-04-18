@@ -1,9 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { CheckCircle2, CalendarDays, Users, MapPin, Clock, Copy, ChevronRight, AlertTriangle, Compass } from 'lucide-react'
+import {
+  CheckCircle2, CalendarDays, Users, MapPin, Clock, Copy, ChevronRight, AlertTriangle, Compass, Loader2,
+} from 'lucide-react'
 import { getLastBooking, type Booking } from '@/lib/booking'
 import { fetchBookingByCode } from '@/lib/api/bookings'
 import { getFreshAccessToken } from '@/lib/auth-utils'
@@ -14,102 +17,161 @@ function formatDate(dateStr: string) {
   return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 }
 
-export default function BookingSuccessPage() {
+function SuccessInner() {
   const { data: session } = useSession()
-  const [booking] = useState<Booking | null>(() => getLastBooking())
+  const params = useSearchParams()
+  const codeFromUrl = params.get('bookingCode')
+
+  const [local] = useState<Booking | null>(() => getLastBooking())
+  const bookingCode = codeFromUrl ?? local?.id ?? null
+
   const [copied, setCopied] = useState(false)
-  const [expired, setExpired] = useState(false)
-  const [checking, setChecking] = useState(true)
+  const [loading, setLoading] = useState(true)
+  const [backend, setBackend] = useState<Awaited<ReturnType<typeof fetchBookingByCode>>>(null)
 
   useEffect(() => {
-    async function verify() {
-      if (!booking?.id || !session) {
-        setChecking(false)
+    async function load() {
+      if (!bookingCode || !session) {
+        setLoading(false)
         return
       }
       const token = await getFreshAccessToken()
       if (!token) {
-        setChecking(false)
+        setLoading(false)
         return
       }
-      const b = await fetchBookingByCode(booking.id, token)
-      setExpired(Boolean(b?.bookingStatus === 'cancelled'))
-      setChecking(false)
+      const b = await fetchBookingByCode(bookingCode, token)
+      setBackend(b)
+      setLoading(false)
     }
-    verify()
-  }, [booking?.id, session])
+    void load()
+  }, [bookingCode, session])
+
+  const paid = backend?.paymentStatus === 'paid' && backend?.bookingStatus === 'confirmed'
+  const cancelled = backend?.bookingStatus === 'cancelled'
+  const pendingPay =
+    backend &&
+    backend.bookingStatus === 'pending' &&
+    ['unpaid', 'authorized', 'failed'].includes(backend.paymentStatus)
+
+  const booking = local
+  const title =
+    (backend?.listingSnapshot as { title?: string; name?: string } | undefined)?.title ??
+    (backend?.listingSnapshot as { name?: string } | undefined)?.name ??
+    booking?.tourTitle ??
+    'Your booking'
+  const loc =
+    (backend?.listingSnapshot as { destination?: string } | undefined)?.destination ??
+    booking?.tourLocation ??
+    ''
+  const dateStr =
+    backend?.startDate
+      ? String(backend.startDate).slice(0, 10)
+      : booking?.date ?? ''
 
   function copyId() {
-    if (!booking) return
-    navigator.clipboard.writeText(booking.id).then(() => {
+    if (!bookingCode) return
+    navigator.clipboard.writeText(bookingCode).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
   }
 
-  if (!booking) {
+  if (!bookingCode) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="text-center">
-          <p className="text-gray-500 text-sm mb-4">No booking found.</p>
+          <p className="text-gray-500 text-sm mb-4">No booking reference. Open this page from your confirmation link or My trips.</p>
           <Link href="/tours" className="text-brand-600 font-semibold text-sm hover:underline">Browse tours →</Link>
         </div>
       </div>
     )
   }
 
-  if (expired) {
+  if (loading && session) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-brand-500" />
+      </div>
+    )
+  }
+
+  if (cancelled) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="max-w-md text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 mb-4">
             <AlertTriangle className="w-8 h-8 text-amber-600" />
           </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">This booking has expired</h1>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">This booking is not active</h1>
           <p className="text-gray-600 text-sm mb-6">
-            Pending bookings expire after 15 minutes if not confirmed. Your seats have been released. You can book again for the same or a different tour.
+            {backend?.cancelReason ?? 'This booking may have expired or been cancelled.'}
           </p>
-          <Link
-            href={booking.tourSlug ? `/tours/${booking.tourSlug}` : '/tours'}
-            className="inline-flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors shadow-md"
-          >
+          <Link href="/tours" className="inline-flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm px-6 py-3 rounded-xl">
             <Compass className="w-4 h-4" />
-            {booking.tourSlug ? 'Book this tour again' : 'Browse tours'}
+            Browse tours
           </Link>
         </div>
       </div>
     )
   }
 
-  if (checking && session) {
+  if (pendingPay && backend?.id) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-sm text-gray-500">Verifying booking…</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="max-w-md text-center space-y-4">
+          <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto" />
+          <h1 className="text-xl font-bold text-gray-900">Payment required</h1>
+          <p className="text-gray-600 text-sm">
+            Your reservation is on hold. Complete payment to confirm.
+          </p>
+          <Link
+            href={`/checkout/pay?bookingId=${backend.id}`}
+            className="inline-block bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm px-6 py-3 rounded-xl"
+          >
+            Continue to payment
+          </Link>
+          <div>
+            <Link href="/account/trips" className="text-sm text-gray-600 underline">My trips</Link>
+          </div>
+        </div>
       </div>
     )
   }
+
+  if (!paid) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <p className="text-sm text-gray-600">Unable to load booking status.</p>
+      </div>
+    )
+  }
+
+  const subtotal = backend?.subtotal ?? booking?.subtotal ?? 0
+  const serviceFee = backend?.serviceFee ?? booking?.serviceFee ?? 0
+  const total = backend?.totalAmount ?? booking?.total ?? 0
+  const guests = backend?.guests ?? booking?.guests ?? 1
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-brand-50 to-gray-50 py-12 px-4">
       <div className="max-w-lg mx-auto">
 
-        {/* Success animation */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-brand-100 mb-4 animate-[ping_0.4s_ease-out_forwards]">
             <CheckCircle2 className="w-10 h-10 text-brand-500" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Booking Confirmed!</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">You&apos;re booked!</h1>
           <p className="text-gray-500 text-sm">
-            A confirmation has been sent to <strong className="text-gray-700">{booking.email}</strong>
+            Payment received. Confirmation details are shown below.
           </p>
         </div>
 
-        {/* Booking ID card */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6 mb-5">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Booking Reference</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Booking reference</p>
           <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
-            <span className="text-xl font-bold text-gray-900 tracking-wider">{booking.id}</span>
+            <span className="text-xl font-bold text-gray-900 tracking-wider">{bookingCode}</span>
             <button
+              type="button"
               onClick={copyId}
               className="flex items-center gap-1.5 text-xs text-brand-600 hover:text-brand-700 font-semibold transition-colors"
             >
@@ -117,69 +179,60 @@ export default function BookingSuccessPage() {
               {copied ? 'Copied!' : 'Copy'}
             </button>
           </div>
-          <p className="text-xs text-gray-400 mt-2">Keep this ID — you&apos;ll need it to manage your booking.</p>
         </div>
 
-        {/* Tour details card */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-md overflow-hidden mb-5">
           <div className="bg-gradient-to-r from-brand-500 to-brand-500 px-5 py-3">
-            <p className="text-white font-bold text-sm">{booking.tourTitle}</p>
+            <p className="text-white font-bold text-sm">{title}</p>
           </div>
           <div className="p-5 space-y-3">
-            <Detail icon={<MapPin className="w-4 h-4 text-brand-500" />} label="Location" value={booking.tourLocation} />
-            <Detail icon={<CalendarDays className="w-4 h-4 text-brand-500" />} label="Travel Date" value={formatDate(booking.date)} />
-            <Detail icon={<Users className="w-4 h-4 text-brand-500" />} label="Guests" value={`${booking.guests} guest${booking.guests !== 1 ? 's' : ''}`} />
-            <Detail icon={<Clock className="w-4 h-4 text-brand-500" />} label="Duration" value={booking.tourDuration} />
+            <Detail icon={<MapPin className="w-4 h-4 text-brand-500" />} label="Location" value={loc || '—'} />
+            <Detail icon={<CalendarDays className="w-4 h-4 text-brand-500" />} label="Date" value={formatDate(dateStr)} />
+            <Detail icon={<Users className="w-4 h-4 text-brand-500" />} label="Guests" value={`${guests} guest${guests !== 1 ? 's' : ''}`} />
+            <Detail icon={<Clock className="w-4 h-4 text-brand-500" />} label="Details" value={booking?.tourDuration ?? '—'} />
           </div>
         </div>
 
-        {/* Price summary */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-5 mb-5">
-          <p className="text-sm font-bold text-gray-900 mb-3">Payment Summary</p>
+          <p className="text-sm font-bold text-gray-900 mb-3">Payment summary</p>
           <div className="space-y-2 text-sm text-gray-600">
             <div className="flex justify-between">
-              <span>${booking.pricePerPerson} × {booking.guests} guest{booking.guests !== 1 ? 's' : ''}</span>
-              <span>${booking.subtotal.toLocaleString()}</span>
+              <span>Subtotal</span>
+              <span>${Number(subtotal).toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
               <span>Service fee</span>
-              <span>${booking.serviceFee}</span>
+              <span>${Number(serviceFee).toLocaleString()}</span>
             </div>
             <div className="flex justify-between font-bold text-gray-900 border-t border-gray-100 pt-2 mt-2">
-              <span>Total Paid</span>
-              <span className="text-base">${booking.total.toLocaleString()}</span>
+              <span>Total paid</span>
+              <span className="text-base">${Number(total).toLocaleString()}</span>
             </div>
           </div>
         </div>
 
-        {/* Traveler info */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-5 mb-8">
-          <p className="text-sm font-bold text-gray-900 mb-3">Traveler</p>
-          <p className="text-sm text-gray-700 font-medium">{booking.travelerName}</p>
-          <p className="text-xs text-gray-500">{booking.email} · {booking.phone}</p>
-          <p className="text-xs text-gray-500">{booking.country}</p>
-          {booking.specialRequests && (
-            <div className="mt-2 pt-2 border-t border-gray-50">
-              <p className="text-xs text-gray-500 italic">&ldquo;{booking.specialRequests}&rdquo;</p>
-            </div>
-          )}
-        </div>
+        {booking && (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-5 mb-8">
+            <p className="text-sm font-bold text-gray-900 mb-3">Traveler</p>
+            <p className="text-sm text-gray-700 font-medium">{booking.travelerName}</p>
+            <p className="text-xs text-gray-500">{booking.email} · {booking.phone}</p>
+          </div>
+        )}
 
-        {/* CTAs */}
         <div className="space-y-3">
           <Link href="/tours"
             className="w-full py-3.5 bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm rounded-2xl transition-colors flex items-center justify-center gap-2">
-            Browse More Tours
+            Browse more tours
             <ChevronRight className="w-4 h-4" />
           </Link>
           <Link href="/"
             className="w-full py-3.5 border border-gray-200 bg-white text-gray-700 font-semibold text-sm rounded-2xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
-            Return to Home
+            Return to home
           </Link>
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-6">
-          Need help? Email us at{' '}
+          Need help?{' '}
           <a href="mailto:support@wemongolia.com" className="underline hover:text-gray-600">
             support@wemongolia.com
           </a>
@@ -187,6 +240,18 @@ export default function BookingSuccessPage() {
 
       </div>
     </div>
+  )
+}
+
+export default function BookingSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-brand-500" />
+      </div>
+    }>
+      <SuccessInner />
+    </Suspense>
   )
 }
 

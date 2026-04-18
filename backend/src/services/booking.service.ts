@@ -58,7 +58,14 @@ export async function expireStalePendingBookings(maxAgeMinutes: number = 15): Pr
     where: {
       bookingStatus: 'pending',
       paymentStatus: { in: ['unpaid', 'authorized'] },
-      createdAt:     { lt: cutoff },
+      AND: [
+        {
+          OR: [
+            { holdExpiresAt: { lt: new Date() } },
+            { AND: [{ holdExpiresAt: null }, { createdAt: { lt: cutoff } }] },
+          ],
+        },
+      ],
     },
     select: { id: true, bookingCode: true, listingType: true, tourDepartureId: true, roomTypeId: true, startDate: true, endDate: true, guests: true },
   })
@@ -67,12 +74,24 @@ export async function expireStalePendingBookings(maxAgeMinutes: number = 15): Pr
   for (const b of stale) {
     try {
       await prisma.$transaction(async (tx) => {
+        const pay = await tx.payment.findUnique({ where: { bookingId: b.id } })
+        if (pay) {
+          await tx.payment.update({
+            where: { id: pay.id },
+            data:  {
+              status:         'failed',
+              failedAt:       new Date(),
+              failureMessage: 'Hold expired before payment',
+            },
+          })
+        }
         await tx.booking.update({
           where: { id: b.id },
           data:  {
             bookingStatus: 'cancelled',
             cancelledAt:   new Date(),
             cancelReason:  'Expired: booking was not confirmed within the time limit.',
+            paymentStatus: 'failed',
           },
         })
         if (b.listingType === 'tour' && b.tourDepartureId && b.guests > 0) {
@@ -347,6 +366,10 @@ export async function createBooking(input: CreateBookingInput) {
 
   const pricing = calcPricing(pricePerUnit, units)
 
+  const createdAt = new Date()
+  const holdExpiresAt = new Date(createdAt.getTime() + env.PENDING_EXPIRY_MINUTES * 60 * 1000)
+  const maxHoldUntil = new Date(createdAt.getTime() + env.MAX_HOLD_MINUTES_FROM_BOOKING * 60 * 1000)
+
   // ── Transactional booking creation ──────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const booking = await prisma.$transaction(async (tx: any) => {
@@ -380,6 +403,8 @@ export async function createBooking(input: CreateBookingInput) {
         currency,
         bookingStatus:  'pending',
         paymentStatus:  'unpaid',
+        holdExpiresAt,
+        maxHoldUntil,
         travelerFullName: input.travelerFullName,
         travelerEmail:    input.travelerEmail,
         travelerPhone:    input.travelerPhone,
@@ -536,13 +561,33 @@ export async function cancelBooking(bookingCode: string, userId: string, reason?
   if (['cancelled', 'completed'].includes(booking.bookingStatus))
     throw new AppError(`Booking is already ${booking.bookingStatus}.`, 400)
 
+  if (booking.paymentStatus === 'paid' && booking.bookingStatus === 'confirmed') {
+    throw new AppError(
+      'Paid bookings cannot be cancelled here. Request a refund from your trip details.',
+      400,
+    )
+  }
+
   const updated = await prisma.$transaction(async (tx) => {
+    const pay = await tx.payment.findUnique({ where: { bookingId: booking.id } })
+    if (pay && (pay.status === 'authorized' || pay.status === 'unpaid')) {
+      await tx.payment.update({
+        where: { id: pay.id },
+        data:  {
+          status:         'failed',
+          failedAt:       new Date(),
+          failureMessage: 'Booking cancelled by traveler before payment',
+        },
+      })
+    }
+
     const b = await tx.booking.update({
       where: { bookingCode },
       data: {
         bookingStatus: 'cancelled',
         cancelledAt:   new Date(),
         cancelReason:  reason,
+        paymentStatus: 'failed',
       },
     })
 

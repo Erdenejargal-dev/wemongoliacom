@@ -92,6 +92,13 @@ enum PaymentStatus {
   failed
 }
 
+enum PaymentAttemptStatus {
+  initiated
+  redirected
+  failed
+  superseded
+}
+
 enum PayoutStatus {
   pending
   scheduled
@@ -173,6 +180,7 @@ model User {
   wishlistItems       WishlistItem[]
   notifications       Notification[]
   passwordResetTokens PasswordResetToken[]
+  payments            Payment[]
 
   @@index([email])
   @@map("users")
@@ -712,6 +720,10 @@ model Booking {
 
   listingSnapshot Json
 
+  holdExpiresAt DateTime?
+  maxHoldUntil  DateTime?
+  lastPaymentAttemptAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -727,12 +739,14 @@ model Booking {
   payment      Payment?
   review       Review?
   conversation Conversation?
+  webhookEvents WebhookEvent[]
 
   @@index([userId])
   @@index([providerId])
   @@index([listingType, listingId])
   @@index([bookingStatus])
   @@index([startDate])
+  @@index([holdExpiresAt])
   @@map("bookings")
 }
 
@@ -745,7 +759,7 @@ model Payment {
   bookingId        String        @unique
   providerId       String
   userId           String
-  paymentGateway   String        @default("mock")
+  paymentGateway   String        @default("bonum")
   paymentReference String?
   amount           Float
   currency         String        @default("USD")
@@ -756,11 +770,74 @@ model Payment {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
+  providerOrderId    String? @unique
+  bonumTransactionId String? @unique
+  sessionExpiresAt   DateTime?
+  followUpUrl        String?
+  idempotencyKey     String?   @unique
+  metadata           Json?
+  failedAt           DateTime?
+  failureCode        String?
+  failureMessage     String?
+  refundQueuedAt     DateTime?
+
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  attempts PaymentAttempt[]
+  webhookEvents WebhookEvent[]
 
   @@index([bookingId])
   @@index([userId])
+  @@index([providerOrderId])
   @@map("payments")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: PaymentAttempt
+// ─────────────────────────────────────────────
+
+model PaymentAttempt {
+  id              String               @id @default(cuid())
+  paymentId       String
+  attemptNumber   Int
+  status          PaymentAttemptStatus   @default(initiated)
+  idempotencyKey  String               @unique
+  providerOrderId String?
+  followUpUrl     String?
+  qrPayload       String?
+  deeplinkUrl     String?
+  expiresAt       DateTime?
+  createdAt       DateTime             @default(now())
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@map("payment_attempts")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: WebhookEvent
+// ─────────────────────────────────────────────
+
+model WebhookEvent {
+  id              String   @id @default(cuid())
+  provider        String   @default("bonum")
+  eventId         String   @unique
+  bookingId       String?
+  paymentId       String?
+  rawPayload      Json
+  signatureValid  Boolean  @default(false)
+  processed       Boolean  @default(false)
+  processedAt     DateTime?
+  error           String?
+  createdAt       DateTime @default(now())
+
+  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([processed, createdAt])
+  @@map("webhook_events")
 }
 
 // ─────────────────────────────────────────────

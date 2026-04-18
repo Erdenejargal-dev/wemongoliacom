@@ -7,6 +7,7 @@ import morgan from 'morgan'
 import rateLimit from 'express-rate-limit'
 import { env } from './config/env'
 import router from './routes/index'
+import bonumWebhookRoutes from './routes/bonum.webhook.routes'
 import { errorHandler } from './middleware/error'
 
 const app = express()
@@ -34,6 +35,9 @@ app.use(`${env.API_PREFIX}/auth`, rateLimit({
   max:      20,
   message: { success: false, error: 'Too many auth attempts. Please try again later.' },
 }))
+
+// ── Bonum webhook (raw body for signature verification) — must run before express.json ──
+app.use(`${env.API_PREFIX}/webhooks`, bonumWebhookRoutes)
 
 // ── Body parsing ──────────────────────────────────────────────────────────
 app.use(express.json({ limit: '1mb' }))

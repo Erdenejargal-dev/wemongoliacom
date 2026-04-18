@@ -178,14 +178,11 @@ export async function listProviderBookings(ownerUserId: string, query: ProviderB
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function confirmBooking(bookingCode: string, ownerUserId: string) {
-  const booking = await getProviderBooking(bookingCode, ownerUserId)
-  if (booking.bookingStatus !== 'pending')
-    throw new AppError(`Cannot confirm a booking with status "${booking.bookingStatus}".`, 400)
-
-  return prisma.booking.update({
-    where: { bookingCode },
-    data:  { bookingStatus: 'confirmed' },
-  })
+  await getProviderBooking(bookingCode, ownerUserId)
+  throw new AppError(
+    'Booking confirmation is payment-driven in v1. You cannot manually confirm bookings.',
+    403,
+  )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -211,6 +208,15 @@ export async function cancelBookingByProvider(bookingCode: string, ownerUserId: 
   const booking = await getProviderBooking(bookingCode, ownerUserId)
   if (['cancelled', 'completed'].includes(booking.bookingStatus))
     throw new AppError(`Booking is already ${booking.bookingStatus}.`, 400)
+
+  if (booking.paymentStatus === 'paid') {
+    const { refundBookingAsProvider } = await import('./payment.service')
+    await refundBookingAsProvider(ownerUserId, bookingCode, reason ?? 'Cancelled by provider')
+    void import('./email.service')
+      .then(({ notifyBookingCancelledByProvider }) => notifyBookingCancelledByProvider(bookingCode))
+      .catch((err) => console.error('[email] notifyBookingCancelledByProvider schedule failed:', err))
+    return prisma.booking.findUniqueOrThrow({ where: { bookingCode } })
+  }
 
   return prisma.$transaction(async (tx) => {
     const b = await tx.booking.update({

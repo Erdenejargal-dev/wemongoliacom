@@ -3,8 +3,6 @@ import { z } from 'zod'
 import * as paymentService from '../services/payment.service'
 import { ok, created } from '../utils/response'
 
-// ─── Schemas ──────────────────────────────────────────────────────────────
-
 export const refundSchema = z.object({
   reason: z.string().min(1).max(500),
   amount: z.number().positive().optional(),
@@ -14,8 +12,6 @@ export const paginationSchema = z.object({
   page:  z.coerce.number().int().positive().optional(),
   limit: z.coerce.number().int().positive().max(100).optional(),
 })
-
-// ─── Handlers ─────────────────────────────────────────────────────────────
 
 export async function initiatePayment(req: Request, res: Response, next: NextFunction) {
   try {
@@ -41,6 +37,30 @@ export async function confirmPayment(req: Request, res: Response, next: NextFunc
   }
 }
 
+export async function getPaymentStatus(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await paymentService.getPaymentStatus(
+      req.user!.userId,
+      String(req.params.paymentId),
+    )
+    return ok(res, result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function retryPayment(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await paymentService.retryPayment(
+      req.user!.userId,
+      String(req.params.paymentId),
+    )
+    return created(res, result)
+  } catch (err) {
+    next(err)
+  }
+}
+
 export async function getPayment(req: Request, res: Response, next: NextFunction) {
   try {
     const result = await paymentService.getPayment(
@@ -56,7 +76,7 @@ export async function getPayment(req: Request, res: Response, next: NextFunction
 
 export async function listMyPayments(req: Request, res: Response, next: NextFunction) {
   try {
-    const { page, limit } = req.query as any
+    const { page, limit } = req.query as { page?: string; limit?: string }
     const result = await paymentService.listMyPayments(
       req.user!.userId,
       page  ? Number(page)  : 1,

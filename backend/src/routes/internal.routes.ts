@@ -51,9 +51,40 @@ router.post('/jobs/expire-stale-bookings', validateCronSecret, async (_req, res)
 })
 
 /**
- * POST /internal/dev/test-email
- * Sends a single test message. Remove or tighten when no longer needed.
- * Body: { "to": "optional@example.com" } — defaults to SMTP_USER inbox.
+ * POST /internal/dev/bonum-simulate-paid/:paymentId
+ * Synthetic Bonum PAYMENT/SUCCESS webhook for local testing (requires CRON_SECRET).
+ */
+router.post('/dev/bonum-simulate-paid/:paymentId', validateCronSecret, async (req, res) => {
+  try {
+    const { ingestBonumWebhook } = await import('../services/bonumWebhook.service')
+    const { prisma } = await import('../lib/prisma')
+    const payment = await prisma.payment.findUnique({ where: { id: String(req.params.paymentId) } })
+    if (!payment) {
+      res.status(404).json({ success: false, error: 'Payment not found.' })
+      return
+    }
+    const payload = {
+      type:   'PAYMENT',
+      status: 'SUCCESS',
+      body: {
+        transactionId: payment.id,
+        invoiceId:     payment.providerOrderId ?? `dev-inv-${payment.id}`,
+        status:        'PAID',
+        completedAt:   new Date().toISOString(),
+        paymentVendor: 'DEV_SIMULATE',
+      },
+    }
+    const raw = Buffer.from(JSON.stringify(payload))
+    const result = await ingestBonumWebhook(raw, undefined)
+    res.status(result.status).json({ success: true, webhook: result.body })
+  } catch (err) {
+    console.error('[dev/bonum-simulate-paid]', err)
+    res.status(500).json({ success: false, error: 'Simulate failed.' })
+  }
+})
+
+/**
+ * POST /internal/dev/test-email — optional SMTP test.
  */
 router.post('/dev/test-email', validateCronSecret, async (req, res) => {
   try {

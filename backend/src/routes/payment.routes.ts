@@ -5,6 +5,8 @@ import {
   initiatePayment,
   confirmPayment,
   getPayment,
+  getPaymentStatus,
+  retryPayment,
   listMyPayments,
   requestRefund,
   refundSchema,
@@ -13,22 +15,19 @@ import {
 
 const router = Router()
 
-// All payment routes require auth
 router.use(authenticate)
 
-// Traveler payment history
 router.get('/my', validate(paginationSchema, 'query'), listMyPayments)
 
-// Initiate payment for a booking
 router.post('/initiate/:bookingId', initiatePayment)
 
-// Confirm (mock capture) a payment
+router.get('/:paymentId/status', getPaymentStatus)
+router.post('/:paymentId/retry', retryPayment)
+
 router.post('/:paymentId/confirm', confirmPayment)
 
-// View a payment
-router.get('/:paymentId', getPayment)
-
-// Request refund
 router.post('/:paymentId/refund', validate(refundSchema), requestRefund)
+
+router.get('/:paymentId', getPayment)
 
 export default router

@@ -191,7 +191,7 @@ function StayCheckoutContent() {
         createdAt:       new Date().toISOString(),
       }
       saveBooking(booking)
-      router.push('/booking-success')
+      router.push(`/checkout/pay?bookingId=${encodeURIComponent(backendBooking.id)}`)
     } catch (err: unknown) {
       if (err instanceof ApiError && err.status === 401) {
         setApiError('Session expired. Please log in again.')

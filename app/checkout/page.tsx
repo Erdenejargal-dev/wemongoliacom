@@ -155,7 +155,7 @@ function CheckoutContent() {
           createdAt:      new Date().toISOString(),
         }
         saveBooking(booking)
-        router.push('/booking-success')
+        router.push(`/checkout/pay?bookingId=${encodeURIComponent(backendBooking.id)}`)
         return
       } catch (err: unknown) {
         if (err instanceof ApiError && err.status === 401) {
