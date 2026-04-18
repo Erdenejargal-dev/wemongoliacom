@@ -13,6 +13,7 @@ import {
 } from '../integrations/bonum/bonum.client'
 import {
   isBonumWebhookUrl,
+  parseBonumQrDeeplink,
   resolveBonumBrowserReturnUrl,
   type BonumInvoiceCreateInput,
   type BonumQrCreateResult,
@@ -47,16 +48,8 @@ function readQrFromMetadata(
   const deeplinks: BonumQrDeeplink[] = []
   if (Array.isArray(m.deeplinks)) {
     for (const d of m.deeplinks) {
-      if (d && typeof d === 'object' && d !== null) {
-        const o = d as Record<string, unknown>
-        const url = typeof o.url === 'string' ? o.url.trim() : ''
-        if (url) {
-          deeplinks.push({
-            url,
-            label: typeof o.label === 'string' ? o.label : undefined,
-          })
-        }
-      }
+      const parsed = parseBonumQrDeeplink(d)
+      if (parsed) deeplinks.push(parsed)
     }
   }
   return { qrCode, qrImage, deeplinks }
@@ -795,7 +788,7 @@ export async function initiatePayment(userId: string, bookingId: string) {
       checkoutMode: 'qr' as const,
       qrCode:       qrResult.qrCode,
       qrImage:      qrResult.qrImage,
-      deeplinks:    qrResult.links.map((l) => ({ url: l.url, label: l.label })),
+      deeplinks:    qrResult.links,
       rawQr:        qrResult.raw,
     }
     await prisma.$transaction([

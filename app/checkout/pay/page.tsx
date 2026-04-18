@@ -231,6 +231,17 @@ function PayContent() {
     return payload.deeplinks.filter((d) => getBonumDeeplinkHref(d))
   }, [payload?.deeplinks])
 
+  const firstBankDeeplinkSample = bankOptions[0]
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!firstBankDeeplinkSample) return
+    console.log('[checkout pay] deeplink debug (first usable link)', {
+      raw:             firstBankDeeplinkSample,
+      resolvedLogoUrl: getBonumBankLogo(firstBankDeeplinkSample),
+    })
+  }, [firstBankDeeplinkSample])
+
   const { initial: preferredBankApps, more: moreBankApps } = useMemo(
     () => partitionPreferredBankDeeplinks(bankOptions),
     [bankOptions],
@@ -721,6 +732,15 @@ function PayContent() {
                         appStoreId={getBonumAppStoreId(d)}
                         androidPackageName={getBonumAndroidPackage(d)}
                         accent={ACCENT}
+                        onLogoError={
+                          firstBankDeeplinkSample &&
+                          getBonumDeeplinkHref(d) === getBonumDeeplinkHref(firstBankDeeplinkSample)
+                            ? () =>
+                                console.log(
+                                  '[checkout pay] deeplink debug (first usable link): logo fallback triggered (image onError)',
+                                )
+                            : undefined
+                        }
                       />
                     ))}
                     {hasMoreBankApps ? (

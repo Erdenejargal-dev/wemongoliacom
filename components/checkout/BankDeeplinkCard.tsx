@@ -14,6 +14,8 @@ export interface BankDeeplinkCardProps {
   appStoreId?: string
   androidPackageName?: string
   accent: string
+  /** Fires when the logo image fails to load (initials fallback shown). */
+  onLogoError?: () => void
 }
 
 function initialsFromName(name: string): string {
@@ -38,6 +40,7 @@ export function BankDeeplinkCard({
   appStoreId,
   androidPackageName,
   accent,
+  onLogoError,
 }: BankDeeplinkCardProps) {
   const [logoFailed, setLogoFailed] = useState(false)
   const showLogo = Boolean(logoUrl?.trim()) && !logoFailed
@@ -63,7 +66,10 @@ export function BankDeeplinkCard({
             className="h-full w-full object-contain p-1"
             loading="lazy"
             referrerPolicy="no-referrer"
-            onError={() => setLogoFailed(true)}
+            onError={() => {
+              setLogoFailed(true)
+              onLogoError?.()
+            }}
           />
         ) : (
           <div

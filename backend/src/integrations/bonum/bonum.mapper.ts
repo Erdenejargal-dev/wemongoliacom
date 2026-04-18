@@ -221,7 +221,13 @@ export function mapBonumQrCreateBody(input: BonumQrCreateInput): Record<string, 
 /** Bank deeplink entry from `data.links[]` (Bonum guide). */
 export interface BonumQrDeeplink {
   url: string
+  /** Legacy short label; Bonum may send `name` instead */
   label?: string
+  name?: string
+  description?: string
+  logo?: string | null
+  appStoreId?: string
+  androidPackageName?: string
 }
 
 export interface BonumQrCreateResult {
@@ -233,7 +239,20 @@ export interface BonumQrCreateResult {
   raw: Record<string, unknown>
 }
 
-function mapBonumQrLinkItem(item: unknown): BonumQrDeeplink | null {
+function optionalTrimmedString(v: unknown): string | undefined {
+  if (typeof v !== 'string') return undefined
+  const t = v.trim()
+  return t || undefined
+}
+
+function mapBonumQrLogoField(o: Record<string, unknown>): string | null | undefined {
+  if (o.logo === null) return null
+  const s = optionalTrimmedString(o.logo)
+  return s === undefined ? undefined : s
+}
+
+/** Normalize one `links[]` item from Bonum QR create, or a stored metadata deeplink object. */
+export function parseBonumQrDeeplink(item: unknown): BonumQrDeeplink | null {
   if (typeof item === 'string' && item.trim()) return { url: item.trim() }
   if (!item || typeof item !== 'object') return null
   const o = item as Record<string, unknown>
@@ -241,7 +260,24 @@ function mapBonumQrLinkItem(item: unknown): BonumQrDeeplink | null {
   if (!url.trim()) return null
   const labelRaw = o.name ?? o.bankName ?? o.provider ?? o.title ?? o.label
   const label = typeof labelRaw === 'string' ? labelRaw.trim() : undefined
-  return { url: url.trim(), ...(label ? { label } : {}) }
+  const name = optionalTrimmedString(o.name) ?? label
+  const description = optionalTrimmedString(o.description)
+  const logo = mapBonumQrLogoField(o)
+  const appStoreId = optionalTrimmedString(o.appStoreId)
+  const androidPackageName = optionalTrimmedString(o.androidPackageName)
+
+  const out: BonumQrDeeplink = { url: url.trim() }
+  if (label) out.label = label
+  if (name) out.name = name
+  if (description) out.description = description
+  if (logo !== undefined) out.logo = logo
+  if (appStoreId) out.appStoreId = appStoreId
+  if (androidPackageName) out.androidPackageName = androidPackageName
+  return out
+}
+
+function mapBonumQrLinkItem(item: unknown): BonumQrDeeplink | null {
+  return parseBonumQrDeeplink(item)
 }
 
 export function mapBonumQrCreateResponse(json: unknown): BonumQrCreateResult {
