@@ -658,7 +658,7 @@ function PayContent() {
               </details>
             </aside>
 
-            {/* Right: payment methods + QR + status — mobile order first */}
+            {/* Right: QR first, then bank apps, then status */}
             <section className="order-1 space-y-6 lg:order-2 lg:col-span-7">
               <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:hidden">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm">
@@ -673,15 +673,40 @@ function PayContent() {
                 )}
               </div>
 
-              {/* Bank apps: mobile first (primary on small screens); desktop below QR */}
-              <div className="order-1 flex flex-col gap-3 lg:order-2">
+              {/* QR */}
+              <div
+                className={`${cardClass} p-6 sm:p-8`}
+                style={{ boxShadow: `0 12px 48px -12px ${ACCENT}33` }}
+              >
+                <p className="text-center text-sm font-semibold text-slate-900 lg:text-base">Scan QR to pay</p>
+                <p className="mx-auto mt-1 max-w-sm text-center text-xs leading-relaxed text-slate-600 sm:text-sm">
+                  Open your banking app and scan — amount and reference are included in the code.
+                </p>
+                <div className="mt-6 flex justify-center">
+                  {qrImageDataUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={qrImageDataUrl}
+                      alt=""
+                      className="h-64 w-64 max-w-[85vw] rounded-2xl border border-white bg-white object-contain p-4 shadow-inner ring-1 ring-slate-200/80 sm:h-72 sm:w-72 lg:h-80 lg:w-80"
+                    />
+                  ) : (
+                    <div className="flex h-64 w-64 max-w-[85vw] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-xs leading-relaxed text-slate-500 sm:h-72 sm:w-72">
+                      QR image unavailable — use a bank app below if available.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Bank apps */}
+              <div className="flex flex-col gap-3">
                 <div>
                   <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
                     <Smartphone className="h-4 w-4 shrink-0" style={{ color: ACCENT }} />
                     Pay with your bank app
                   </div>
                   <p className="mt-1 text-sm leading-relaxed text-slate-600 lg:max-w-md">
-                    Choose your bank — we’ll open the app with this payment ready. Fastest on mobile.
+                    Or choose your bank — we’ll open the app with this payment ready.
                   </p>
                 </div>
                 {bankOptions.length > 0 ? (
@@ -726,42 +751,13 @@ function PayContent() {
                   </div>
                 ) : (
                   <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/90 px-4 py-4 text-sm leading-relaxed text-slate-600">
-                    No bank shortcuts for this session. Use the QR code — it works with any supported banking app.
+                    No bank shortcuts for this session. Use the QR code above — it works with any supported banking app.
                   </p>
                 )}
               </div>
 
-              {/* QR: mobile second (alternate); desktop primary in column */}
-              <div
-                className={`${cardClass} order-2 p-6 sm:p-8 lg:order-1`}
-                style={{ boxShadow: `0 12px 48px -12px ${ACCENT}33` }}
-              >
-                <p className="lg:hidden mb-1 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                  Alternate method
-                </p>
-                <p className="text-center text-sm font-semibold text-slate-900 lg:text-base">Scan QR to pay</p>
-                <p className="mx-auto mt-1 max-w-sm text-center text-xs leading-relaxed text-slate-600 sm:text-sm">
-                  <span className="lg:hidden">Prefer scanning? </span>
-                  Open your banking app and scan — amount and reference are included in the code.
-                </p>
-                <div className="mt-6 flex justify-center">
-                  {qrImageDataUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={qrImageDataUrl}
-                      alt=""
-                      className="h-64 w-64 max-w-[85vw] rounded-2xl border border-white bg-white object-contain p-4 shadow-inner ring-1 ring-slate-200/80 sm:h-72 sm:w-72 lg:h-80 lg:w-80"
-                    />
-                  ) : (
-                    <div className="flex h-64 w-64 max-w-[85vw] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-xs leading-relaxed text-slate-500 sm:h-72 sm:w-72">
-                      QR image unavailable — use the bank buttons above if shown.
-                    </div>
-                  )}
-                </div>
-              </div>
-
               {/* Payment status */}
-              <div className={`${cardClass} order-3 overflow-hidden`}>
+              <div className={`${cardClass} overflow-hidden`}>
                 <div
                   className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-3 sm:px-6"
                   style={{ background: `linear-gradient(90deg, ${ACCENT}12, transparent)` }}
