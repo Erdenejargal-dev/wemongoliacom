@@ -18,6 +18,14 @@ import {
 const PATH_INVOICES = '/bonum-gateway/ecommerce/invoices'
 const PATH_PAYMENT_PROVIDERS = '/bonum-gateway/ecommerce/invoices/payment-providers'
 
+/** Bonum returns HTTP 409 when `transactionId` was already registered — caller may reuse stored invoice. */
+export class BonumInvoiceDuplicateError extends Error {
+  override readonly name = 'BonumInvoiceDuplicateError'
+  constructor(readonly responseBody: unknown) {
+    super('Bonum duplicate transaction (HTTP 409)')
+  }
+}
+
 function useStub(): boolean {
   return env.BONUM_USE_STUB === 'true' || (!env.BONUM_API_BASE_URL?.trim() && env.NODE_ENV !== 'production')
 }
@@ -89,6 +97,9 @@ export async function createBonumInvoice(
   if (!res.ok) {
     console.error('BONUM ERROR RESPONSE:', json)
     console.error('BONUM REQUEST BODY (same attempt):', JSON.stringify(body, null, 2))
+    if (res.status === 409) {
+      throw new BonumInvoiceDuplicateError(json)
+    }
     const msg = typeof json === 'object' && json !== null && 'message' in json
       ? String((json as { message?: string }).message)
       : text

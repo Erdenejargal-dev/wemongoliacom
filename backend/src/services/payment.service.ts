@@ -1,11 +1,63 @@
-import { Prisma } from '@prisma/client'
+import { Prisma, type Payment } from '@prisma/client'
 import crypto from 'crypto'
 import { prisma } from '../lib/prisma'
 import { AppError } from '../middleware/error'
 import { env } from '../config/env'
-import { createBonumInvoice, refundBonumPayment } from '../integrations/bonum/bonum.client'
+import {
+  BonumInvoiceDuplicateError,
+  createBonumInvoice,
+  refundBonumPayment,
+} from '../integrations/bonum/bonum.client'
 import type { BonumInvoiceCreateInput } from '../integrations/bonum/bonum.mapper'
 import { releaseRoomAvailabilityForCancel } from './booking.service'
+
+function canReuseExistingBonumInvoice(
+  payment: Pick<Payment, 'status' | 'providerOrderId' | 'followUpUrl' | 'sessionExpiresAt'>,
+  booking: { holdExpiresAt: Date | null },
+  now: Date,
+): boolean {
+  if (payment.status !== 'authorized') return false
+  const pid = payment.providerOrderId?.trim()
+  const url = payment.followUpUrl?.trim()
+  if (!pid || !url) return false
+  if (payment.sessionExpiresAt && payment.sessionExpiresAt <= now) return false
+  if (booking.holdExpiresAt && booking.holdExpiresAt <= now) return false
+  return true
+}
+
+function logBonumInvoiceReused(params: {
+  paymentId: string
+  bookingCode: string
+  providerOrderId: string
+}): void {
+  console.log('BONUM INVOICE REUSED', {
+    paymentId:       params.paymentId,
+    bookingCode:     params.bookingCode,
+    providerOrderId: params.providerOrderId,
+  })
+}
+
+function buildInitiatePaymentResponse(params: {
+  payment: { id: string; amount: number; currency: string }
+  booking: { id: string; bookingCode: string }
+  followUpUrl: string
+  sessionExpiresAt: Date | null
+  newHold: Date
+}) {
+  return {
+    paymentId:     params.payment.id,
+    bookingId:     params.booking.id,
+    bookingCode:   params.booking.bookingCode,
+    status:        'authorized' as const,
+    amount:        params.payment.amount,
+    currency:      params.payment.currency,
+    followUpUrl:   params.followUpUrl,
+    expiresAt:     params.sessionExpiresAt?.toISOString() ?? params.newHold.toISOString(),
+    qrCodeData:    null,
+    deeplinkUrl:   null,
+    holdExpiresAt: params.newHold.toISOString(),
+  }
+}
 
 const retryBuckets = new Map<string, number[]>()
 
@@ -79,6 +131,29 @@ export async function initiatePayment(userId: string, bookingId: string) {
       },
     })
   } else {
+    if (canReuseExistingBonumInvoice(payment, booking, now)) {
+      await prisma.booking.update({
+        where: { id: booking.id },
+        data:  {
+          paymentStatus:        'authorized',
+          holdExpiresAt:        newHold,
+          lastPaymentAttemptAt: new Date(),
+        },
+      })
+      logBonumInvoiceReused({
+        paymentId:       payment.id,
+        bookingCode:     booking.bookingCode,
+        providerOrderId: payment.providerOrderId!,
+      })
+      return buildInitiatePaymentResponse({
+        payment,
+        booking,
+        followUpUrl:      payment.followUpUrl!,
+        sessionExpiresAt: payment.sessionExpiresAt,
+        newHold,
+      })
+    }
+
     await prisma.payment.update({
       where: { id: payment.id },
       data:  {
@@ -115,7 +190,55 @@ export async function initiatePayment(userId: string, bookingId: string) {
     internalPaymentId: payment!.id,
   }
 
-  const invoice = await createBonumInvoice(invoiceInput)
+  let invoice: Awaited<ReturnType<typeof createBonumInvoice>>
+  try {
+    invoice = await createBonumInvoice(invoiceInput)
+  } catch (err) {
+    if (err instanceof BonumInvoiceDuplicateError) {
+      const fresh = await prisma.payment.findUnique({ where: { id: payment!.id } })
+      if (fresh?.providerOrderId?.trim() && fresh?.followUpUrl?.trim()) {
+        logBonumInvoiceReused({
+          paymentId:       fresh.id,
+          bookingCode:     booking.bookingCode,
+          providerOrderId: fresh.providerOrderId,
+        })
+        await prisma.$transaction([
+          prisma.booking.update({
+            where: { id: booking.id },
+            data:  {
+              paymentStatus:        'authorized',
+              holdExpiresAt:        newHold,
+              lastPaymentAttemptAt: new Date(),
+            },
+          }),
+          prisma.paymentAttempt.update({
+            where: { id: attempt.id },
+            data:  {
+              status:          'redirected',
+              providerOrderId: fresh.providerOrderId,
+              followUpUrl:     fresh.followUpUrl,
+              qrPayload:       null,
+              deeplinkUrl:     null,
+              expiresAt:       fresh.sessionExpiresAt,
+            },
+          }),
+        ])
+        recordRetry(bookingId)
+        return buildInitiatePaymentResponse({
+          payment:          fresh,
+          booking,
+          followUpUrl:      fresh.followUpUrl,
+          sessionExpiresAt: fresh.sessionExpiresAt,
+          newHold,
+        })
+      }
+      throw new AppError(
+        'Could not start payment: duplicate transaction with no saved invoice. Please contact support.',
+        409,
+      )
+    }
+    throw err
+  }
 
   await prisma.$transaction([
     prisma.payment.update({
@@ -153,19 +276,13 @@ export async function initiatePayment(userId: string, bookingId: string) {
 
   recordRetry(bookingId)
 
-  return {
-    paymentId:     payment!.id,
-    bookingId:     booking.id,
-    bookingCode:   booking.bookingCode,
-    status:        'authorized',
-    amount:        payment!.amount,
-    currency:      payment!.currency,
-    followUpUrl:   invoice.followUpLink,
-    expiresAt:     invoice.sessionExpiresAt?.toISOString() ?? newHold.toISOString(),
-    qrCodeData:    null,
-    deeplinkUrl:   null,
-    holdExpiresAt: newHold.toISOString(),
-  }
+  return buildInitiatePaymentResponse({
+    payment:          payment!,
+    booking,
+    followUpUrl:      invoice.followUpLink,
+    sessionExpiresAt: invoice.sessionExpiresAt,
+    newHold,
+  })
 }
 
 /** @deprecated v1 — payment confirmation is webhook-driven */
