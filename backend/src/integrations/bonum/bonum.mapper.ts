@@ -3,35 +3,101 @@
  * Field names follow the Bonum ecommerce / invoice guide.
  */
 
+import { env } from '../../config/env'
+
 // ─── Invoice creation (POST /bonum-gateway/ecommerce/invoices) ─────────────
 
 export interface BonumInvoiceCreateInput {
-  /** Amount as required by Bonum (see guide for currency/minor units). */
+  /** Amount as required by Bonum (integer minor units, e.g. MNT). */
   amount: number
-  /** Merchant webhook URL for Bonum callbacks. */
-  callback: string
-  /**
-   * Correlation id — we use internal Payment.id so webhooks resolve to our Payment row.
-   */
+  /** Ignored for real calls — `createBonumInvoice` sets callback via `resolveBonumWebhookCallbackUrl()`. */
+  callback?: string
+  /** Correlation id sent to Bonum — we use `BOOKING_${bookingCode}`; stored in `Payment.bonumTransactionId`. */
   transactionId: string
+  /** Our `Payment.id` (cuid) — used only for stub `followUpLink` / dev return URL; not sent to Bonum. */
+  internalPaymentId?: string
   expiresIn?: number
   providers?: string[]
   items?: unknown[]
   extras?: unknown
 }
 
-/** Request body for POST .../invoices */
-export function mapInvoiceCreateBody(input: BonumInvoiceCreateInput): Record<string, unknown> {
-  const body: Record<string, unknown> = {
-    amount:         input.amount,
-    callback:       input.callback,
-    transactionId:  input.transactionId,
+/**
+ * Public callback URL that Bonum will POST to — must match a route that preserves raw body.
+ * Prefer `API_BASE_URL` when the API is not co-hosted with the web app.
+ */
+export function resolveBonumWebhookCallbackUrl(): string {
+  const raw = (env.API_BASE_URL?.trim() || env.PUBLIC_APP_URL?.trim() || '').replace(/\/$/, '')
+  if (!raw) {
+    throw new Error('Set API_BASE_URL (preferred) or PUBLIC_APP_URL for the Bonum invoice callback.')
   }
-  if (input.expiresIn !== undefined) body.expiresIn = input.expiresIn
-  if (input.providers?.length) body.providers = input.providers
-  if (input.items?.length) body.items = input.items
+  let parsed: URL
+  try {
+    parsed = new URL(raw)
+  } catch {
+    throw new Error('Invalid API_BASE_URL / PUBLIC_APP_URL for Bonum invoice callback.')
+  }
+  if (parsed.protocol !== 'https:') {
+    throw new Error('Bonum invoice callback base URL must use https://')
+  }
+  const host = parsed.hostname.toLowerCase()
+  if (host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local')) {
+    throw new Error('Bonum invoice callback cannot use localhost, 127.0.0.1, or .local hosts.')
+  }
+  return `${raw}${env.API_PREFIX}/webhooks/bonum`
+}
+
+/**
+ * `BONUM_INVOICE_PROVIDERS_JSON` e.g. `["QPAY"]` — invalid JSON or wrong shape → `undefined`.
+ */
+export function parseBonumInvoiceProvidersFromEnv(): string[] | undefined {
+  const raw = env.BONUM_INVOICE_PROVIDERS_JSON?.trim()
+  if (!raw) return undefined
+  try {
+    const j = JSON.parse(raw) as unknown
+    if (Array.isArray(j) && j.length > 0 && j.every((x) => typeof x === 'string')) {
+      return j as string[]
+    }
+  } catch {
+    /* invalid → omit */
+  }
+  return undefined
+}
+
+/** Request body for POST .../invoices — types Bonum accepts (integer amount, string ids, no stray fields). */
+export function mapInvoiceCreateBody(input: BonumInvoiceCreateInput): Record<string, unknown> {
+  const amount = Math.round(Number(input.amount))
+  if (!Number.isFinite(amount)) {
+    throw new Error('Bonum invoice amount must be a finite number')
+  }
+
+  const body: Record<string, unknown> = {
+    amount,
+    callback:      input.callback,
+    transactionId: String(input.transactionId),
+  }
+
+  if (input.expiresIn !== undefined && input.expiresIn !== null) {
+    const sec = Math.round(Number(input.expiresIn))
+    if (Number.isFinite(sec) && sec > 0) body.expiresIn = sec
+  }
+  if (input.providers !== undefined && Array.isArray(input.providers) && input.providers.length > 0) {
+    body.providers = input.providers
+  }
+  if (input.items !== undefined && Array.isArray(input.items) && input.items.length > 0) {
+    body.items = input.items
+  }
   if (input.extras !== undefined) body.extras = input.extras
   return body
+}
+
+/** Remove keys whose value is `undefined` before sending JSON (some APIs reject explicit null/undefined). */
+export function omitUndefinedFields(body: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...body }
+  Object.keys(out).forEach((k) => {
+    if (out[k] === undefined) delete out[k]
+  })
+  return out
 }
 
 export interface BonumInvoiceCreateResult {

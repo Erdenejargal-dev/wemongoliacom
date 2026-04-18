@@ -25,19 +25,6 @@ function recordRetry(bookingId: string): void {
   retryBuckets.set(bookingId, arr)
 }
 
-/** Optional JSON array e.g. ["QPAY"] — empty means Bonum shows all providers. */
-function parseInvoiceProviders(): string[] | undefined {
-  const raw = env.BONUM_INVOICE_PROVIDERS_JSON?.trim()
-  if (!raw) return undefined
-  try {
-    const j = JSON.parse(raw) as unknown
-    if (Array.isArray(j) && j.every((x) => typeof x === 'string')) return j as string[]
-  } catch {
-    return undefined
-  }
-  return undefined
-}
-
 export async function initiatePayment(userId: string, bookingId: string) {
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
@@ -120,18 +107,13 @@ export async function initiatePayment(userId: string, bookingId: string) {
     },
   })
 
-  const webhookUrl = `${env.PUBLIC_APP_URL.replace(/\/$/, '')}${env.API_PREFIX}/webhooks/bonum`
+  const bonumTxId = `BOOKING_${booking.bookingCode}`
 
   const invoiceInput: BonumInvoiceCreateInput = {
-    amount:         payment!.amount,
-    callback:       webhookUrl,
-    transactionId:  payment!.id,
+    amount:            Math.round(payment!.amount),
+    transactionId:     bonumTxId,
+    internalPaymentId: payment!.id,
   }
-  if (env.BONUM_INVOICE_EXPIRES_IN_SECONDS > 0) {
-    invoiceInput.expiresIn = env.BONUM_INVOICE_EXPIRES_IN_SECONDS
-  }
-  const providers = parseInvoiceProviders()
-  if (providers?.length) invoiceInput.providers = providers
 
   const invoice = await createBonumInvoice(invoiceInput)
 
@@ -140,10 +122,11 @@ export async function initiatePayment(userId: string, bookingId: string) {
       where: { id: payment!.id },
       data:  {
         status:           'authorized',
-        providerOrderId:  invoice.invoiceId,
-        followUpUrl:      invoice.followUpLink,
-        sessionExpiresAt: invoice.sessionExpiresAt,
-        metadata:         invoice.raw as Prisma.InputJsonValue,
+        providerOrderId:     invoice.invoiceId,
+        followUpUrl:         invoice.followUpLink,
+        sessionExpiresAt:    invoice.sessionExpiresAt,
+        bonumTransactionId:  bonumTxId,
+        metadata:            invoice.raw as Prisma.InputJsonValue,
         paymentGateway:   env.BONUM_USE_STUB === 'true' || !env.BONUM_API_BASE_URL?.trim() ? 'bonum_stub' : 'bonum',
       },
     }),

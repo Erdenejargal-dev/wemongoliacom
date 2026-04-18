@@ -12,6 +12,11 @@ const envSchema = z.object({
   CORS_ORIGIN:                 z.string().default('http://localhost:3000'),
   /** Public web app URL for email links; defaults to CORS_ORIGIN when empty */
   PUBLIC_APP_URL:              z.string().optional().default(''),
+  /**
+   * Public **API** origin for Bonum invoice `callback` (e.g. `https://api.wemongolia.com`).
+   * Preferred over PUBLIC_APP_URL when the app and API are on different hosts.
+   */
+  API_BASE_URL:                z.string().optional().default(''),
   /** Optional absolute URL for the logo in HTML emails (CDN). If empty, uses PUBLIC_APP_URL + /brand/wemongolia.png */
   EMAIL_LOGO_URL:              z.string().optional().default(''),
   PASSWORD_RESET_EXPIRES_MINUTES: z.string().default('60').transform((v) => parseInt(v, 10)),
@@ -84,6 +89,7 @@ if (!parsed.success) {
 
 const data = parsed.data
 const publicAppUrl = data.PUBLIC_APP_URL?.trim() || data.CORS_ORIGIN
+const apiBaseUrl = data.API_BASE_URL?.trim() || ''
 
 const bonumAppSecret = data.BONUM_APP_SECRET?.trim() || data.BONUM_API_KEY?.trim() || ''
 const bonumChecksumKey = data.BONUM_MERCHANT_CHECKSUM_KEY?.trim() || data.BONUM_CHECKSUM_SECRET?.trim() || ''
@@ -95,6 +101,8 @@ export const env = {
   PLATFORM_FEE_PERCENT: parseFloat(data.PLATFORM_FEE_PERCENT),
   /** Use for password-reset and welcome email links */
   PUBLIC_APP_URL:       publicAppUrl,
+  /** Canonical API origin for server-to-server callbacks (Bonum invoice `callback`) */
+  API_BASE_URL:         apiBaseUrl,
   EMAIL_LOGO_URL:       (data.EMAIL_LOGO_URL ?? '').trim(),
   /** Resolved Bonum credentials (aliases applied) */
   BONUM_APP_SECRET:     bonumAppSecret,

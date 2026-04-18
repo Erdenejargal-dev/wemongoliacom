@@ -112,6 +112,7 @@ async function processParsedWebhook(
   const orConditions: Prisma.PaymentWhereInput[] = []
   if (parsed.transactionId) {
     orConditions.push({ id: parsed.transactionId })
+    orConditions.push({ bonumTransactionId: parsed.transactionId })
   }
   if (parsed.invoiceId) {
     orConditions.push({ providerOrderId: parsed.invoiceId })

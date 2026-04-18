@@ -8,6 +8,9 @@ import { getBonumAccessToken } from './bonum.auth'
 import {
   mapInvoiceCreateBody,
   mapInvoiceCreateResponse,
+  omitUndefinedFields,
+  parseBonumInvoiceProvidersFromEnv,
+  resolveBonumWebhookCallbackUrl,
   type BonumInvoiceCreateInput,
   type BonumInvoiceCreateResult,
 } from './bonum.mapper'
@@ -33,9 +36,10 @@ export async function createBonumInvoice(
   input: BonumInvoiceCreateInput,
 ): Promise<BonumInvoiceCreateResult> {
   if (useStub()) {
+    const returnPid = input.internalPaymentId ?? input.transactionId
     return {
       invoiceId:        `stub-inv-${input.transactionId}-${Date.now()}`,
-      followUpLink:       `${env.PUBLIC_APP_URL.replace(/\/$/, '')}/checkout/payment-return?paymentId=${encodeURIComponent(input.transactionId)}&stub=1`,
+      followUpLink:       `${env.PUBLIC_APP_URL.replace(/\/$/, '')}/checkout/payment-return?paymentId=${encodeURIComponent(returnPid)}&stub=1`,
       sessionExpiresAt:  new Date(Date.now() + 30 * 60 * 1000),
       raw:               { stub: true },
     }
@@ -43,7 +47,23 @@ export async function createBonumInvoice(
 
   const accessToken = await getBonumAccessToken()
   const url = `${baseUrl()}${PATH_INVOICES}`
-  const body = mapInvoiceCreateBody(input)
+
+  const callback = resolveBonumWebhookCallbackUrl()
+  const providersResolved = parseBonumInvoiceProvidersFromEnv() ?? input.providers
+  const expiresInEffective =
+    input.expiresIn ??
+    (env.BONUM_INVOICE_EXPIRES_IN_SECONDS > 0 ? env.BONUM_INVOICE_EXPIRES_IN_SECONDS : 900)
+
+  const body = omitUndefinedFields(
+    mapInvoiceCreateBody({
+      ...input,
+      callback,
+      expiresIn: expiresInEffective,
+      providers: providersResolved,
+    }),
+  )
+
+  console.log('BONUM REQUEST BODY:', JSON.stringify(body, null, 2))
 
   const res = await fetch(url, {
     method:  'POST',
@@ -61,11 +81,15 @@ export async function createBonumInvoice(
   try {
     json = JSON.parse(text)
   } catch {
+    console.error('BONUM ERROR RESPONSE (non-JSON):', text)
+    console.error('BONUM REQUEST BODY (same attempt):', JSON.stringify(body, null, 2))
     throw new Error(`Bonum invoices returned non-JSON: HTTP ${res.status}`)
   }
 
   if (!res.ok) {
-    const msg = typeof json === 'object' && json && 'message' in json
+    console.error('BONUM ERROR RESPONSE:', json)
+    console.error('BONUM REQUEST BODY (same attempt):', JSON.stringify(body, null, 2))
+    const msg = typeof json === 'object' && json !== null && 'message' in json
       ? String((json as { message?: string }).message)
       : text
     throw new Error(`Bonum invoice create failed: HTTP ${res.status} ${msg}`)
