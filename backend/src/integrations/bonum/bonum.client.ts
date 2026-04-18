@@ -6,6 +6,8 @@
 import { env } from '../../config/env'
 import { getBonumAccessToken } from './bonum.auth'
 import {
+  mapBonumQrCreateBody,
+  mapBonumQrCreateResponse,
   mapInvoiceCreateBody,
   mapInvoiceCreateResponse,
   omitUndefinedFields,
@@ -14,16 +16,26 @@ import {
   resolveBonumWebhookCallbackUrl,
   type BonumInvoiceCreateInput,
   type BonumInvoiceCreateResult,
+  type BonumQrCreateInput,
+  type BonumQrCreateResult,
 } from './bonum.mapper'
 
 const PATH_INVOICES = '/bonum-gateway/ecommerce/invoices'
 const PATH_PAYMENT_PROVIDERS = '/bonum-gateway/ecommerce/invoices/payment-providers'
+const PATH_QR_CREATE = '/mpay-service/merchant/transaction/qr/create'
 
 /** Bonum returns HTTP 409 when `transactionId` was already registered — caller may reuse stored invoice. */
 export class BonumInvoiceDuplicateError extends Error {
   override readonly name = 'BonumInvoiceDuplicateError'
   constructor(readonly responseBody: unknown) {
     super('Bonum duplicate transaction (HTTP 409)')
+  }
+}
+
+export class BonumQrDuplicateError extends Error {
+  override readonly name = 'BonumQrDuplicateError'
+  constructor(readonly responseBody: unknown) {
+    super('Bonum QR duplicate transaction (HTTP 409)')
   }
 }
 
@@ -113,6 +125,68 @@ export async function createBonumInvoice(
   }
 
   return mapInvoiceCreateResponse(json)
+}
+
+/**
+ * Create on-site QR + bank deeplinks — POST /mpay-service/merchant/transaction/qr/create
+ */
+export async function createBonumQrPayment(input: BonumQrCreateInput): Promise<BonumQrCreateResult> {
+  if (useStub()) {
+    const exp = new Date(Date.now() + 30 * 60 * 1000)
+    return {
+      invoiceId:        `stub-qr-inv-${input.transactionId}`,
+      qrCode:           '00020101021238570012A011255400055303496540563.005802MN5913BONUM6009ULAANBAATAR6304STUB',
+      qrImage:
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      links:            [{ url: 'https://example.com/bank-deeplink-stub', label: 'Demo bank (stub)' }],
+      sessionExpiresAt: exp,
+      raw:              { stub: true },
+    }
+  }
+
+  const accessToken = await getBonumAccessToken()
+  const url = `${baseUrl()}${PATH_QR_CREATE}`
+  const expiresInEffective =
+    input.expiresIn ??
+    (env.BONUM_INVOICE_EXPIRES_IN_SECONDS > 0 ? env.BONUM_INVOICE_EXPIRES_IN_SECONDS : 900)
+
+  const body = omitUndefinedFields(
+    mapBonumQrCreateBody({
+      ...input,
+      expiresIn: expiresInEffective,
+    }),
+  )
+
+  const res = await fetch(url, {
+    method:  'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      Authorization:   `Bearer ${accessToken}`,
+      'X-TERMINAL-ID': env.BONUM_TERMINAL_ID,
+      Accept:          'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+
+  const text = await res.text()
+  let json: unknown
+  try {
+    json = JSON.parse(text)
+  } catch {
+    throw new Error(`Bonum QR create returned non-JSON: HTTP ${res.status}`)
+  }
+
+  if (!res.ok) {
+    if (res.status === 409) {
+      throw new BonumQrDuplicateError(json)
+    }
+    const msg = typeof json === 'object' && json !== null && 'message' in json
+      ? String((json as { message?: string }).message)
+      : text
+    throw new Error(`Bonum QR create failed: HTTP ${res.status} ${msg}`)
+  }
+
+  return mapBonumQrCreateResponse(json)
 }
 
 /**

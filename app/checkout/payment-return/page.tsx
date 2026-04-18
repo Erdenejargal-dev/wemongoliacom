@@ -89,7 +89,16 @@ function ReturnContent() {
       const token = await getFreshAccessToken()
       if (!token) return
       const res = await retryPayment(paymentId, token)
-      window.location.href = res.followUpUrl
+      if (res.followUpUrl?.trim()) {
+        window.location.href = res.followUpUrl
+        return
+      }
+      if (res.checkoutMode === 'qr') {
+        const st = await getPaymentStatus(paymentId, token)
+        router.push(`/checkout/pay?bookingId=${encodeURIComponent(st.bookingId)}`)
+        return
+      }
+      setMessage('Could not resume payment. Please open your trip and try again.')
     } catch (e) {
       setUi('failed')
       setMessage(e instanceof ApiError ? e.message : 'Retry failed.')

@@ -4,6 +4,13 @@
 
 import { apiClient } from './client'
 
+export type CheckoutMode = 'qr' | 'hosted_invoice'
+
+export interface BonumDeeplink {
+  url: string
+  label?: string
+}
+
 export interface InitiatePaymentResponse {
   paymentId: string
   bookingId: string
@@ -11,14 +18,23 @@ export interface InitiatePaymentResponse {
   status: string
   amount: number
   currency: string
-  followUpUrl: string
   expiresAt: string
-  qrCodeData: string | null
-  deeplinkUrl: string | null
   holdExpiresAt: string
+  checkoutMode: CheckoutMode
+  invoiceId: string | null
+  qrCode: string | null
+  qrImage: string | null
+  deeplinks: BonumDeeplink[]
+  /** Hosted Bonum checkout — only when `checkoutMode === 'hosted_invoice'` or QR fallback. */
+  followUpUrl: string | null
+  /** @deprecated use qrCode */
+  qrCodeData: string | null
+  /** @deprecated use deeplinks[0] */
+  deeplinkUrl: string | null
 }
 
 export interface PaymentStatusResponse {
+  bookingId: string
   bookingCode: string
   bookingStatus: string
   paymentStatus: string

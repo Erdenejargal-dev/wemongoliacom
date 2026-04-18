@@ -194,6 +194,103 @@ export function mapInvoiceCreateResponse(json: unknown): BonumInvoiceCreateResul
   }
 }
 
+// ─── QR create (POST /mpay-service/merchant/transaction/qr/create) ─────────
+
+export interface BonumQrCreateInput {
+  amount: number
+  transactionId: string
+  expiresIn?: number
+}
+
+export function mapBonumQrCreateBody(input: BonumQrCreateInput): Record<string, unknown> {
+  const amount = Math.round(Number(input.amount))
+  if (!Number.isFinite(amount)) {
+    throw new Error('Bonum QR amount must be a finite number')
+  }
+  const body: Record<string, unknown> = {
+    amount,
+    transactionId: String(input.transactionId),
+  }
+  if (input.expiresIn !== undefined && input.expiresIn !== null) {
+    const sec = Math.round(Number(input.expiresIn))
+    if (Number.isFinite(sec) && sec > 0) body.expiresIn = sec
+  }
+  return body
+}
+
+/** Bank deeplink entry from `data.links[]` (Bonum guide). */
+export interface BonumQrDeeplink {
+  url: string
+  label?: string
+}
+
+export interface BonumQrCreateResult {
+  invoiceId: string
+  qrCode: string
+  qrImage: string | null
+  links: BonumQrDeeplink[]
+  sessionExpiresAt: Date | null
+  raw: Record<string, unknown>
+}
+
+function mapBonumQrLinkItem(item: unknown): BonumQrDeeplink | null {
+  if (typeof item === 'string' && item.trim()) return { url: item.trim() }
+  if (!item || typeof item !== 'object') return null
+  const o = item as Record<string, unknown>
+  const url = String(o.url ?? o.href ?? o.link ?? o.deepLink ?? o.deeplink ?? '')
+  if (!url.trim()) return null
+  const labelRaw = o.name ?? o.bankName ?? o.provider ?? o.title ?? o.label
+  const label = typeof labelRaw === 'string' ? labelRaw.trim() : undefined
+  return { url: url.trim(), ...(label ? { label } : {}) }
+}
+
+export function mapBonumQrCreateResponse(json: unknown): BonumQrCreateResult {
+  if (!json || typeof json !== 'object') {
+    throw new Error('Invalid Bonum QR response: not an object')
+  }
+  const o = json as Record<string, unknown>
+  const data = (typeof o.data === 'object' && o.data !== null ? o.data : o) as Record<string, unknown>
+
+  const invoiceId = String(data.invoiceId ?? data.id ?? '')
+  const qrCode = String(data.qrCode ?? data.qr_code ?? '')
+  const qrImageRaw = data.qrImage ?? data.qr_image
+  const qrImage =
+    qrImageRaw === null || qrImageRaw === undefined
+      ? null
+      : typeof qrImageRaw === 'string'
+        ? qrImageRaw
+        : String(qrImageRaw)
+
+  const linksRaw = data.links
+  const links: BonumQrDeeplink[] = []
+  if (Array.isArray(linksRaw)) {
+    for (const item of linksRaw) {
+      const m = mapBonumQrLinkItem(item)
+      if (m) links.push(m)
+    }
+  }
+
+  if (!invoiceId || !qrCode) {
+    throw new Error('Bonum QR response missing invoiceId or qrCode')
+  }
+
+  const exp = data.expiresAt ?? data.expires_at ?? data.sessionExpiresAt
+  let sessionExpiresAt: Date | null = null
+  if (typeof exp === 'string' || exp instanceof Date) {
+    const d = new Date(exp as string | Date)
+    sessionExpiresAt = Number.isNaN(d.getTime()) ? null : d
+  }
+
+  return {
+    invoiceId,
+    qrCode,
+    qrImage,
+    links,
+    sessionExpiresAt,
+    raw: o as Record<string, unknown>,
+  }
+}
+
 // ─── Webhook: type PAYMENT, status SUCCESS | FAILED ────────────────────────
 
 export type BonumWebhookTopStatus = 'SUCCESS' | 'FAILED'

@@ -5,15 +5,74 @@ import { AppError } from '../middleware/error'
 import { env } from '../config/env'
 import {
   BonumInvoiceDuplicateError,
+  BonumQrDuplicateError,
   createBonumInvoice,
+  createBonumQrPayment,
   refundBonumPayment,
 } from '../integrations/bonum/bonum.client'
 import {
   isBonumWebhookUrl,
   resolveBonumBrowserReturnUrl,
   type BonumInvoiceCreateInput,
+  type BonumQrCreateResult,
+  type BonumQrDeeplink,
 } from '../integrations/bonum/bonum.mapper'
 import { releaseRoomAvailabilityForCancel } from './booking.service'
+
+function mergePaymentMetadata(
+  current: Prisma.JsonValue | null | undefined,
+  patch: Record<string, unknown>,
+): Prisma.InputJsonValue {
+  const base =
+    current && typeof current === 'object' && !Array.isArray(current)
+      ? { ...(current as Record<string, unknown>) }
+      : {}
+  return { ...base, ...patch } as Prisma.InputJsonValue
+}
+
+function readQrFromMetadata(
+  metadata: Prisma.JsonValue | null | undefined,
+): {
+  qrCode: string
+  qrImage: string | null
+  deeplinks: BonumQrDeeplink[]
+} | null {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null
+  const m = metadata as Record<string, unknown>
+  if (m.checkoutMode !== 'qr') return null
+  const qrCode = typeof m.qrCode === 'string' ? m.qrCode.trim() : ''
+  if (!qrCode) return null
+  const qrImage = typeof m.qrImage === 'string' ? m.qrImage : null
+  const deeplinks: BonumQrDeeplink[] = []
+  if (Array.isArray(m.deeplinks)) {
+    for (const d of m.deeplinks) {
+      if (d && typeof d === 'object' && d !== null) {
+        const o = d as Record<string, unknown>
+        const url = typeof o.url === 'string' ? o.url.trim() : ''
+        if (url) {
+          deeplinks.push({
+            url,
+            label: typeof o.label === 'string' ? o.label : undefined,
+          })
+        }
+      }
+    }
+  }
+  return { qrCode, qrImage, deeplinks }
+}
+
+function canReuseExistingBonumQr(
+  payment: Pick<Payment, 'status' | 'providerOrderId' | 'sessionExpiresAt' | 'metadata'>,
+  booking: { holdExpiresAt: Date | null },
+  now: Date,
+): boolean {
+  if (payment.status !== 'authorized') return false
+  if (!payment.providerOrderId?.trim()) return false
+  if (!readQrFromMetadata(payment.metadata)) return false
+  if (payment.sessionExpiresAt && payment.sessionExpiresAt <= now) return false
+  if (booking.holdExpiresAt && booking.holdExpiresAt <= now) return false
+  return true
+}
 
 function canReuseExistingBonumInvoice(
   payment: Pick<Payment, 'status' | 'providerOrderId' | 'followUpUrl' | 'sessionExpiresAt'>,
@@ -28,6 +87,18 @@ function canReuseExistingBonumInvoice(
   if (payment.sessionExpiresAt && payment.sessionExpiresAt <= now) return false
   if (booking.holdExpiresAt && booking.holdExpiresAt <= now) return false
   return true
+}
+
+function logBonumQrReused(params: {
+  paymentId: string
+  bookingCode: string
+  providerOrderId: string
+}): void {
+  console.log('BONUM QR REUSED', {
+    paymentId:       params.paymentId,
+    bookingCode:     params.bookingCode,
+    providerOrderId: params.providerOrderId,
+  })
 }
 
 function logBonumInvoiceReused(params: {
@@ -45,14 +116,22 @@ function logBonumInvoiceReused(params: {
 function buildInitiatePaymentResponse(params: {
   payment: { id: string; amount: number; currency: string }
   booking: { id: string; bookingCode: string }
-  followUpUrl: string
-  sessionExpiresAt: Date | null
   newHold: Date
+  checkoutMode: 'qr' | 'hosted_invoice'
+  sessionExpiresAt: Date | null
+  invoiceId: string | null
+  qrCode?: string | null
+  qrImage?: string | null
+  deeplinks?: BonumQrDeeplink[]
+  followUpUrl?: string | null
 }) {
+  const firstDeeplink = params.deeplinks?.[0]
+  const rawFollowUp = params.followUpUrl?.trim() ?? ''
   const followUp =
-    isBonumWebhookUrl(params.followUpUrl)
+    rawFollowUp && isBonumWebhookUrl(rawFollowUp)
       ? resolveBonumBrowserReturnUrl(params.payment.id)
-      : params.followUpUrl
+      : rawFollowUp || null
+
   return {
     paymentId:     params.payment.id,
     bookingId:     params.booking.id,
@@ -60,11 +139,16 @@ function buildInitiatePaymentResponse(params: {
     status:        'authorized' as const,
     amount:        params.payment.amount,
     currency:      params.payment.currency,
-    followUpUrl:   followUp,
     expiresAt:     params.sessionExpiresAt?.toISOString() ?? params.newHold.toISOString(),
-    qrCodeData:    null,
-    deeplinkUrl:   null,
     holdExpiresAt: params.newHold.toISOString(),
+    checkoutMode:  params.checkoutMode,
+    invoiceId:     params.invoiceId,
+    qrCode:        params.qrCode ?? null,
+    qrImage:       params.qrImage ?? null,
+    deeplinks:     params.deeplinks ?? [],
+    followUpUrl:   followUp,
+    qrCodeData:    params.qrCode ?? null,
+    deeplinkUrl:   firstDeeplink?.url ?? null,
   }
 }
 
@@ -140,6 +224,34 @@ export async function initiatePayment(userId: string, bookingId: string) {
       },
     })
   } else {
+    if (canReuseExistingBonumQr(payment, booking, now)) {
+      await prisma.booking.update({
+        where: { id: booking.id },
+        data:  {
+          paymentStatus:        'authorized',
+          holdExpiresAt:        newHold,
+          lastPaymentAttemptAt: new Date(),
+        },
+      })
+      logBonumQrReused({
+        paymentId:       payment.id,
+        bookingCode:     booking.bookingCode,
+        providerOrderId: payment.providerOrderId!,
+      })
+      const qr = readQrFromMetadata(payment.metadata)!
+      return buildInitiatePaymentResponse({
+        payment,
+        booking,
+        newHold,
+        checkoutMode:     'qr',
+        sessionExpiresAt: payment.sessionExpiresAt,
+        invoiceId:        payment.providerOrderId,
+        qrCode:           qr.qrCode,
+        qrImage:          qr.qrImage,
+        deeplinks:        qr.deeplinks,
+        followUpUrl:      null,
+      })
+    }
     if (canReuseExistingBonumInvoice(payment, booking, now)) {
       await prisma.booking.update({
         where: { id: booking.id },
@@ -157,9 +269,14 @@ export async function initiatePayment(userId: string, bookingId: string) {
       return buildInitiatePaymentResponse({
         payment,
         booking,
-        followUpUrl:      payment.followUpUrl!,
-        sessionExpiresAt: payment.sessionExpiresAt,
         newHold,
+        checkoutMode:     'hosted_invoice',
+        sessionExpiresAt: payment.sessionExpiresAt,
+        invoiceId:        payment.providerOrderId,
+        followUpUrl:      payment.followUpUrl,
+        qrCode:           null,
+        qrImage:          null,
+        deeplinks:        [],
       })
     }
 
@@ -192,11 +309,126 @@ export async function initiatePayment(userId: string, bookingId: string) {
   })
 
   const bonumTxId = `BOOKING_${booking.bookingCode}`
+  const expiresInSec =
+    env.BONUM_INVOICE_EXPIRES_IN_SECONDS > 0 ? env.BONUM_INVOICE_EXPIRES_IN_SECONDS : 900
+
+  let qrResult: BonumQrCreateResult | null = null
+  try {
+    qrResult = await createBonumQrPayment({
+      amount:        Math.round(payment!.amount),
+      transactionId: bonumTxId,
+      expiresIn:     expiresInSec,
+    })
+  } catch (qrErr) {
+    if (qrErr instanceof BonumQrDuplicateError) {
+      const fresh = await prisma.payment.findUnique({ where: { id: payment!.id } })
+      const qrFromDb = readQrFromMetadata(fresh?.metadata)
+      if (fresh?.providerOrderId?.trim() && qrFromDb) {
+        logBonumQrReused({
+          paymentId:       fresh.id,
+          bookingCode:     booking.bookingCode,
+          providerOrderId: fresh.providerOrderId,
+        })
+        await prisma.$transaction([
+          prisma.booking.update({
+            where: { id: booking.id },
+            data:  {
+              paymentStatus:        'authorized',
+              holdExpiresAt:        newHold,
+              lastPaymentAttemptAt: new Date(),
+            },
+          }),
+          prisma.paymentAttempt.update({
+            where: { id: attempt.id },
+            data:  {
+              status:          'redirected',
+              providerOrderId: fresh.providerOrderId,
+              followUpUrl:     fresh.followUpUrl,
+              qrPayload:       qrFromDb.qrCode,
+              deeplinkUrl:     qrFromDb.deeplinks[0]?.url ?? null,
+              expiresAt:       fresh.sessionExpiresAt,
+            },
+          }),
+        ])
+        recordRetry(bookingId)
+        return buildInitiatePaymentResponse({
+          payment:          fresh,
+          booking,
+          newHold,
+          checkoutMode:     'qr',
+          sessionExpiresAt: fresh.sessionExpiresAt,
+          invoiceId:        fresh.providerOrderId,
+          qrCode:           qrFromDb.qrCode,
+          qrImage:          qrFromDb.qrImage,
+          deeplinks:        qrFromDb.deeplinks,
+          followUpUrl:      null,
+        })
+      }
+    }
+    qrResult = null
+  }
+
+  if (qrResult) {
+    const metaQr = {
+      checkoutMode: 'qr' as const,
+      qrCode:       qrResult.qrCode,
+      qrImage:      qrResult.qrImage,
+      deeplinks:    qrResult.links.map((l) => ({ url: l.url, label: l.label })),
+      rawQr:        qrResult.raw,
+    }
+    await prisma.$transaction([
+      prisma.payment.update({
+        where: { id: payment!.id },
+        data:  {
+          status:            'authorized',
+          providerOrderId:   qrResult.invoiceId,
+          followUpUrl:       null,
+          sessionExpiresAt:  qrResult.sessionExpiresAt,
+          bonumTransactionId: bonumTxId,
+          metadata:          mergePaymentMetadata(payment!.metadata, metaQr),
+          paymentGateway:    env.BONUM_USE_STUB === 'true' || !env.BONUM_API_BASE_URL?.trim() ? 'bonum_stub' : 'bonum',
+        },
+      }),
+      prisma.booking.update({
+        where: { id: booking.id },
+        data:  {
+          paymentStatus:        'authorized',
+          holdExpiresAt:        newHold,
+          lastPaymentAttemptAt: new Date(),
+        },
+      }),
+      prisma.paymentAttempt.update({
+        where: { id: attempt.id },
+        data:  {
+          status:          'redirected',
+          providerOrderId: qrResult.invoiceId,
+          followUpUrl:     null,
+          qrPayload:       qrResult.qrCode,
+          deeplinkUrl:     qrResult.links[0]?.url ?? null,
+          expiresAt:       qrResult.sessionExpiresAt,
+        },
+      }),
+    ])
+    recordRetry(bookingId)
+    return buildInitiatePaymentResponse({
+      payment:          payment!,
+      booking,
+      newHold,
+      checkoutMode:     'qr',
+      sessionExpiresAt: qrResult.sessionExpiresAt,
+      invoiceId:        qrResult.invoiceId,
+      qrCode:           qrResult.qrCode,
+      qrImage:          qrResult.qrImage,
+      deeplinks:        qrResult.links,
+      followUpUrl:      null,
+    })
+  }
 
   const invoiceInput: BonumInvoiceCreateInput = {
     amount:            Math.round(payment!.amount),
     transactionId:     bonumTxId,
     internalPaymentId: payment!.id,
+    expiresIn:         expiresInSec,
   }
 
   let invoice: Awaited<ReturnType<typeof createBonumInvoice>>
@@ -205,6 +437,48 @@ export async function initiatePayment(userId: string, bookingId: string) {
   } catch (err) {
     if (err instanceof BonumInvoiceDuplicateError) {
       const fresh = await prisma.payment.findUnique({ where: { id: payment!.id } })
+      const qrFromDb = readQrFromMetadata(fresh?.metadata)
+      if (fresh?.providerOrderId?.trim() && qrFromDb) {
+        logBonumQrReused({
+          paymentId:       fresh.id,
+          bookingCode:     booking.bookingCode,
+          providerOrderId: fresh.providerOrderId,
+        })
+        await prisma.$transaction([
+          prisma.booking.update({
+            where: { id: booking.id },
+            data:  {
+              paymentStatus:        'authorized',
+              holdExpiresAt:        newHold,
+              lastPaymentAttemptAt: new Date(),
+            },
+          }),
+          prisma.paymentAttempt.update({
+            where: { id: attempt.id },
+            data:  {
+              status:          'redirected',
+              providerOrderId: fresh.providerOrderId,
+              followUpUrl:     fresh.followUpUrl,
+              qrPayload:       qrFromDb.qrCode,
+              deeplinkUrl:     qrFromDb.deeplinks[0]?.url ?? null,
+              expiresAt:       fresh.sessionExpiresAt,
+            },
+          }),
+        ])
+        recordRetry(bookingId)
+        return buildInitiatePaymentResponse({
+          payment:          fresh,
+          booking,
+          newHold,
+          checkoutMode:     'qr',
+          sessionExpiresAt: fresh.sessionExpiresAt,
+          invoiceId:        fresh.providerOrderId,
+          qrCode:           qrFromDb.qrCode,
+          qrImage:          qrFromDb.qrImage,
+          deeplinks:        qrFromDb.deeplinks,
+          followUpUrl:      null,
+        })
+      }
       if (fresh?.providerOrderId?.trim() && fresh?.followUpUrl?.trim()) {
         logBonumInvoiceReused({
           paymentId:       fresh.id,
@@ -236,13 +510,18 @@ export async function initiatePayment(userId: string, bookingId: string) {
         return buildInitiatePaymentResponse({
           payment:          fresh,
           booking,
-          followUpUrl:      fresh.followUpUrl,
-          sessionExpiresAt: fresh.sessionExpiresAt,
           newHold,
+          checkoutMode:     'hosted_invoice',
+          sessionExpiresAt: fresh.sessionExpiresAt,
+          invoiceId:        fresh.providerOrderId,
+          followUpUrl:      fresh.followUpUrl,
+          qrCode:           null,
+          qrImage:          null,
+          deeplinks:        [],
         })
       }
       throw new AppError(
-        'Could not start payment: duplicate transaction with no saved invoice. Please contact support.',
+        'Could not start payment: duplicate transaction with no saved session. Please contact support.',
         409,
       )
     }
@@ -253,21 +532,24 @@ export async function initiatePayment(userId: string, bookingId: string) {
     prisma.payment.update({
       where: { id: payment!.id },
       data:  {
-        status:           'authorized',
-        providerOrderId:     invoice.invoiceId,
-        followUpUrl:         invoice.followUpLink,
-        sessionExpiresAt:    invoice.sessionExpiresAt,
-        bonumTransactionId:  bonumTxId,
-        metadata:            invoice.raw as Prisma.InputJsonValue,
-        paymentGateway:   env.BONUM_USE_STUB === 'true' || !env.BONUM_API_BASE_URL?.trim() ? 'bonum_stub' : 'bonum',
+        status:             'authorized',
+        providerOrderId:    invoice.invoiceId,
+        followUpUrl:        invoice.followUpLink,
+        sessionExpiresAt:   invoice.sessionExpiresAt,
+        bonumTransactionId: bonumTxId,
+        metadata: mergePaymentMetadata(payment!.metadata, {
+          checkoutMode: 'hosted_invoice',
+          rawInvoice:   invoice.raw,
+        }),
+        paymentGateway: env.BONUM_USE_STUB === 'true' || !env.BONUM_API_BASE_URL?.trim() ? 'bonum_stub' : 'bonum',
       },
     }),
     prisma.booking.update({
       where: { id: booking.id },
       data:  {
-        paymentStatus:         'authorized',
-        holdExpiresAt:         newHold,
-        lastPaymentAttemptAt:  new Date(),
+        paymentStatus:        'authorized',
+        holdExpiresAt:        newHold,
+        lastPaymentAttemptAt: new Date(),
       },
     }),
     prisma.paymentAttempt.update({
@@ -288,9 +570,14 @@ export async function initiatePayment(userId: string, bookingId: string) {
   return buildInitiatePaymentResponse({
     payment:          payment!,
     booking,
-    followUpUrl:      invoice.followUpLink,
-    sessionExpiresAt: invoice.sessionExpiresAt,
     newHold,
+    checkoutMode:     'hosted_invoice',
+    sessionExpiresAt: invoice.sessionExpiresAt,
+    invoiceId:        invoice.invoiceId,
+    followUpUrl:      invoice.followUpLink,
+    qrCode:           null,
+    qrImage:          null,
+    deeplinks:        [],
   })
 }
 
@@ -324,6 +611,7 @@ export async function getPaymentStatus(userId: string, paymentId: string) {
 
   const b = payment.booking
   return {
+    bookingId:     b.id,
     bookingCode:   b.bookingCode,
     bookingStatus: b.bookingStatus,
     paymentStatus: b.paymentStatus,
