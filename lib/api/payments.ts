@@ -6,9 +6,63 @@ import { apiClient } from './client'
 
 export type CheckoutMode = 'qr' | 'hosted_invoice'
 
+/**
+ * Bonum `links[]` entry (QR initiate). Field names vary; backend may map to `url` + `label` only,
+ * or pass through richer objects from Bonum (`link`, `name`, `logo`, etc.).
+ */
 export interface BonumDeeplink {
-  url: string
+  /** Primary app deeplink (Bonum often uses `link` instead) */
+  url?: string
+  link?: string
+  /** Short label / bank name fallback */
   label?: string
+  name?: string
+  description?: string
+  logo?: string | null
+  appStoreId?: string
+  androidPackageName?: string
+}
+
+/** Resolve app URL whether API sent `url` (our default) or Bonum-style `link`. */
+export function getBonumDeeplinkHref(d: BonumDeeplink): string {
+  const o = d as Record<string, unknown>
+  const raw = d.url ?? d.link ?? o.link
+  return typeof raw === 'string' ? raw.trim() : ''
+}
+
+/** Display title: `name`, then `label`, then fallback. */
+export function getBonumBankDisplayName(d: BonumDeeplink): string {
+  const o = d as Record<string, unknown>
+  const n = d.name ?? d.label ?? o.name ?? o.bankName
+  if (typeof n === 'string' && n.trim()) return n.trim()
+  return 'Bank app'
+}
+
+export function getBonumBankDescription(d: BonumDeeplink): string | null {
+  const o = d as Record<string, unknown>
+  const v = d.description ?? o.description
+  if (typeof v === 'string' && v.trim()) return v.trim()
+  return null
+}
+
+/** Logo URL when present on the payload (Bonum CDN). */
+export function getBonumBankLogo(d: BonumDeeplink): string | null {
+  const o = d as Record<string, unknown>
+  const v = d.logo ?? o.logo
+  if (typeof v === 'string' && v.trim()) return v.trim()
+  return null
+}
+
+export function getBonumAppStoreId(d: BonumDeeplink): string | undefined {
+  const o = d as Record<string, unknown>
+  const v = d.appStoreId ?? o.appStoreId
+  return typeof v === 'string' && v.trim() ? v.trim() : undefined
+}
+
+export function getBonumAndroidPackage(d: BonumDeeplink): string | undefined {
+  const o = d as Record<string, unknown>
+  const v = d.androidPackageName ?? o.androidPackageName
+  return typeof v === 'string' && v.trim() ? v.trim() : undefined
 }
 
 export interface InitiatePaymentResponse {

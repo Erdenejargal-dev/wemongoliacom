@@ -23,7 +23,18 @@ import {
   LifeBuoy,
   ChevronDown,
 } from 'lucide-react'
-import { getPaymentStatus, initiatePayment, type InitiatePaymentResponse } from '@/lib/api/payments'
+import {
+  getBonumAndroidPackage,
+  getBonumAppStoreId,
+  getBonumBankDescription,
+  getBonumBankDisplayName,
+  getBonumBankLogo,
+  getBonumDeeplinkHref,
+  getPaymentStatus,
+  initiatePayment,
+  type InitiatePaymentResponse,
+} from '@/lib/api/payments'
+import { BankDeeplinkCard } from '@/components/checkout/BankDeeplinkCard'
 import {
   clearCheckoutPayPayload,
   loadCheckoutPayPayload,
@@ -212,6 +223,11 @@ function PayContent() {
   }, [bookingId, status, payload?.bookingId])
 
   const paymentId = payload?.paymentId ?? ''
+
+  const bankOptions = useMemo(() => {
+    if (!payload?.deeplinks?.length) return []
+    return payload.deeplinks.filter((d) => getBonumDeeplinkHref(d))
+  }, [payload?.deeplinks])
 
   useEffect(() => {
     if (phaseRef.current !== 'qr_ready') return
@@ -643,41 +659,51 @@ function PayContent() {
                 )}
               </div>
 
-              {/* Deeplinks: mobile first, desktop below QR */}
-              <div className="order-1 flex flex-col gap-4 lg:order-2">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                  <Smartphone className="h-4 w-4" style={{ color: ACCENT }} />
-                  Pay with your bank app
+              {/* Bank apps: mobile first (primary on small screens); desktop below QR */}
+              <div className="order-1 flex flex-col gap-3 lg:order-2">
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                    <Smartphone className="h-4 w-4 shrink-0" style={{ color: ACCENT }} />
+                    Pay with your bank app
+                  </div>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-600 lg:max-w-md">
+                    Choose your bank — we’ll open the app with this payment ready. Fastest on mobile.
+                  </p>
                 </div>
-                {payload.deeplinks?.length ? (
-                  <div className="flex flex-col gap-2.5">
-                    {payload.deeplinks.map((d, i) => (
-                      <a
-                        key={`${d.url}-${i}`}
-                        href={d.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center rounded-xl border border-slate-200/90 bg-slate-900 py-3.5 text-sm font-semibold text-white shadow-md transition hover:bg-slate-800 active:scale-[0.99]"
-                      >
-                        {d.label ?? 'Open in bank app'}
-                      </a>
+                {bankOptions.length > 0 ? (
+                  <div className="flex flex-col gap-3">
+                    {bankOptions.map((d, i) => (
+                      <BankDeeplinkCard
+                        key={`${getBonumDeeplinkHref(d)}-${i}`}
+                        href={getBonumDeeplinkHref(d)}
+                        name={getBonumBankDisplayName(d)}
+                        description={getBonumBankDescription(d)}
+                        logoUrl={getBonumBankLogo(d)}
+                        appStoreId={getBonumAppStoreId(d)}
+                        androidPackageName={getBonumAndroidPackage(d)}
+                        accent={ACCENT}
+                      />
                     ))}
                   </div>
                 ) : (
-                  <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
-                    No quick bank links for this session — use the QR code to pay from your banking app.
+                  <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/90 px-4 py-4 text-sm leading-relaxed text-slate-600">
+                    No bank shortcuts for this session. Use the QR code — it works with any supported banking app.
                   </p>
                 )}
               </div>
 
-              {/* QR: mobile second, desktop first in column */}
+              {/* QR: mobile second (alternate); desktop primary in column */}
               <div
                 className={`${cardClass} order-2 p-6 sm:p-8 lg:order-1`}
                 style={{ boxShadow: `0 12px 48px -12px ${ACCENT}33` }}
               >
-                <p className="text-center text-sm font-semibold text-slate-900 lg:text-base">Scan to pay</p>
+                <p className="lg:hidden mb-1 text-center text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  Alternate method
+                </p>
+                <p className="text-center text-sm font-semibold text-slate-900 lg:text-base">Scan QR to pay</p>
                 <p className="mx-auto mt-1 max-w-sm text-center text-xs leading-relaxed text-slate-600 sm:text-sm">
-                  Open your bank app and scan. Amount and reference are embedded in the code.
+                  <span className="lg:hidden">Prefer scanning? </span>
+                  Open your banking app and scan — amount and reference are included in the code.
                 </p>
                 <div className="mt-6 flex justify-center">
                   {qrImageDataUrl ? (
