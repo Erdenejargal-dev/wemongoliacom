@@ -8,6 +8,9 @@ import { getBonumAccessToken } from './bonum.auth'
 import {
   mapBonumQrCreateBody,
   mapBonumQrCreateResponse,
+  mapBonumQrLookupBody,
+  parseBonumQrLookupResponse,
+  type BonumQrLookupParsed,
   mapInvoiceCreateBody,
   mapInvoiceCreateResponse,
   omitUndefinedFields,
@@ -23,6 +26,7 @@ import {
 const PATH_INVOICES = '/bonum-gateway/ecommerce/invoices'
 const PATH_PAYMENT_PROVIDERS = '/bonum-gateway/ecommerce/invoices/payment-providers'
 const PATH_QR_CREATE = '/mpay-service/merchant/transaction/qr/create'
+const PATH_QR_LOOKUP = '/mpay-service/merchant/transaction/qr'
 
 /** Bonum returns HTTP 409 when `transactionId` was already registered — caller may reuse stored invoice. */
 export class BonumInvoiceDuplicateError extends Error {
@@ -187,6 +191,57 @@ export async function createBonumQrPayment(input: BonumQrCreateInput): Promise<B
   }
 
   return mapBonumQrCreateResponse(json)
+}
+
+/**
+ * QR invoice status lookup — POST /mpay-service/merchant/transaction/qr
+ * Body uses stored EMV/QR string from create.
+ */
+export async function lookupBonumQrInvoice(params: { qrCode: string }): Promise<BonumQrLookupParsed> {
+  if (useStub()) {
+    if (env.BONUM_STUB_QR_LOOKUP_PAID === 'true') {
+      return parseBonumQrLookupResponse({
+        data: {
+          status:         'PAID',
+          transactionId: 'stub-qr-lookup-tx',
+          invoiceId:     'stub-qr-lookup-inv',
+        },
+      })
+    }
+    return parseBonumQrLookupResponse({ data: { status: 'PENDING', transactionStatus: 'PENDING' } })
+  }
+
+  const accessToken = await getBonumAccessToken()
+  const url = `${baseUrl()}${PATH_QR_LOOKUP}`
+  const body = mapBonumQrLookupBody(params.qrCode)
+
+  const res = await fetch(url, {
+    method:  'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      Authorization:   `Bearer ${accessToken}`,
+      'X-TERMINAL-ID': env.BONUM_TERMINAL_ID,
+      Accept:          'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+
+  const text = await res.text()
+  let json: unknown
+  try {
+    json = JSON.parse(text)
+  } catch {
+    throw new Error(`Bonum QR lookup returned non-JSON: HTTP ${res.status}`)
+  }
+
+  if (!res.ok) {
+    const msg = typeof json === 'object' && json !== null && 'message' in json
+      ? String((json as { message?: string }).message)
+      : text
+    throw new Error(`Bonum QR lookup failed: HTTP ${res.status} ${msg}`)
+  }
+
+  return parseBonumQrLookupResponse(json)
 }
 
 /**

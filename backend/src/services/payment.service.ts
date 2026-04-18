@@ -8,6 +8,7 @@ import {
   BonumQrDuplicateError,
   createBonumInvoice,
   createBonumQrPayment,
+  lookupBonumQrInvoice,
   refundBonumPayment,
 } from '../integrations/bonum/bonum.client'
 import {
@@ -155,6 +156,344 @@ function buildInitiatePaymentResponse(params: {
 }
 
 const retryBuckets = new Map<string, number[]>()
+
+/** In-process throttle for Bonum QR invoice lookup (fallback when webhook is slow). */
+const lastQrLookupByPaymentId = new Map<string, number>()
+
+function pruneQrLookupThrottle(): void {
+  const now = Date.now()
+  const maxAge = 60 * 60 * 1000
+  for (const [id, t] of lastQrLookupByPaymentId) {
+    if (now - t > maxAge) lastQrLookupByPaymentId.delete(id)
+  }
+}
+
+function isQrLookupDisabled(): boolean {
+  const v = env.BONUM_QR_LOOKUP_DISABLED?.trim().toLowerCase()
+  return v === 'true' || v === '1' || v === 'yes'
+}
+
+function resolveQrCodeForLookup(
+  payment: { metadata: Prisma.JsonValue | null; attempts: { qrPayload: string | null }[] },
+): string | null {
+  const fromMeta = readQrFromMetadata(payment.metadata)
+  if (fromMeta?.qrCode?.trim()) return fromMeta.qrCode.trim()
+  const latest = payment.attempts[0]
+  if (latest?.qrPayload?.trim()) return latest.qrPayload.trim()
+  return null
+}
+
+function shouldAttemptQrLookupFallback(
+  payment: { status: string; metadata: Prisma.JsonValue | null },
+  booking: { bookingStatus: string; paymentStatus: string },
+): boolean {
+  if (isQrLookupDisabled()) return false
+  if (booking.bookingStatus !== 'pending') return false
+  if (!['unpaid', 'authorized'].includes(booking.paymentStatus)) return false
+  if (!['unpaid', 'authorized'].includes(payment.status)) return false
+  if (!payment.metadata || typeof payment.metadata !== 'object' || Array.isArray(payment.metadata)) {
+    return false
+  }
+  const m = payment.metadata as Record<string, unknown>
+  return m.checkoutMode === 'qr'
+}
+
+async function persistQrCodeFromAttemptIfMissing(
+  payment: Prisma.PaymentGetPayload<{
+    include: {
+      booking: {
+        select: {
+          id: true
+          bookingCode: true
+          bookingStatus: true
+          paymentStatus: true
+          holdExpiresAt: true
+          maxHoldUntil: true
+          listingType: true
+        }
+      }
+      attempts: true
+    }
+  }>,
+): Promise<typeof payment | null> {
+  if (readQrFromMetadata(payment.metadata)?.qrCode?.trim()) return null
+  const qr = payment.attempts[0]?.qrPayload?.trim()
+  if (!qr) return null
+  await prisma.payment.update({
+    where: { id: payment.id },
+    data:  {
+      metadata: mergePaymentMetadata(payment.metadata, {
+        checkoutMode: 'qr',
+        qrCode:       qr,
+      }),
+    },
+  })
+  const refreshed = await prisma.payment.findUnique({
+    where: { id: payment.id },
+    include: {
+      booking: {
+        select: {
+          id:            true,
+          bookingCode:   true,
+          bookingStatus: true,
+          paymentStatus: true,
+          holdExpiresAt: true,
+          maxHoldUntil:  true,
+          listingType:   true,
+        },
+      },
+      attempts: { orderBy: { attemptNumber: 'desc' }, take: 1 },
+    },
+  })
+  return refreshed ?? null
+}
+
+/**
+ * Mirrors bonumWebhook.handleSuccess for QR lookup fallback only (webhook remains primary).
+ */
+async function applyBonumQrLookupSuccess(
+  payment: Prisma.PaymentGetPayload<{ include: { booking: true } }>,
+  parsed: { transactionId: string; invoiceId?: string | null; raw: Record<string, unknown> },
+): Promise<{ updated: boolean; lateRefund?: boolean }> {
+  const booking = payment.booking
+  const txId = parsed.transactionId.trim()
+  if (!txId) return { updated: false }
+
+  const now = new Date()
+  const holdExpired =
+    booking.holdExpiresAt != null && booking.holdExpiresAt < now
+  const isCancelled = booking.bookingStatus === 'cancelled'
+
+  if (isCancelled || holdExpired) {
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data:  {
+        bonumTransactionId: txId,
+        refundQueuedAt:     new Date(),
+        failureMessage:     'Late success after cancel/expiry — refund',
+        metadata:           mergePaymentMetadata(payment.metadata, {
+          lateQrLookup: parsed.raw,
+        }),
+      },
+    })
+
+    const refund = await refundBonumPayment({
+      transactionId: txId,
+      amount:        payment.amount,
+      currency:      payment.currency,
+      reason:        'Late payment after booking released',
+    })
+
+    if (!refund.ok) {
+      await prisma.payment.update({
+        where: { id: payment.id },
+        data:  {
+          failureMessage:
+            'Late success: refund API failed or not configured — manual review required',
+        },
+      })
+    } else {
+      await prisma.payment.update({
+        where: { id: payment.id },
+        data:  {
+          status:         'refunded',
+          refundAmount:   payment.amount,
+          refundReason:   'Automatic refund: payment after expiry/cancel',
+          refundQueuedAt: null,
+        },
+      })
+    }
+    return { updated: false, lateRefund: true }
+  }
+
+  if (booking.bookingStatus !== 'pending') {
+    if (booking.bookingStatus === 'confirmed' && booking.paymentStatus === 'paid') {
+      return { updated: false }
+    }
+    console.warn(
+      `[bonum qr lookup] unexpected booking state ${booking.bookingStatus} for paid lookup`,
+    )
+    return { updated: false }
+  }
+
+  let payUpdated = false
+  await prisma.$transaction(async (tx) => {
+    const payRows = await tx.payment.updateMany({
+      where: {
+        id:     payment.id,
+        status: { in: ['unpaid', 'authorized'] },
+      },
+      data: {
+        status:             'paid',
+        bonumTransactionId: txId,
+        paidAt:             new Date(),
+        providerOrderId:    parsed.invoiceId ?? payment.providerOrderId,
+        metadata:           mergePaymentMetadata(payment.metadata, {
+          lastQrLookup: parsed.raw,
+        }),
+      },
+    })
+    if (payRows.count === 0) return
+    payUpdated = true
+
+    await tx.booking.updateMany({
+      where: {
+        id:              booking.id,
+        bookingStatus:   'pending',
+        paymentStatus: { in: ['unpaid', 'authorized'] },
+      },
+      data: {
+        paymentStatus: 'paid',
+        bookingStatus: 'confirmed',
+      },
+    })
+  })
+
+  return { updated: payUpdated }
+}
+
+async function maybeReconcileFromBonumQrLookup(
+  userId: string,
+  payment: Prisma.PaymentGetPayload<{
+    include: {
+      booking: {
+        select: {
+          id: true
+          bookingCode: true
+          bookingStatus: true
+          paymentStatus: true
+          holdExpiresAt: true
+          maxHoldUntil: true
+          listingType: true
+        }
+      }
+      attempts: true
+    }
+  }>,
+): Promise<void> {
+  if (payment.userId !== userId) return
+  if (!shouldAttemptQrLookupFallback(payment, payment.booking)) return
+
+  const qrCode = resolveQrCodeForLookup(payment)
+  if (!qrCode) return
+
+  const now = Date.now()
+  if (now - payment.createdAt.getTime() < env.BONUM_QR_LOOKUP_MIN_AGE_MS) return
+
+  pruneQrLookupThrottle()
+  const last = lastQrLookupByPaymentId.get(payment.id) ?? 0
+  if (now - last < env.BONUM_QR_LOOKUP_MIN_INTERVAL_MS) return
+  lastQrLookupByPaymentId.set(payment.id, now)
+
+  console.log('[bonum qr lookup] request', {
+    paymentId:    payment.id,
+    qrCodeLength: qrCode.length,
+    qrPrefix:     `${qrCode.slice(0, 12)}…`,
+  })
+
+  let parsed: Awaited<ReturnType<typeof lookupBonumQrInvoice>>
+  try {
+    parsed = await lookupBonumQrInvoice({ qrCode })
+  } catch (e) {
+    console.error('[bonum qr lookup] request failed', e instanceof Error ? e.message : e)
+    return
+  }
+
+  console.log('[bonum qr lookup] response', {
+    paymentId:      payment.id,
+    paymentState:   parsed.paymentState,
+    transactionId:  parsed.transactionId,
+    invoiceId:      parsed.invoiceId,
+    rawTopKeys:     Object.keys(parsed.raw),
+  })
+
+  if (parsed.qrCodeEcho?.trim() && !readQrFromMetadata(payment.metadata)?.qrCode) {
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data:  {
+        metadata: mergePaymentMetadata(payment.metadata, {
+          checkoutMode: 'qr',
+          qrCode:       parsed.qrCodeEcho.trim(),
+        }),
+      },
+    })
+  }
+
+  if (parsed.paymentState !== 'paid') {
+    console.log('[bonum qr lookup] reconcile', {
+      paymentId: payment.id,
+      updated:   false,
+      reason:    parsed.paymentState,
+    })
+    return
+  }
+
+  const txId =
+    parsed.transactionId?.trim() ||
+    payment.bonumTransactionId?.trim() ||
+    `BOOKING_${payment.booking.bookingCode}`
+
+  const full = await prisma.payment.findUnique({
+    where: { id: payment.id },
+    include: { booking: true },
+  })
+  if (!full) return
+
+  try {
+    const result = await applyBonumQrLookupSuccess(full, {
+      transactionId: txId,
+      invoiceId:     parsed.invoiceId ?? full.providerOrderId,
+      raw:           parsed.raw,
+    })
+    console.log('[bonum qr lookup] reconcile', {
+      paymentId:   payment.id,
+      updated:     result.updated,
+      lateRefund:  result.lateRefund ?? false,
+    })
+  } catch (e) {
+    console.error('[bonum qr lookup] reconcile error', e instanceof Error ? e.message : e)
+  }
+}
+
+function buildPaymentStatusResponse(
+  payment: Prisma.PaymentGetPayload<{
+    include: {
+      booking: {
+        select: {
+          id: true
+          bookingCode: true
+          bookingStatus: true
+          paymentStatus: true
+          holdExpiresAt: true
+          maxHoldUntil: true
+          listingType: true
+        }
+      }
+    }
+  }>,
+) {
+  const b = payment.booking
+  return {
+    bookingId:     b.id,
+    bookingCode:   b.bookingCode,
+    bookingStatus: b.bookingStatus,
+    paymentStatus: b.paymentStatus,
+    holdExpiresAt: b.holdExpiresAt?.toISOString() ?? null,
+    maxHoldUntil:  b.maxHoldUntil?.toISOString() ?? null,
+    payment:       {
+      id:        payment.id,
+      status:    payment.status,
+      paidAt:    payment.paidAt?.toISOString() ?? null,
+      amount:    payment.amount,
+      currency:  payment.currency,
+      followUpUrl: payment.followUpUrl
+        ? (isBonumWebhookUrl(payment.followUpUrl)
+            ? resolveBonumBrowserReturnUrl(payment.id)
+            : payment.followUpUrl)
+        : null,
+    },
+  }
+}
 
 function countRecentRetries(bookingId: string): number {
   const now = Date.now()
@@ -592,46 +931,45 @@ export async function confirmPayment(_userId: string, _paymentId: string) {
 }
 
 export async function getPaymentStatus(userId: string, paymentId: string) {
-  const payment = await prisma.payment.findUnique({
-    where: { id: paymentId },
-    include: {
-      booking: {
-        select: {
-          id:            true,
-          bookingCode:   true,
-          bookingStatus: true,
-          paymentStatus: true,
-          holdExpiresAt: true,
-          maxHoldUntil:  true,
-          listingType:   true,
-        },
+  const statusInclude = {
+    booking: {
+      select: {
+        id:            true,
+        bookingCode:   true,
+        bookingStatus: true,
+        paymentStatus: true,
+        holdExpiresAt: true,
+        maxHoldUntil:  true,
+        listingType:   true,
       },
     },
+    attempts: { orderBy: { attemptNumber: 'desc' as const }, take: 1 },
+  }
+
+  let payment = await prisma.payment.findUnique({
+    where: { id: paymentId },
+    include: statusInclude,
   })
   if (!payment) throw new AppError('Payment not found.', 404)
   if (payment.userId !== userId) throw new AppError('Forbidden.', 403)
 
   const b = payment.booking
-  return {
-    bookingId:     b.id,
-    bookingCode:   b.bookingCode,
-    bookingStatus: b.bookingStatus,
-    paymentStatus: b.paymentStatus,
-    holdExpiresAt: b.holdExpiresAt?.toISOString() ?? null,
-    maxHoldUntil:  b.maxHoldUntil?.toISOString() ?? null,
-    payment:       {
-      id:        payment.id,
-      status:    payment.status,
-      paidAt:    payment.paidAt?.toISOString() ?? null,
-      amount:    payment.amount,
-      currency:  payment.currency,
-      followUpUrl: payment.followUpUrl
-        ? (isBonumWebhookUrl(payment.followUpUrl)
-            ? resolveBonumBrowserReturnUrl(payment.id)
-            : payment.followUpUrl)
-        : null,
-    },
+  if (b.paymentStatus === 'paid' && b.bookingStatus === 'confirmed') {
+    return buildPaymentStatusResponse(payment)
   }
+
+  const persisted = await persistQrCodeFromAttemptIfMissing(payment)
+  if (persisted) payment = persisted
+
+  await maybeReconcileFromBonumQrLookup(userId, payment)
+
+  const refreshed = await prisma.payment.findUnique({
+    where: { id: paymentId },
+    include: statusInclude,
+  })
+  if (!refreshed) throw new AppError('Payment not found.', 404)
+
+  return buildPaymentStatusResponse(refreshed)
 }
 
 export async function retryPayment(userId: string, paymentId: string) {

@@ -71,6 +71,14 @@ const envSchema = z.object({
   BONUM_REFUND_RELATIVE_PATH: z.string().optional().default(''),
   /** When true, skip real Bonum HTTP (local only). */
   BONUM_USE_STUB:              z.string().optional().default('false'),
+  /** Stub only: treat QR invoice lookup as PAID (dev testing). */
+  BONUM_STUB_QR_LOOKUP_PAID:   z.string().optional().default('false'),
+  /** Min age (ms) after payment row creation before first QR lookup fallback may run. */
+  BONUM_QR_LOOKUP_MIN_AGE_MS:  z.string().default('8000').transform(Number),
+  /** Min interval (ms) between Bonum QR lookup calls per payment (in-process throttle). */
+  BONUM_QR_LOOKUP_MIN_INTERVAL_MS: z.string().default('20000').transform(Number),
+  /** Set to true to disable QR invoice lookup fallback (webhook remains primary). */
+  BONUM_QR_LOOKUP_DISABLED:    z.string().optional().default('false'),
   /** Max minutes from booking creation that payment can ever complete (hard cap). */
   MAX_HOLD_MINUTES_FROM_BOOKING: z.string().default('45').transform(Number),
   /** Extra minutes added to hold on each initiate/retry (capped by max hold). */

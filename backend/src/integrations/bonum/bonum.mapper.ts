@@ -291,6 +291,93 @@ export function mapBonumQrCreateResponse(json: unknown): BonumQrCreateResult {
   }
 }
 
+// ─── QR invoice lookup (POST /mpay-service/merchant/transaction/qr) ────────
+/** Normalized outcome from Bonum QR lookup JSON (flexible field names). */
+export interface BonumQrLookupParsed {
+  paymentState: 'paid' | 'pending' | 'failed' | 'unknown'
+  transactionId?: string
+  invoiceId?: string
+  /** If Bonum echoes the QR string, we can persist when DB was missing it. */
+  qrCodeEcho?: string
+  raw: Record<string, unknown>
+}
+
+export function mapBonumQrLookupBody(qrCode: string): Record<string, unknown> {
+  const q = String(qrCode).trim()
+  if (!q) throw new Error('Bonum QR lookup requires qrCode')
+  return { qrCode: q }
+}
+
+function pickLookupStr(obj: Record<string, unknown>, keys: string[]): string | undefined {
+  for (const k of keys) {
+    const v = obj[k]
+    if (v !== undefined && v !== null && String(v).trim()) return String(v).trim()
+  }
+  return undefined
+}
+
+/**
+ * Assumed Bonum QR lookup response (flexible):
+ * - Top-level or `data`: status / transactionStatus / paymentStatus / invoiceStatus
+ * - Optional: transactionId, invoiceId, qrCode
+ * - Booleans: paid, success
+ */
+export function parseBonumQrLookupResponse(json: unknown): BonumQrLookupParsed {
+  if (!json || typeof json !== 'object') {
+    return { paymentState: 'unknown', raw: {} }
+  }
+  const root = json as Record<string, unknown>
+  const data = (typeof root.data === 'object' && root.data !== null ? root.data : root) as Record<
+    string,
+    unknown
+  >
+
+  const transactionId =
+    pickLookupStr(data, ['transactionId', 'transaction_id', 'txId', 'tx_id']) ??
+    pickLookupStr(root, ['transactionId', 'transaction_id'])
+  const invoiceId =
+    pickLookupStr(data, ['invoiceId', 'invoice_id']) ?? pickLookupStr(root, ['invoiceId', 'invoice_id'])
+  const qrCodeEcho = pickLookupStr(data, ['qrCode', 'qr_code'])
+
+  const parts = [
+    data.status,
+    data.transactionStatus,
+    data.paymentStatus,
+    data.invoiceStatus,
+    data.state,
+    root.status,
+    root.transactionStatus,
+  ]
+  const combined = parts.map((x) => String(x ?? '').toUpperCase()).join(' ')
+
+  const paidBool =
+    data.paid === true ||
+    data.success === true ||
+    root.paid === true ||
+    root.success === true
+
+  const paidTokens = ['PAID', 'SUCCESS', 'COMPLETED', 'SETTLED', 'CAPTURED', 'SUCCEEDED']
+  const failTokens = ['FAILED', 'CANCELLED', 'DECLINED', 'EXPIRED', 'REJECTED']
+  const pendingTokens = ['PENDING', 'PROCESSING', 'AUTHORIZED', 'CREATED']
+
+  let paymentState: BonumQrLookupParsed['paymentState'] = 'unknown'
+  if (paidBool || paidTokens.some((t) => combined.includes(t))) {
+    paymentState = 'paid'
+  } else if (failTokens.some((t) => combined.includes(t))) {
+    paymentState = 'failed'
+  } else if (pendingTokens.some((t) => combined.includes(t))) {
+    paymentState = 'pending'
+  }
+
+  return {
+    paymentState,
+    transactionId,
+    invoiceId,
+    qrCodeEcho,
+    raw: root as Record<string, unknown>,
+  }
+}
+
 // ─── Webhook: type PAYMENT, status SUCCESS | FAILED ────────────────────────
 
 export type BonumWebhookTopStatus = 'SUCCESS' | 'FAILED'
