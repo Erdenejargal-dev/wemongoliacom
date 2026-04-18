@@ -13,6 +13,15 @@ function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms))
 }
 
+/** Bonum returns `qrImage` as raw base64; browsers need a full data URL for `<img src>`. */
+function normalizeBonumQrImageSrc(qrImage: string | null | undefined): string | null {
+  if (qrImage == null || typeof qrImage !== 'string') return null
+  const t = qrImage.trim()
+  if (!t) return null
+  if (t.startsWith('data:image')) return t
+  return `data:image/png;base64,${t}`
+}
+
 type UiPhase =
   | 'starting'
   | 'qr_ready'
@@ -38,6 +47,23 @@ function PayContent() {
     if (typeof window === 'undefined') return false
     return /iPhone|iPad|Android|Mobile/i.test(navigator.userAgent)
   }, [])
+
+  const qrImageDataUrl = useMemo(() => {
+    const raw = payload?.qrImage
+    if (raw == null || typeof raw !== 'string') return null
+    const trimmed = raw.trim()
+    if (!trimmed) return null
+    const hasDataPrefix = trimmed.startsWith('data:image')
+    const normalized = normalizeBonumQrImageSrc(trimmed)
+    if (normalized) {
+      // TEMP: remove after QR display verified in prod
+      console.log('[checkout/pay] qrImage', {
+        hasDataUrlPrefix: hasDataPrefix,
+        normalizedSrcLength: normalized.length,
+      })
+    }
+    return normalized
+  }, [payload?.qrImage])
 
   useEffect(() => {
     if (status === 'loading') return
@@ -268,10 +294,10 @@ function PayContent() {
             <div className="text-sm font-medium text-gray-700">
               {isMobile ? 'Or scan QR' : 'Scan QR code'}
             </div>
-            {payload.qrImage ? (
+            {qrImageDataUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={payload.qrImage}
+                src={qrImageDataUrl}
                 alt="Payment QR"
                 className="w-56 h-56 md:w-64 md:h-64 object-contain rounded-xl border border-gray-200 bg-white p-2"
               />
