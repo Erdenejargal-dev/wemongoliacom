@@ -1,7 +1,7 @@
 'use client'
 
-import { Suspense, useEffect, useState, useRef } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { Suspense, useEffect, useMemo, useState, useRef } from 'react'
+import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react'
@@ -15,26 +15,45 @@ function sleep(ms: number) {
 
 function ReturnContent() {
   const params = useSearchParams()
+  const pathname = usePathname()
   const router = useRouter()
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const paymentId = params.get('paymentId') ?? ''
   const stub = params.get('stub') === '1'
+  const searchParamsString = params.toString()
+
+  const loginHref = useMemo(() => {
+    const target = `${pathname}${searchParamsString ? `?${searchParamsString}` : ''}`
+    return `/auth/login?callbackUrl=${encodeURIComponent(target)}`
+  }, [pathname, searchParamsString])
 
   const [ui, setUi] = useState<'processing' | 'failed' | 'expired'>('processing')
   const [message, setMessage] = useState<string | null>(null)
+  const [sessionExpired, setSessionExpired] = useState(false)
   const ran = useRef(false)
 
   useEffect(() => {
+    if (!sessionExpired) return
+    let cancelled = false
+    ;(async () => {
+      const token = await getFreshAccessToken()
+      if (cancelled) return
+      if (token) {
+        setSessionExpired(false)
+        setMessage(null)
+        ran.current = false
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [sessionExpired, status])
+
+  useEffect(() => {
     if (status === 'loading') return
-    if (!session) {
-      router.replace(`/auth/login?callbackUrl=${encodeURIComponent(`/checkout/payment-return?paymentId=${paymentId}`)}`)
-      return
-    }
-    if (!paymentId) {
-      setUi('failed')
-      setMessage('Missing payment reference.')
-      return
-    }
+    if (status === 'unauthenticated') return
+    if (sessionExpired) return
+    if (!paymentId) return
     if (ran.current) return
     ran.current = true
 
@@ -42,9 +61,11 @@ function ReturnContent() {
 
     ;(async () => {
       const token = await getFreshAccessToken()
-      if (!token || cancelled) {
-        setUi('failed')
-        setMessage('Session expired. Please sign in again.')
+      if (cancelled) return
+      if (!token) {
+        ran.current = false
+        setSessionExpired(true)
+        setMessage('Sign in again to refresh payment status.')
         return
       }
       for (let i = 0; i < 90; i++) {
@@ -66,6 +87,12 @@ function ReturnContent() {
             return
           }
         } catch (e) {
+          if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+            ran.current = false
+            setSessionExpired(true)
+            setMessage('Sign in again to refresh payment status.')
+            return
+          }
           if (e instanceof ApiError && e.status === 404) {
             setUi('failed')
             setMessage('Payment not found.')
@@ -80,14 +107,20 @@ function ReturnContent() {
     return () => {
       cancelled = true
     }
-  }, [session, status, paymentId, router])
+  }, [status, paymentId, router, sessionExpired])
 
   async function handleRetry() {
     setUi('processing')
     setMessage(null)
+    setSessionExpired(false)
+    ran.current = false
     try {
       const token = await getFreshAccessToken()
-      if (!token) return
+      if (!token) {
+        setSessionExpired(true)
+        setMessage('Sign in again to continue.')
+        return
+      }
       const res = await retryPayment(paymentId, token)
       if (res.followUpUrl?.trim()) {
         window.location.href = res.followUpUrl
@@ -111,6 +144,33 @@ function ReturnContent() {
         <AlertTriangle className="w-8 h-8 text-amber-500" />
         <p className="text-sm text-gray-600">Missing payment reference.</p>
         <Link href="/tours" className="text-brand-600 font-semibold text-sm">Browse tours</Link>
+      </div>
+    )
+  }
+
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 px-4">
+        <Loader2 className="w-8 h-8 animate-spin text-brand-500" />
+        <p className="text-sm text-gray-600">Loading…</p>
+      </div>
+    )
+  }
+
+  if (status === 'unauthenticated') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4 max-w-md mx-auto text-center">
+        <AlertTriangle className="w-8 h-8 text-amber-500" />
+        <p className="text-sm text-gray-800">Sign in to confirm your payment and finish checkout.</p>
+        <Link
+          href={loginHref}
+          className="inline-flex items-center justify-center gap-2 bg-brand-500 text-white font-semibold text-sm px-6 py-3 rounded-xl"
+        >
+          Sign in again
+        </Link>
+        <Link href="/account/trips" className="text-sm text-gray-600 underline">
+          My trips
+        </Link>
       </div>
     )
   }
@@ -145,10 +205,26 @@ function ReturnContent() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4 max-w-md mx-auto text-center">
-      <Loader2 className="w-10 h-10 animate-spin text-brand-500" />
+      {sessionExpired && (
+        <div className="w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 text-left">
+          <p className="font-medium">Sign in again to refresh status</p>
+          <p className="text-sm mt-1 text-amber-900/90">
+            {message ?? 'We will resume confirming as soon as you are signed in.'}
+          </p>
+          <Link
+            href={loginHref}
+            className="inline-block mt-3 font-semibold text-brand-600 underline"
+          >
+            Sign in again
+          </Link>
+        </div>
+      )}
+      {!sessionExpired && <Loader2 className="w-10 h-10 animate-spin text-brand-500" />}
       <h1 className="text-lg font-bold text-gray-900">Confirming payment</h1>
       <p className="text-sm text-gray-600">
-        {message ?? 'Please wait while we confirm payment. This usually takes a few seconds.'}
+        {sessionExpired
+          ? 'Waiting for a fresh sign-in to continue checking your payment.'
+          : message ?? 'Please wait while we confirm payment. This usually takes a few seconds.'}
       </p>
       {stub && (
         <p className="text-xs text-amber-800 bg-amber-50 rounded-lg px-3 py-2">

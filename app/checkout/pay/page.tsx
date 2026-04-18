@@ -1,16 +1,29 @@
 'use client'
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { Loader2, AlertTriangle, ExternalLink, Smartphone } from 'lucide-react'
 import { getPaymentStatus, initiatePayment, type InitiatePaymentResponse } from '@/lib/api/payments'
+import {
+  clearCheckoutPayPayload,
+  loadCheckoutPayPayload,
+  saveCheckoutPayPayload,
+} from '@/lib/checkout-session-storage'
+import { getFreshAccessToken } from '@/lib/auth-utils'
+import { ApiError } from '@/lib/api/client'
 
 /** Dedupe concurrent initiate calls for the same booking (e.g. React Strict Mode, effect re-runs). */
 const initiatePromiseByBookingId = new Map<string, Promise<InitiatePaymentResponse>>()
-import { getFreshAccessToken } from '@/lib/auth-utils'
-import { ApiError } from '@/lib/api/client'
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms))
@@ -36,15 +49,64 @@ type UiPhase =
 
 function PayContent() {
   const params = useSearchParams()
+  const pathname = usePathname()
   const router = useRouter()
   const { status } = useSession()
   const bookingId = params.get('bookingId') ?? ''
+  const searchParamsString = params.toString()
+
+  const loginHref = useMemo(() => {
+    const target = `${pathname}${searchParamsString ? `?${searchParamsString}` : ''}`
+    return `/auth/login?callbackUrl=${encodeURIComponent(target)}`
+  }, [pathname, searchParamsString])
 
   const [error, setError] = useState<string | null>(null)
   const [phase, setPhase] = useState<UiPhase>('starting')
   const [payload, setPayload] = useState<InitiatePaymentResponse | null>(null)
   const [pollMessage, setPollMessage] = useState<string | null>(null)
+  const [sessionExpired, setSessionExpired] = useState(false)
   const pollStarted = useRef(false)
+  const phaseRef = useRef(phase)
+
+  useLayoutEffect(() => {
+    phaseRef.current = phase
+  }, [phase])
+
+  useLayoutEffect(() => {
+    if (!bookingId || typeof window === 'undefined') return
+    const saved = loadCheckoutPayPayload(bookingId)
+    if (saved?.bookingId === bookingId) {
+      // Restore initiate/QR context after re-login (sessionStorage).
+      /* eslint-disable react-hooks/set-state-in-effect -- sync read from sessionStorage before paint */
+      setPayload(saved)
+      setPhase('qr_ready')
+      /* eslint-enable react-hooks/set-state-in-effect */
+    }
+  }, [bookingId])
+
+  useEffect(() => {
+    if (payload?.bookingId === bookingId) {
+      saveCheckoutPayPayload(bookingId, payload)
+    }
+  }, [payload, bookingId])
+
+  useEffect(() => {
+    if (!sessionExpired) return
+    let cancelled = false
+    ;(async () => {
+      const token = await getFreshAccessToken()
+      if (cancelled) return
+      if (token) {
+        setSessionExpired(false)
+        setPollMessage(null)
+        pollStarted.current = false
+        setPhase((p) => (p === 'processing' || p === 'paid' ? 'qr_ready' : p))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [sessionExpired, status])
 
   useEffect(() => {
     pollStarted.current = false
@@ -60,36 +122,16 @@ function PayContent() {
     if (raw == null || typeof raw !== 'string') return null
     const trimmed = raw.trim()
     if (!trimmed) return null
-    const hasDataPrefix = trimmed.startsWith('data:image')
-    const normalized = normalizeBonumQrImageSrc(trimmed)
-    if (normalized) {
-      // TEMP: remove after QR display verified in prod
-      console.log('[checkout/pay] qrImage', {
-        hasDataUrlPrefix: hasDataPrefix,
-        normalizedSrcLength: normalized.length,
-      })
-    }
-    return normalized
+    return normalizeBonumQrImageSrc(trimmed)
   }, [payload?.qrImage])
 
   useEffect(() => {
     if (status === 'loading') return
-    if (!bookingId) {
-      setError('Missing booking. Please start checkout again.')
-      return
-    }
-    if (status === 'unauthenticated') {
-      router.replace(`/auth/login?callbackUrl=${encodeURIComponent(`/checkout/pay?bookingId=${bookingId}`)}`)
-      return
-    }
+    if (!bookingId) return
+    if (status === 'unauthenticated') return
     if (status !== 'authenticated') return
 
     if (payload?.bookingId === bookingId) {
-      // TEMP: remove after verifying single initiate in prod
-      console.log('[checkout/pay] skip initiate (already have payload)', {
-        bookingId,
-        paymentId: payload.paymentId,
-      })
       return
     }
 
@@ -100,29 +142,21 @@ function PayContent() {
       try {
         const token = await getFreshAccessToken()
         if (!token) {
-          setError('Session expired. Please sign in again.')
-          setPhase('failed')
+          setSessionExpired(true)
+          setPollMessage('Sign in again to continue payment.')
           return
         }
 
         let p = initiatePromiseByBookingId.get(bookingId)
         if (!p) {
-          // TEMP: remove after verifying single initiate in prod
-          console.log('[checkout/pay] initiate begin', { bookingId, paymentId: '(pending)' })
           p = initiatePayment(bookingId, token).finally(() => {
             initiatePromiseByBookingId.delete(bookingId)
           })
           initiatePromiseByBookingId.set(bookingId, p)
-        } else {
-          // TEMP: remove after verifying single initiate in prod
-          console.log('[checkout/pay] skip initiate (reusing in-flight request)', { bookingId })
         }
 
         const res = await p
         if (cancelled) return
-
-        // TEMP: remove after verifying single initiate in prod
-        console.log('[checkout/pay] initiate settled', { bookingId, paymentId: res.paymentId })
 
         setPayload(res)
 
@@ -138,6 +172,11 @@ function PayContent() {
         setPhase('failed')
       } catch (e) {
         if (cancelled) return
+        if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+          setSessionExpired(true)
+          setPollMessage('Sign in again to continue payment.')
+          return
+        }
         if (e instanceof ApiError) {
           setError(e.message || 'Could not start payment.')
         } else {
@@ -151,23 +190,28 @@ function PayContent() {
       cancelled = true
     }
     // Intentionally omit `session` — its object identity changes often and retriggers this effect.
-  }, [bookingId, status, router, payload?.bookingId])
+  }, [bookingId, status, payload?.bookingId])
 
   const paymentId = payload?.paymentId ?? ''
 
   useEffect(() => {
-    if (phase !== 'qr_ready') return
+    if (phaseRef.current !== 'qr_ready') return
     if (!paymentId) return
+    if (status === 'loading') return
     if (pollStarted.current) return
     pollStarted.current = true
-    setPhase('processing')
+    queueMicrotask(() => {
+      setPhase('processing')
+    })
 
     let cancelled = false
     ;(async () => {
       const token = await getFreshAccessToken()
-      if (!token || cancelled) {
-        setError('Session expired. Please sign in again.')
-        setPhase('failed')
+      if (cancelled) return
+      if (!token) {
+        pollStarted.current = false
+        setSessionExpired(true)
+        setPollMessage('Sign in again to refresh payment status.')
         return
       }
       for (let i = 0; i < 120; i++) {
@@ -176,6 +220,7 @@ function PayContent() {
           const s = await getPaymentStatus(paymentId, token)
           if (s.paymentStatus === 'paid' && s.bookingStatus === 'confirmed') {
             setPhase('paid')
+            clearCheckoutPayPayload(bookingId)
             router.replace(`/booking-success?bookingCode=${encodeURIComponent(s.bookingCode)}`)
             return
           }
@@ -190,6 +235,12 @@ function PayContent() {
             return
           }
         } catch (e) {
+          if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+            pollStarted.current = false
+            setSessionExpired(true)
+            setPollMessage('Sign in again to refresh payment status.')
+            return
+          }
           if (e instanceof ApiError && e.status === 404) {
             setPhase('failed')
             setPollMessage('Payment not found.')
@@ -210,12 +261,15 @@ function PayContent() {
     return () => {
       cancelled = true
     }
-  }, [phase, paymentId, router, payload?.holdExpiresAt])
+    // phase omitted: transitioning qr_ready → processing must not cancel the in-flight poll.
+  }, [paymentId, router, payload?.holdExpiresAt, bookingId, status, sessionExpired])
 
   const openHosted = useCallback(() => {
     const url = payload?.followUpUrl?.trim()
     if (url) window.location.href = url
   }, [payload?.followUpUrl])
+
+  const showAuthRecovery = status === 'unauthenticated' || sessionExpired
 
   if (!bookingId) {
     return (
@@ -227,7 +281,39 @@ function PayContent() {
     )
   }
 
-  if (error && phase === 'failed') {
+  if (status === 'loading' && !payload) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 px-4">
+        <Loader2 className="w-8 h-8 animate-spin text-brand-500" />
+        <p className="text-sm text-gray-600">Loading…</p>
+      </div>
+    )
+  }
+
+  if (showAuthRecovery && !payload) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4 max-w-md mx-auto text-center">
+        <AlertTriangle className="w-8 h-8 text-amber-500" />
+        <p className="text-sm text-gray-800">
+          {pollMessage ??
+            (status === 'unauthenticated'
+              ? 'Sign in to continue to payment.'
+              : 'Your session expired. Sign in again to continue.')}
+        </p>
+        <Link
+          href={loginHref}
+          className="inline-flex items-center justify-center gap-2 bg-brand-500 text-white font-semibold text-sm px-6 py-3 rounded-xl"
+        >
+          Sign in again
+        </Link>
+        <Link href="/account/trips" className="text-sm text-gray-600 underline">
+          My trips
+        </Link>
+      </div>
+    )
+  }
+
+  if (error && phase === 'failed' && !sessionExpired) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4 max-w-md mx-auto text-center">
         <AlertTriangle className="w-8 h-8 text-amber-500" />
@@ -247,7 +333,7 @@ function PayContent() {
     )
   }
 
-  if (phase === 'starting') {
+  if (phase === 'starting' && !showAuthRecovery) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 px-4">
         <Loader2 className="w-8 h-8 animate-spin text-brand-500" />
@@ -259,6 +345,21 @@ function PayContent() {
   if (phase === 'hosted_fallback' && payload?.followUpUrl) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-6 px-4 max-w-md mx-auto text-center">
+        {showAuthRecovery && (
+          <div className="w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 text-left">
+            <p className="font-medium">Sign in again to refresh payment status</p>
+            <p className="text-sm mt-1 text-amber-900/90">
+              {pollMessage ??
+                'You can still complete payment on the Bonum page. Sign in so we can confirm when it finishes.'}
+            </p>
+            <Link
+              href={loginHref}
+              className="inline-block mt-3 font-semibold text-brand-600 underline"
+            >
+              Sign in again
+            </Link>
+          </div>
+        )}
         <p className="text-sm text-gray-700">
           Open the secure Bonum payment page to complete your payment. We will confirm automatically when it finishes.
         </p>
@@ -281,6 +382,21 @@ function PayContent() {
 
     return (
       <div className="min-h-screen flex flex-col items-center justify-start py-10 px-4 max-w-lg mx-auto gap-6">
+        {showAuthRecovery && (
+          <div className="w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 text-left">
+            <p className="font-medium">Sign in again to refresh payment status</p>
+            <p className="text-sm mt-1 text-amber-900/90">
+              {pollMessage ??
+                'You can still use the QR code or bank links below. Sign in so we can confirm payment when it completes.'}
+            </p>
+            <Link
+              href={loginHref}
+              className="inline-block mt-3 font-semibold text-brand-600 underline"
+            >
+              Sign in again
+            </Link>
+          </div>
+        )}
         <div className="text-center w-full">
           <h1 className="text-lg font-bold text-gray-900">Complete payment</h1>
           <p className="text-sm text-gray-600 mt-1">
@@ -344,7 +460,7 @@ function PayContent() {
           </div>
         </div>
 
-        {(phase === 'processing' || phase === 'paid') && (
+        {(phase === 'processing' || phase === 'paid') && !showAuthRecovery && (
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Loader2 className="w-4 h-4 animate-spin text-brand-500" />
             {pollMessage ?? 'Confirming with your bank…'}
