@@ -10,6 +10,7 @@ import {
   mapInvoiceCreateResponse,
   omitUndefinedFields,
   parseBonumInvoiceProvidersFromEnv,
+  resolveBonumBrowserReturnUrl,
   resolveBonumWebhookCallbackUrl,
   type BonumInvoiceCreateInput,
   type BonumInvoiceCreateResult,
@@ -62,10 +63,15 @@ export async function createBonumInvoice(
     input.expiresIn ??
     (env.BONUM_INVOICE_EXPIRES_IN_SECONDS > 0 ? env.BONUM_INVOICE_EXPIRES_IN_SECONDS : 900)
 
+  const browserReturnUrl = input.internalPaymentId
+    ? resolveBonumBrowserReturnUrl(input.internalPaymentId)
+    : undefined
+
   const body = omitUndefinedFields(
     mapInvoiceCreateBody({
       ...input,
       callback,
+      browserReturnUrl,
       expiresIn: expiresInEffective,
       providers: providersResolved,
     }),

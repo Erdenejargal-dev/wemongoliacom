@@ -8,7 +8,11 @@ import {
   createBonumInvoice,
   refundBonumPayment,
 } from '../integrations/bonum/bonum.client'
-import type { BonumInvoiceCreateInput } from '../integrations/bonum/bonum.mapper'
+import {
+  isBonumWebhookUrl,
+  resolveBonumBrowserReturnUrl,
+  type BonumInvoiceCreateInput,
+} from '../integrations/bonum/bonum.mapper'
 import { releaseRoomAvailabilityForCancel } from './booking.service'
 
 function canReuseExistingBonumInvoice(
@@ -20,6 +24,7 @@ function canReuseExistingBonumInvoice(
   const pid = payment.providerOrderId?.trim()
   const url = payment.followUpUrl?.trim()
   if (!pid || !url) return false
+  if (isBonumWebhookUrl(url)) return false
   if (payment.sessionExpiresAt && payment.sessionExpiresAt <= now) return false
   if (booking.holdExpiresAt && booking.holdExpiresAt <= now) return false
   return true
@@ -44,6 +49,10 @@ function buildInitiatePaymentResponse(params: {
   sessionExpiresAt: Date | null
   newHold: Date
 }) {
+  const followUp =
+    isBonumWebhookUrl(params.followUpUrl)
+      ? resolveBonumBrowserReturnUrl(params.payment.id)
+      : params.followUpUrl
   return {
     paymentId:     params.payment.id,
     bookingId:     params.booking.id,
@@ -51,7 +60,7 @@ function buildInitiatePaymentResponse(params: {
     status:        'authorized' as const,
     amount:        params.payment.amount,
     currency:      params.payment.currency,
-    followUpUrl:   params.followUpUrl,
+    followUpUrl:   followUp,
     expiresAt:     params.sessionExpiresAt?.toISOString() ?? params.newHold.toISOString(),
     qrCodeData:    null,
     deeplinkUrl:   null,
@@ -326,7 +335,11 @@ export async function getPaymentStatus(userId: string, paymentId: string) {
       paidAt:    payment.paidAt?.toISOString() ?? null,
       amount:    payment.amount,
       currency:  payment.currency,
-      followUpUrl: payment.followUpUrl,
+      followUpUrl: payment.followUpUrl
+        ? (isBonumWebhookUrl(payment.followUpUrl)
+            ? resolveBonumBrowserReturnUrl(payment.id)
+            : payment.followUpUrl)
+        : null,
     },
   }
 }

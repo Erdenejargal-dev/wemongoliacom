@@ -14,8 +14,10 @@ export interface BonumInvoiceCreateInput {
   callback?: string
   /** Correlation id sent to Bonum — we use `BOOKING_${bookingCode}`; stored in `Payment.bonumTransactionId`. */
   transactionId: string
-  /** Our `Payment.id` (cuid) — used only for stub `followUpLink` / dev return URL; not sent to Bonum. */
+  /** Our `Payment.id` (cuid) — used for stub `followUpLink`, Bonum `returnUrl`, and dev return URL; not sent as raw id to Bonum. */
   internalPaymentId?: string
+  /** Public page Bonum should redirect the **browser** to after payment (`returnUrl` in invoice JSON). */
+  browserReturnUrl?: string
   expiresIn?: number
   providers?: string[]
   items?: unknown[]
@@ -48,6 +50,53 @@ export function resolveBonumWebhookCallbackUrl(): string {
 }
 
 /**
+ * Browser redirect after payment completes on Bonum — must be the **frontend** origin (not the API webhook).
+ * Bonum uses the invoice `callback` for server webhook; `returnUrl` tells Bonum where to send the **user** after payment.
+ */
+export function resolveBonumBrowserReturnUrl(paymentId: string): string {
+  const raw = env.PUBLIC_APP_URL?.trim() || ''
+  if (!raw) {
+    throw new Error(
+      'Set PUBLIC_APP_URL to the public frontend origin (e.g. https://wemongolia.com) for Bonum payment return.',
+    )
+  }
+  const base = raw.replace(/\/$/, '')
+  let parsed: URL
+  try {
+    parsed = new URL(base)
+  } catch {
+    throw new Error('Invalid PUBLIC_APP_URL for Bonum browser return URL.')
+  }
+  if (parsed.protocol !== 'https:' && env.NODE_ENV === 'production') {
+    throw new Error('Bonum browser return URL must use https:// in production.')
+  }
+  const host = parsed.hostname.toLowerCase()
+  if (env.NODE_ENV === 'production' && (host === 'localhost' || host === '127.0.0.1')) {
+    throw new Error('PUBLIC_APP_URL cannot be localhost in production for Bonum return URL.')
+  }
+  return `${base}/checkout/payment-return?paymentId=${encodeURIComponent(paymentId)}`
+}
+
+/** True if this URL targets our Bonum webhook route (must never be used as a browser payment or return link). */
+export function isBonumWebhookUrl(url: string): boolean {
+  const t = url.trim()
+  if (!t) return false
+  try {
+    const u = new URL(t)
+    const path = u.pathname.replace(/\/$/, '') || '/'
+    if (path.endsWith('/webhooks/bonum')) return true
+  } catch {
+    return false
+  }
+  try {
+    const expected = resolveBonumWebhookCallbackUrl()
+    return t === expected || t.replace(/\/$/, '') === expected.replace(/\/$/, '')
+  } catch {
+    return false
+  }
+}
+
+/**
  * `BONUM_INVOICE_PROVIDERS_JSON` e.g. `["QPAY"]` — invalid JSON or wrong shape → `undefined`.
  */
 export function parseBonumInvoiceProvidersFromEnv(): string[] | undefined {
@@ -75,6 +124,10 @@ export function mapInvoiceCreateBody(input: BonumInvoiceCreateInput): Record<str
     amount,
     callback:      input.callback,
     transactionId: String(input.transactionId),
+  }
+
+  if (input.browserReturnUrl?.trim()) {
+    body.returnUrl = input.browserReturnUrl.trim()
   }
 
   if (input.expiresIn !== undefined && input.expiresIn !== null) {
@@ -119,6 +172,11 @@ export function mapInvoiceCreateResponse(json: unknown): BonumInvoiceCreateResul
   const followUpLink = String(data.followUpLink ?? data.follow_up_link ?? '')
   if (!invoiceId || !followUpLink) {
     throw new Error('Bonum invoice response missing invoiceId or followUpLink')
+  }
+  if (isBonumWebhookUrl(followUpLink)) {
+    throw new Error(
+      'Bonum returned the webhook URL as followUpLink; hosted checkout URL is required. Check invoice API fields (returnUrl vs callback).',
+    )
   }
 
   const exp = data.expiresAt ?? data.expires_at ?? data.sessionExpiresAt
