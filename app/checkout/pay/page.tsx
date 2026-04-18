@@ -6,6 +6,9 @@ import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { Loader2, AlertTriangle, ExternalLink, Smartphone } from 'lucide-react'
 import { getPaymentStatus, initiatePayment, type InitiatePaymentResponse } from '@/lib/api/payments'
+
+/** Dedupe concurrent initiate calls for the same booking (e.g. React Strict Mode, effect re-runs). */
+const initiatePromiseByBookingId = new Map<string, Promise<InitiatePaymentResponse>>()
 import { getFreshAccessToken } from '@/lib/auth-utils'
 import { ApiError } from '@/lib/api/client'
 
@@ -34,7 +37,7 @@ type UiPhase =
 function PayContent() {
   const params = useSearchParams()
   const router = useRouter()
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const bookingId = params.get('bookingId') ?? ''
 
   const [error, setError] = useState<string | null>(null)
@@ -42,6 +45,10 @@ function PayContent() {
   const [payload, setPayload] = useState<InitiatePaymentResponse | null>(null)
   const [pollMessage, setPollMessage] = useState<string | null>(null)
   const pollStarted = useRef(false)
+
+  useEffect(() => {
+    pollStarted.current = false
+  }, [bookingId])
 
   const isMobile = useMemo(() => {
     if (typeof window === 'undefined') return false
@@ -67,12 +74,22 @@ function PayContent() {
 
   useEffect(() => {
     if (status === 'loading') return
-    if (!session) {
+    if (!bookingId) {
+      setError('Missing booking. Please start checkout again.')
+      return
+    }
+    if (status === 'unauthenticated') {
       router.replace(`/auth/login?callbackUrl=${encodeURIComponent(`/checkout/pay?bookingId=${bookingId}`)}`)
       return
     }
-    if (!bookingId) {
-      setError('Missing booking. Please start checkout again.')
+    if (status !== 'authenticated') return
+
+    if (payload?.bookingId === bookingId) {
+      // TEMP: remove after verifying single initiate in prod
+      console.log('[checkout/pay] skip initiate (already have payload)', {
+        bookingId,
+        paymentId: payload.paymentId,
+      })
       return
     }
 
@@ -87,8 +104,25 @@ function PayContent() {
           setPhase('failed')
           return
         }
-        const res = await initiatePayment(bookingId, token)
+
+        let p = initiatePromiseByBookingId.get(bookingId)
+        if (!p) {
+          // TEMP: remove after verifying single initiate in prod
+          console.log('[checkout/pay] initiate begin', { bookingId, paymentId: '(pending)' })
+          p = initiatePayment(bookingId, token).finally(() => {
+            initiatePromiseByBookingId.delete(bookingId)
+          })
+          initiatePromiseByBookingId.set(bookingId, p)
+        } else {
+          // TEMP: remove after verifying single initiate in prod
+          console.log('[checkout/pay] skip initiate (reusing in-flight request)', { bookingId })
+        }
+
+        const res = await p
         if (cancelled) return
+
+        // TEMP: remove after verifying single initiate in prod
+        console.log('[checkout/pay] initiate settled', { bookingId, paymentId: res.paymentId })
 
         setPayload(res)
 
@@ -116,7 +150,8 @@ function PayContent() {
     return () => {
       cancelled = true
     }
-  }, [bookingId, session, status, router])
+    // Intentionally omit `session` — its object identity changes often and retriggers this effect.
+  }, [bookingId, status, router, payload?.bookingId])
 
   const paymentId = payload?.paymentId ?? ''
 

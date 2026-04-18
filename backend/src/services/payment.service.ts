@@ -132,12 +132,14 @@ function buildInitiatePaymentResponse(params: {
       ? resolveBonumBrowserReturnUrl(params.payment.id)
       : rawFollowUp || null
 
+  const amountDisplay = Math.round(Number(params.payment.amount))
+
   return {
     paymentId:     params.payment.id,
     bookingId:     params.booking.id,
     bookingCode:   params.booking.bookingCode,
     status:        'authorized' as const,
-    amount:        params.payment.amount,
+    amount:        amountDisplay,
     currency:      params.payment.currency,
     expiresAt:     params.sessionExpiresAt?.toISOString() ?? params.newHold.toISOString(),
     holdExpiresAt: params.newHold.toISOString(),
