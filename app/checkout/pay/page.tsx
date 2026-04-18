@@ -35,6 +35,7 @@ import {
   type InitiatePaymentResponse,
 } from '@/lib/api/payments'
 import { BankDeeplinkCard } from '@/components/checkout/BankDeeplinkCard'
+import { partitionPreferredBankDeeplinks } from '@/lib/checkout/preferred-bank-deeplinks'
 import {
   clearCheckoutPayPayload,
   loadCheckoutPayPayload,
@@ -102,6 +103,7 @@ function PayContent() {
   const [payload, setPayload] = useState<InitiatePaymentResponse | null>(null)
   const [pollMessage, setPollMessage] = useState<string | null>(null)
   const [sessionExpired, setSessionExpired] = useState(false)
+  const [showAllBankApps, setShowAllBankApps] = useState(false)
   const pollStarted = useRef(false)
   const phaseRef = useRef(phase)
 
@@ -228,6 +230,18 @@ function PayContent() {
     if (!payload?.deeplinks?.length) return []
     return payload.deeplinks.filter((d) => getBonumDeeplinkHref(d))
   }, [payload?.deeplinks])
+
+  const { initial: preferredBankApps, more: moreBankApps } = useMemo(
+    () => partitionPreferredBankDeeplinks(bankOptions),
+    [bankOptions],
+  )
+
+  useEffect(() => {
+    setShowAllBankApps(false)
+  }, [bankOptions])
+
+  const visibleBankApps = showAllBankApps ? bankOptions : preferredBankApps
+  const hasMoreBankApps = moreBankApps.length > 0
 
   useEffect(() => {
     if (phaseRef.current !== 'qr_ready') return
@@ -672,7 +686,7 @@ function PayContent() {
                 </div>
                 {bankOptions.length > 0 ? (
                   <div className="flex flex-col gap-3">
-                    {bankOptions.map((d, i) => (
+                    {visibleBankApps.map((d, i) => (
                       <BankDeeplinkCard
                         key={`${getBonumDeeplinkHref(d)}-${i}`}
                         href={getBonumDeeplinkHref(d)}
@@ -684,6 +698,31 @@ function PayContent() {
                         accent={ACCENT}
                       />
                     ))}
+                    {hasMoreBankApps ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllBankApps((v) => !v)}
+                        className={`flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white py-3.5 text-sm font-semibold shadow-sm transition hover:border-slate-300 hover:bg-slate-50 ${
+                          showAllBankApps ? 'text-slate-800' : ''
+                        }`}
+                        style={showAllBankApps ? undefined : { color: ACCENT }}
+                        aria-expanded={showAllBankApps}
+                      >
+                        {showAllBankApps ? (
+                          <>Show fewer banks</>
+                        ) : (
+                          <>
+                            Show all payment apps
+                            <span className="text-xs font-medium text-slate-500">
+                              ({moreBankApps.length} more)
+                            </span>
+                          </>
+                        )}
+                        <ChevronDown
+                          className={`h-4 w-4 shrink-0 text-slate-500 transition ${showAllBankApps ? 'rotate-180' : ''}`}
+                        />
+                      </button>
+                    ) : null}
                   </div>
                 ) : (
                   <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/90 px-4 py-4 text-sm leading-relaxed text-slate-600">
