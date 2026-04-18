@@ -173,29 +173,52 @@ function isQrLookupDisabled(): boolean {
   return v === 'true' || v === '1' || v === 'yes'
 }
 
+/** qrCode on metadata even when checkoutMode was not set (partial writes). */
+function extractQrCodeLoose(metadata: Prisma.JsonValue | null): string | null {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null
+  const m = metadata as Record<string, unknown>
+  const q = typeof m.qrCode === 'string' ? m.qrCode.trim() : ''
+  return q || null
+}
+
 function resolveQrCodeForLookup(
   payment: { metadata: Prisma.JsonValue | null; attempts: { qrPayload: string | null }[] },
 ): string | null {
-  const fromMeta = readQrFromMetadata(payment.metadata)
-  if (fromMeta?.qrCode?.trim()) return fromMeta.qrCode.trim()
+  const fromStrict = readQrFromMetadata(payment.metadata)
+  if (fromStrict?.qrCode?.trim()) return fromStrict.qrCode.trim()
+  const loose = extractQrCodeLoose(payment.metadata)
+  if (loose) return loose
   const latest = payment.attempts[0]
   if (latest?.qrPayload?.trim()) return latest.qrPayload.trim()
   return null
 }
 
+function hasQrPaymentSignals(
+  payment: { metadata: Prisma.JsonValue | null; attempts: { qrPayload: string | null }[] },
+): boolean {
+  if (payment.attempts[0]?.qrPayload?.trim()) return true
+  if (!payment.metadata || typeof payment.metadata !== 'object' || Array.isArray(payment.metadata)) {
+    return false
+  }
+  const m = payment.metadata as Record<string, unknown>
+  if (m.checkoutMode === 'qr') return true
+  if (typeof m.qrCode === 'string' && m.qrCode.trim()) return true
+  return false
+}
+
 function shouldAttemptQrLookupFallback(
-  payment: { status: string; metadata: Prisma.JsonValue | null },
+  payment: {
+    status: string
+    metadata: Prisma.JsonValue | null
+    attempts: { qrPayload: string | null }[]
+  },
   booking: { bookingStatus: string; paymentStatus: string },
 ): boolean {
   if (isQrLookupDisabled()) return false
   if (booking.bookingStatus !== 'pending') return false
   if (!['unpaid', 'authorized'].includes(booking.paymentStatus)) return false
   if (!['unpaid', 'authorized'].includes(payment.status)) return false
-  if (!payment.metadata || typeof payment.metadata !== 'object' || Array.isArray(payment.metadata)) {
-    return false
-  }
-  const m = payment.metadata as Record<string, unknown>
-  return m.checkoutMode === 'qr'
+  return hasQrPaymentSignals(payment)
 }
 
 async function persistQrCodeFromAttemptIfMissing(
@@ -371,19 +394,63 @@ async function maybeReconcileFromBonumQrLookup(
     }
   }>,
 ): Promise<void> {
-  if (payment.userId !== userId) return
-  if (!shouldAttemptQrLookupFallback(payment, payment.booking)) return
+  const dbg = (msg: string, extra?: Record<string, unknown>) => {
+    console.log('[payment confirm debug]', msg, { paymentId: payment.id, ...extra })
+  }
+
+  if (payment.userId !== userId) {
+    dbg('qr lookup skipped: user mismatch')
+    return
+  }
+  if (!shouldAttemptQrLookupFallback(payment, payment.booking)) {
+    dbg('qr lookup skipped: not eligible for QR fallback', {
+      bookingStatus:   payment.booking.bookingStatus,
+      bookingPay:      payment.booking.paymentStatus,
+      paymentStatus:   payment.status,
+      lookupDisabled:  isQrLookupDisabled(),
+      hasQrSignals:    hasQrPaymentSignals(payment),
+    })
+    return
+  }
 
   const qrCode = resolveQrCodeForLookup(payment)
-  if (!qrCode) return
+  dbg('qrCode resolution', {
+    found:              Boolean(qrCode),
+    qrCodeLength:       qrCode?.length ?? 0,
+    fromStrictMetadata: Boolean(readQrFromMetadata(payment.metadata)?.qrCode),
+    fromLooseMetadata:  Boolean(extractQrCodeLoose(payment.metadata)),
+    fromAttempt:        Boolean(payment.attempts[0]?.qrPayload?.trim()),
+  })
+  if (!qrCode) {
+    dbg('qr lookup skipped: no qrCode on payment metadata or latest attempt')
+    return
+  }
 
   const now = Date.now()
-  if (now - payment.createdAt.getTime() < env.BONUM_QR_LOOKUP_MIN_AGE_MS) return
+  const ageMs = now - payment.createdAt.getTime()
+  if (ageMs < env.BONUM_QR_LOOKUP_MIN_AGE_MS) {
+    dbg('qr lookup skipped: min age not reached', {
+      ageMs,
+      minAgeMs: env.BONUM_QR_LOOKUP_MIN_AGE_MS,
+    })
+    return
+  }
 
   pruneQrLookupThrottle()
   const last = lastQrLookupByPaymentId.get(payment.id) ?? 0
-  if (now - last < env.BONUM_QR_LOOKUP_MIN_INTERVAL_MS) return
+  if (now - last < env.BONUM_QR_LOOKUP_MIN_INTERVAL_MS) {
+    dbg('qr lookup skipped: throttle interval', {
+      msSinceLast: now - last,
+      minInterval: env.BONUM_QR_LOOKUP_MIN_INTERVAL_MS,
+    })
+    return
+  }
   lastQrLookupByPaymentId.set(payment.id, now)
+
+  dbg('qr lookup attempting Bonum POST /mpay-service/merchant/transaction/qr', {
+    qrCodeLength: qrCode.length,
+    qrPrefix:     `${qrCode.slice(0, 12)}…`,
+  })
 
   console.log('[bonum qr lookup] request', {
     paymentId:    payment.id,
@@ -396,18 +463,24 @@ async function maybeReconcileFromBonumQrLookup(
     parsed = await lookupBonumQrInvoice({ qrCode })
   } catch (e) {
     console.error('[bonum qr lookup] request failed', e instanceof Error ? e.message : e)
+    dbg('qr lookup HTTP/request error', { error: e instanceof Error ? e.message : String(e) })
     return
   }
 
-  console.log('[bonum qr lookup] response', {
-    paymentId:      payment.id,
-    paymentState:   parsed.paymentState,
-    transactionId:  parsed.transactionId,
-    invoiceId:      parsed.invoiceId,
-    rawTopKeys:     Object.keys(parsed.raw),
+  console.log('[bonum qr lookup] parsed result', {
+    paymentId:     payment.id,
+    paymentState:  parsed.paymentState,
+    transactionId: parsed.transactionId,
+    invoiceId:     parsed.invoiceId,
+    rawTopKeys:    Object.keys(parsed.raw),
+  })
+  dbg('parsed lookup state machine', {
+    paymentState: parsed.paymentState,
+    transactionId: parsed.transactionId,
+    invoiceId: parsed.invoiceId,
   })
 
-  if (parsed.qrCodeEcho?.trim() && !readQrFromMetadata(payment.metadata)?.qrCode) {
+  if (parsed.qrCodeEcho?.trim() && !extractQrCodeLoose(payment.metadata)) {
     await prisma.payment.update({
       where: { id: payment.id },
       data:  {
@@ -424,6 +497,9 @@ async function maybeReconcileFromBonumQrLookup(
       paymentId: payment.id,
       updated:   false,
       reason:    parsed.paymentState,
+    })
+    dbg('reconciliation not run: lookup did not classify as paid', {
+      paymentState: parsed.paymentState,
     })
     return
   }
@@ -450,8 +526,13 @@ async function maybeReconcileFromBonumQrLookup(
       updated:     result.updated,
       lateRefund:  result.lateRefund ?? false,
     })
+    dbg('reconciliation result', {
+      updated:    result.updated,
+      lateRefund: result.lateRefund ?? false,
+    })
   } catch (e) {
     console.error('[bonum qr lookup] reconcile error', e instanceof Error ? e.message : e)
+    dbg('reconciliation threw', { error: e instanceof Error ? e.message : String(e) })
   }
 }
 

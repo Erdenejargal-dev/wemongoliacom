@@ -20,9 +20,19 @@ export async function ingestBonumWebhook(
 
   const keyConfigured = Boolean(env.BONUM_MERCHANT_CHECKSUM_KEY?.trim())
 
+  console.log('[bonum webhook] inbound POST /webhooks/bonum', {
+    bytes:             rawBody.length,
+    checksumPresent:   Boolean(checksumHeader?.trim()),
+    checksumKeyConfigured: keyConfigured,
+    bodyPreview:       rawBody.toString('utf8').slice(0, 400),
+  })
+
   // 1) Verify HMAC on raw body first — do not parse or persist until checksum passes (when key is set).
   if (keyConfigured) {
     if (!verifyBonumChecksumV2(rawBody, checksumHeader)) {
+      console.warn(
+        '[bonum webhook] x-checksum-v2 verification failed — request rejected (401); DB will not update',
+      )
       return { status: 401, body: { success: false, error: 'Invalid x-checksum-v2' } }
     }
   }
@@ -40,6 +50,15 @@ export async function ingestBonumWebhook(
   } catch {
     return { status: 400, body: { success: false, error: 'Invalid payload' } }
   }
+
+  console.log('[bonum webhook] parsed', {
+    type:          parsed.type,
+    topStatus:     parsed.topStatus,
+    outcome:       parsed.outcome,
+    transactionId: parsed.transactionId,
+    invoiceId:     parsed.invoiceId,
+    bodyStatus:    parsed.bodyPaymentStatus,
+  })
 
   /** True when HMAC was verified; false in non-production when checksum key is unset (local only). */
   const signatureValid = keyConfigured
@@ -92,6 +111,8 @@ export async function ingestBonumWebhook(
     where: { eventId },
     data:  { processed: true, processedAt: new Date(), error: null },
   })
+
+  console.log('[bonum webhook] processed and DB updated (or idempotent no-op)', { eventId })
 
   return { status: 200, body: { success: true } }
 }

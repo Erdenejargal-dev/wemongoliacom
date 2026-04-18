@@ -241,6 +241,17 @@ export async function lookupBonumQrInvoice(params: { qrCode: string }): Promise<
     throw new Error(`Bonum QR lookup failed: HTTP ${res.status} ${msg}`)
   }
 
+  try {
+    const rawStr = JSON.stringify(json)
+    const max = 12_288
+    console.log(
+      '[bonum qr lookup] raw response body',
+      rawStr.length > max ? `${rawStr.slice(0, max)}…(truncated ${rawStr.length} chars)` : rawStr,
+    )
+  } catch {
+    console.log('[bonum qr lookup] raw response body (stringify failed)')
+  }
+
   return parseBonumQrLookupResponse(json)
 }
 

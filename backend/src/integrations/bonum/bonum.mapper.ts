@@ -316,11 +316,30 @@ function pickLookupStr(obj: Record<string, unknown>, keys: string[]): string | u
   return undefined
 }
 
+/** Flatten nested JSON for status token matching (Bonum field names vary). */
+function collectScalarStringsForLookup(obj: unknown, depth = 5): string[] {
+  if (depth <= 0) return []
+  if (obj === null || obj === undefined) return []
+  if (typeof obj === 'string' || typeof obj === 'number' || typeof obj === 'boolean') {
+    return [String(obj)]
+  }
+  if (Array.isArray(obj)) {
+    return obj.flatMap((x) => collectScalarStringsForLookup(x, depth - 1))
+  }
+  if (typeof obj === 'object') {
+    return Object.values(obj as Record<string, unknown>).flatMap((x) =>
+      collectScalarStringsForLookup(x, depth - 1),
+    )
+  }
+  return []
+}
+
 /**
  * Assumed Bonum QR lookup response (flexible):
  * - Top-level or `data`: status / transactionStatus / paymentStatus / invoiceStatus
  * - Optional: transactionId, invoiceId, qrCode
  * - Booleans: paid, success
+ * - Also matches common tokens anywhere in nested JSON (recursive scan).
  */
 export function parseBonumQrLookupResponse(json: unknown): BonumQrLookupParsed {
   if (!json || typeof json !== 'object') {
@@ -345,10 +364,16 @@ export function parseBonumQrLookupResponse(json: unknown): BonumQrLookupParsed {
     data.paymentStatus,
     data.invoiceStatus,
     data.state,
+    data.result,
     root.status,
     root.transactionStatus,
+    root.message,
   ]
-  const combined = parts.map((x) => String(x ?? '').toUpperCase()).join(' ')
+  const combinedShallow = parts.map((x) => String(x ?? '').toUpperCase()).join(' ')
+
+  const deepBlob = collectScalarStringsForLookup(json, 6)
+    .map((s) => s.toUpperCase())
+    .join(' ')
 
   const paidBool =
     data.paid === true ||
@@ -356,9 +381,11 @@ export function parseBonumQrLookupResponse(json: unknown): BonumQrLookupParsed {
     root.paid === true ||
     root.success === true
 
-  const paidTokens = ['PAID', 'SUCCESS', 'COMPLETED', 'SETTLED', 'CAPTURED', 'SUCCEEDED']
-  const failTokens = ['FAILED', 'CANCELLED', 'DECLINED', 'EXPIRED', 'REJECTED']
-  const pendingTokens = ['PENDING', 'PROCESSING', 'AUTHORIZED', 'CREATED']
+  const paidTokens = ['PAID', 'SUCCESS', 'COMPLETED', 'SETTLED', 'CAPTURED', 'SUCCEEDED', 'DONE']
+  const failTokens = ['FAILED', 'CANCELLED', 'DECLINED', 'EXPIRED', 'REJECTED', 'VOID']
+  const pendingTokens = ['PENDING', 'PROCESSING', 'AUTHORIZED', 'CREATED', 'INIT', 'INITIATED']
+
+  const combined = `${combinedShallow} ${deepBlob}`
 
   let paymentState: BonumQrLookupParsed['paymentState'] = 'unknown'
   if (paidBool || paidTokens.some((t) => combined.includes(t))) {
