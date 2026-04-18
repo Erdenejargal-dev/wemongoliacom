@@ -45,6 +45,16 @@ async function request<T>(
     throw new ApiError(res.status, `HTTP ${res.status}`)
   }
 
+  // TEMP: debug payment initiate (remove after redirect verified)
+  if (
+    typeof window !== 'undefined' &&
+    path.includes('/payments/initiate/') &&
+    options.method === 'POST'
+  ) {
+    console.log('[apiClient] initiate HTTP status', res.status, res.statusText)
+    console.log('[apiClient] initiate full JSON envelope', json)
+  }
+
   if (!res.ok) {
     // If the token expired, attempt to fetch a fresh session token once.
     // This relies on NextAuth's JWT refresh logic.

@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useState, useRef } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
@@ -17,7 +17,6 @@ function PayContent() {
 
   const [error, setError] = useState<string | null>(null)
   const [phase, setPhase] = useState<'idle' | 'starting' | 'redirecting'>('idle')
-  const started = useRef(false)
 
   useEffect(() => {
     if (status === 'loading') return
@@ -29,8 +28,6 @@ function PayContent() {
       setError('Missing booking. Please start checkout again.')
       return
     }
-    if (started.current) return
-    started.current = true
 
     let cancelled = false
     async function start() {
@@ -40,21 +37,42 @@ function PayContent() {
         const token = await getFreshAccessToken()
         if (!token) {
           setError('Session expired. Please sign in again.')
+          setPhase('idle')
           return
         }
         const res = await initiatePayment(bookingId, token)
-        if (cancelled) return
+        // TEMP debug — remove after payment redirect verified in prod
+        console.log('[checkout/pay] initiate response payload', res)
+        const followUpUrl = typeof res.followUpUrl === 'string' ? res.followUpUrl.trim() : ''
+        console.log('[checkout/pay] resolved followUpUrl', followUpUrl || '(empty)')
+        if (cancelled) {
+          console.log('[checkout/pay] skipped redirect (effect cleaned up)')
+          return
+        }
+        if (!followUpUrl) {
+          console.error('[checkout/pay] missing followUpUrl in initiate response', res)
+          setError('Payment could not start: missing redirect URL. Please try again.')
+          setPhase('idle')
+          return
+        }
         setPhase('redirecting')
         if (res.deeplinkUrl && typeof window !== 'undefined' && /iPhone|Android/i.test(navigator.userAgent)) {
+          console.log('[checkout/pay] redirect deeplink')
           window.location.href = res.deeplinkUrl
           return
         }
-        window.location.href = res.followUpUrl
+        console.log('[checkout/pay] redirect followUpUrl')
+        window.location.href = followUpUrl
       } catch (e) {
-        if (cancelled) return
+        if (cancelled) {
+          console.log('[checkout/pay] initiate error ignored (effect cleaned up)', e)
+          return
+        }
         if (e instanceof ApiError) {
+          console.error('[checkout/pay] initiate API error', e.status, e.message)
           setError(e.message || 'Could not start payment.')
         } else {
+          console.error('[checkout/pay] initiate unexpected error', e)
           setError('Could not start payment.')
         }
         setPhase('idle')
