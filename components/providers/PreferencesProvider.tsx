@@ -9,13 +9,22 @@
  *   - currency  (MNT | USD)
  *   - language  (mn  | en)
  *
- * RESOLUTION ORDER:
+ * RESOLUTION ORDER (MVP, Phase 6.2):
  *   1. Logged-in user profile      (session.user.preferredCurrency / preferredLanguage)
  *   2. Cookie                      (wm_currency / wm_lang — also readable by server)
  *   3. localStorage                (wm.displayCurrency / wm_dashboard_lang — Phase 3 keys)
- *   4. Geo hint from backend       (GET /geo/hint)
- *   5. Browser language            (navigator.language — language only)
+ *   4. Browser language            (navigator.language — 'mn*' → {mn, MNT})
+ *   5. Geo hint / CDN country      (GET /geo/hint — 'MN' → {mn, MNT})
  *   6. Default                     ('USD' + 'en')
+ *
+ * MVP RULE (live behavior fix):
+ *   A visitor with a Mongolian browser locale OR a CDN country header of
+ *   'MN' should land in Mongolian + MNT automatically. Previous phases
+ *   ran geo BEFORE browser, and the geo endpoint falls back to EN+USD
+ *   when no CDN header is present — so Mongolia visitors on hosts
+ *   without CF/Vercel country headers never got MN+MNT. We now consult
+ *   the browser first so the OS/browser locale is authoritative when
+ *   the CDN can't help.
  *
  * PHASE 6.1 — WHAT CHANGED FROM PHASE 6:
  *   - Cookies are now written in addition to localStorage so server
@@ -69,10 +78,37 @@ const Ctx = React.createContext<PreferencesContextValue | null>(null)
 
 function readBrowserLang(): Language | null {
   if (typeof window === 'undefined') return null
-  const primary = (navigator.language || '').toLowerCase()
-  if (primary.startsWith('mn')) return 'mn'
-  if (primary.startsWith('en')) return 'en'
+  // `navigator.languages` reflects the full ordered list the user configured
+  // (e.g. ['mn-MN', 'en-US']). We want to pick up Mongolian even if it's not
+  // the single `navigator.language` value.
+  const candidates: string[] = []
+  const langs = (navigator as Navigator).languages
+  if (Array.isArray(langs)) candidates.push(...langs)
+  if (navigator.language) candidates.push(navigator.language)
+  for (const raw of candidates) {
+    const v = (raw || '').toLowerCase()
+    if (v.startsWith('mn')) return 'mn'
+  }
+  for (const raw of candidates) {
+    const v = (raw || '').toLowerCase()
+    if (v.startsWith('en')) return 'en'
+  }
   return null
+}
+
+/**
+ * MVP default pairing: if the browser/OS locale is Mongolian, the user is
+ * almost certainly in Mongolia → default BOTH language AND currency so
+ * they don't land on a confusing EN+USD first screen. Any explicit
+ * preference (cookie / storage / user profile) still wins.
+ */
+function defaultsForBrowserLang(lang: Language | null): {
+  currency: Currency | null
+  language: Language | null
+} {
+  if (lang === 'mn') return { currency: 'MNT', language: 'mn' }
+  if (lang === 'en') return { currency: 'USD', language: 'en' }
+  return { currency: null, language: null }
 }
 
 // ── Provider ───────────────────────────────────────────────────────────
@@ -124,14 +160,33 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
       return next
     })
 
-    const needGeo  = !userPrefCurrency && !storedCur
-    const needLang = !userPrefLanguage && !storedLang
+    const needCurrency = !userPrefCurrency && !storedCur
+    const needLanguage = !userPrefLanguage && !storedLang
 
-    if (!needGeo && !needLang) return
+    if (!needCurrency && !needLanguage) return
 
-    async function resolveDefaults() {
+    // Step 4 — browser language first (MVP-friendly, works on localhost and
+    // anywhere without CDN country headers).
+    const browserLang = readBrowserLang()
+    const browserDefaults = defaultsForBrowserLang(browserLang)
+
+    setState((s) => {
+      const next = { ...s }
+      if (needCurrency && s.currencySource === 'default' && browserDefaults.currency) {
+        next.currency = browserDefaults.currency
+        next.currencySource = 'browser'
+      }
+      if (needLanguage && s.languageSource === 'default' && browserDefaults.language) {
+        next.language = browserDefaults.language
+        next.languageSource = 'browser'
+      }
+      return next
+    })
+
+    async function resolveGeoFallback() {
       let geoCurrency: Currency | null = null
       let geoLanguage: Language | null = null
+      let geoCountry: string | null = null
       try {
         const base = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1').replace(/\/$/, '')
         const r = await fetch(`${base}/geo/hint`, { cache: 'no-store' })
@@ -139,26 +194,49 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
         const d = j?.data
         if (d?.suggestedCurrency === 'MNT' || d?.suggestedCurrency === 'USD') geoCurrency = d.suggestedCurrency
         if (d?.suggestedLanguage === 'mn'  || d?.suggestedLanguage === 'en')  geoLanguage = d.suggestedLanguage
+        if (typeof d?.country === 'string') geoCountry = d.country.toUpperCase()
       } catch {
         // geo failure must never break the site
       }
 
       if (cancelled) return
-      const browserLang = readBrowserLang()
+
+      // Geo is only trusted when the backend saw a real CDN country header.
+      // Without one, the endpoint's 'fallback' default is EN+USD, which
+      // would overwrite a correct browser-derived MN+MNT. Skip in that case.
+      const trustedGeo = geoCountry !== null
+      if (!trustedGeo) return
+
+      const isMongolia = geoCountry === 'MN'
       setState((s) => {
         const next = { ...s }
-        if (needGeo && s.currencySource === 'default' && geoCurrency) {
-          next.currency = geoCurrency
-          next.currencySource = 'geo'
+        // Only upgrade fields the user has NOT explicitly set (via cookie,
+        // storage, or session). 'browser' is allowed to be refined by geo
+        // for the Mongolia case, but otherwise browser wins.
+        if (needCurrency) {
+          const upgradable = s.currencySource === 'default' || s.currencySource === 'browser'
+          if (upgradable && isMongolia) {
+            next.currency = 'MNT'
+            next.currencySource = 'geo'
+          } else if (s.currencySource === 'default' && geoCurrency) {
+            next.currency = geoCurrency
+            next.currencySource = 'geo'
+          }
         }
-        if (needLang && s.languageSource === 'default') {
-          if (geoLanguage) { next.language = geoLanguage; next.languageSource = 'geo' }
-          else if (browserLang) { next.language = browserLang; next.languageSource = 'browser' }
+        if (needLanguage) {
+          const upgradable = s.languageSource === 'default' || s.languageSource === 'browser'
+          if (upgradable && isMongolia) {
+            next.language = 'mn'
+            next.languageSource = 'geo'
+          } else if (s.languageSource === 'default' && geoLanguage) {
+            next.language = geoLanguage
+            next.languageSource = 'geo'
+          }
         }
         return next
       })
     }
-    resolveDefaults()
+    resolveGeoFallback()
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

@@ -96,6 +96,9 @@ export interface PublicTranslations {
     unpayableMnTitle: string
     unpayableDescription: (cur: string) => string
     helpLink:         string
+    /** Phase 6.2 — shown when non-MNT bookings are payable via MNT conversion. */
+    conversionTitle:       string
+    conversionDescription: (cur: string) => string
   }
 }
 
@@ -195,6 +198,9 @@ const en: PublicTranslations = {
     unpayableDescription: (cur) =>
       `Pricing shown in ${cur}. Our current payment gateway charges in MNT only \u2014 send a booking request and the host will arrange payment with you directly.`,
     helpLink: 'Why?',
+    conversionTitle: 'Paid in MNT at checkout',
+    conversionDescription: (cur) =>
+      `Pricing is shown in ${cur}. Payment will be charged in Mongolian t\u00F6gr\u00F6g (MNT) using the current exchange rate at checkout.`,
   },
 }
 
@@ -294,6 +300,9 @@ const mn: PublicTranslations = {
     unpayableDescription: (cur) =>
       `Үнэ ${cur}-ээр харагдаж байна. Одоогийн төлбөрийн сүлжээ зөвхөн MNT-ээр авдаг — захиалгын хүсэлт илгээж, үйлчилгээ үзүүлэгчтэй шууд нөхцөл тохироорой.`,
     helpLink: 'Яагаад?',
+    conversionTitle: 'Төлбөр MNT-ээр авагдана',
+    conversionDescription: (cur) =>
+      `Үнэ ${cur}-ээр харагдаж байгаа ч төлбөрийн үед одоогийн ханшаар Монгол төгрөг (MNT)-өөр авагдана.`,
   },
 }
 

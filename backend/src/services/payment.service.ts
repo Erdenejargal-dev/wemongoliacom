@@ -25,6 +25,7 @@ import {
   bonumCanCharge,
 } from '../utils/payment-capability'
 import { assertSupportedCurrency } from '../utils/currency'
+import { convertWithSnapshot, type FxRateSnapshot } from '../utils/fx'
 
 function mergePaymentMetadata(
   current: Prisma.JsonValue | null | undefined,
@@ -607,26 +608,45 @@ export async function initiatePayment(userId: string, bookingId: string) {
     throw new AppError('Booking is already paid.', 409)
   }
 
-  // ── Phase 1 payment-currency guard (Phase 3: routed via capability) ────
+  // ── Phase 6.2 payment-currency path ──────────────────────────────────
   //
-  // Bonum expects integer MNT minor units. The single source of truth for
-  // processor constraints is `utils/payment-capability.ts` — this guard
-  // consults the registry rather than hard-coding the string 'MNT' so a
-  // future Visa/global-card processor auto-unlocks the path without
-  // another diff here.
+  // Bonum settles in MNT only. For MNT bookings we pass the amount
+  // through untouched. For non-MNT bookings (e.g. USD-priced listings)
+  // we convert to MNT at payment time using the existing FX layer and
+  // persist a payable snapshot on the Payment so we always know:
+  //   - the booking's original currency + original amount, and
+  //   - the MNT amount + the exact FX rate/source/timestamp used.
   //
-  // The hard-coded 'MNT' comparison below is retained as a defense-in-
-  // depth assertion: if the registry changes shape, we STILL refuse to
-  // send a non-MNT amount to Bonum. Phase 1's loud-fail invariant stands.
+  // Guards:
+  //   - `capability.payable === true` (covers MNT direct and MVP conversion).
+  //   - `capability.payableCurrency === 'MNT'` (Bonum invariant).
+  //   - If conversion is required but no FX rate exists, `convertWithSnapshot`
+  //     throws AppError(503) with a clear operator-facing message.
   const bookingCurrency = assertSupportedCurrency(booking.currency, 'booking.currency')
   const capability = describeBookingPaymentCapability(bookingCurrency)
-  if (!capability.payable || !bonumCanCharge(bookingCurrency) || bookingCurrency !== 'MNT') {
+  if (!capability.payable || capability.payableCurrency !== 'MNT' || !bonumCanCharge('MNT')) {
     throw new AppError(
       capability.userMessage ??
         `Payment unavailable: this booking is priced in ${booking.currency}, ` +
-          'but the payment gateway only accepts MNT. Please contact support.',
+          'but the payment gateway cannot settle this currency. Please contact support.',
       400,
     )
+  }
+
+  // Resolve the MNT-denominated amount Bonum will actually charge.
+  //   - Same-currency (MNT → MNT) is a no-op in the FX util.
+  //   - Cross-currency (USD → MNT) looks up the most recent `FxRate` row;
+  //     if none exists it throws AppError(503) with an explicit message.
+  let payableAmountMnt = booking.totalAmount
+  let payableFxSnapshot: FxRateSnapshot | null = null
+  if (bookingCurrency !== 'MNT') {
+    const { amount, snapshot } = await convertWithSnapshot(
+      booking.totalAmount,
+      bookingCurrency,
+      'MNT',
+    )
+    payableAmountMnt = amount
+    payableFxSnapshot = snapshot
   }
 
   const now = new Date()
@@ -651,6 +671,21 @@ export async function initiatePayment(userId: string, bookingId: string) {
 
   const idempotencyKey = crypto.randomUUID()
 
+  // Payable snapshot persisted on payment.metadata — never lose the
+  // original booking currency / amount / FX context. Stored even when no
+  // conversion was needed so downstream readers can rely on a uniform
+  // shape ('same_currency' source, rate = 1).
+  const payableSnapshot = {
+    originalCurrency:  bookingCurrency,
+    originalAmount:    booking.totalAmount,
+    payableCurrency:   'MNT' as const,
+    payableAmount:     payableAmountMnt,
+    fxRate:            payableFxSnapshot?.rate ?? 1,
+    fxSource:          payableFxSnapshot?.source ?? 'same_currency',
+    fxCapturedAt:      (payableFxSnapshot?.capturedAt ?? now).toISOString(),
+    conversionRequired: bookingCurrency !== 'MNT',
+  }
+
   let payment = booking.payment
   if (!payment) {
     payment = await prisma.payment.create({
@@ -658,12 +693,15 @@ export async function initiatePayment(userId: string, bookingId: string) {
         bookingId:      booking.id,
         providerId:     booking.providerId,
         userId:         booking.userId,
-        amount:         booking.totalAmount,
-        // Safe: booking.currency === 'MNT' was just asserted above.
-        currency:       booking.currency,
+        // Bonum invariant: the Payment row stores the amount/currency the
+        // processor will actually settle (MNT). The booking's own totals
+        // and currency remain untouched and authoritative for accounting.
+        amount:         payableAmountMnt,
+        currency:       'MNT',
         status:         'unpaid',
         paymentGateway: env.BONUM_USE_STUB === 'true' || !env.BONUM_API_BASE_URL?.trim() ? 'bonum_stub' : 'bonum',
         idempotencyKey,
+        metadata:       { payableSnapshot } as Prisma.InputJsonValue,
       },
     })
   } else {
@@ -723,13 +761,24 @@ export async function initiatePayment(userId: string, bookingId: string) {
       })
     }
 
+    // Refresh the MNT-denominated amount + FX snapshot on every retry
+    // so we always charge using the latest active rate (and never a stale
+    // one cached on the Payment row). Booking totals stay untouched.
     await prisma.payment.update({
       where: { id: payment.id },
       data:  {
         idempotencyKey,
+        amount:   payableAmountMnt,
+        currency: 'MNT',
+        metadata: mergePaymentMetadata(payment.metadata, { payableSnapshot }),
         ...(payment.status === 'failed' ? { status: 'unpaid', failedAt: null, failureCode: null, failureMessage: null } : {}),
       },
     })
+    payment = {
+      ...payment,
+      amount:   payableAmountMnt,
+      currency: 'MNT',
+    }
   }
 
   const attemptNo = (await prisma.paymentAttempt.count({ where: { paymentId: payment!.id } })) + 1
@@ -1140,6 +1189,40 @@ export async function getBookingPaymentCapability(userId: string, bookingCode: s
   const bookingCurrency = assertSupportedCurrency(booking.currency, 'booking.currency')
   const capability = describeBookingPaymentCapability(bookingCurrency)
 
+  // Phase 6.2 — when conversion is required, attempt an FX preview so the
+  // traveler sees the MNT amount they'll be charged BEFORE hitting the pay
+  // button. If no rate exists, we surface a null preview and downgrade the
+  // capability so the UI can message "conversion unavailable" instead of
+  // silently showing Reserve and 503-ing at initiate time.
+  let payablePreview: { amount: number; currency: 'MNT'; fxRate: number; fxSource: string; fxCapturedAt: string } | null = null
+  let effectiveCapability = capability
+  if (capability.conversionRequired && capability.payableCurrency === 'MNT') {
+    try {
+      const { amount, snapshot } = await convertWithSnapshot(
+        booking.totalAmount,
+        bookingCurrency,
+        'MNT',
+      )
+      payablePreview = {
+        amount,
+        currency:     'MNT',
+        fxRate:       snapshot.rate,
+        fxSource:     snapshot.source,
+        fxCapturedAt: snapshot.capturedAt.toISOString(),
+      }
+    } catch {
+      // No active FX rate → conversion path is not actually usable right now.
+      effectiveCapability = {
+        ...capability,
+        payable:     false,
+        reasonCode:  'unsupported_currency',
+        userMessage:
+          `Online payment is temporarily unavailable for ${bookingCurrency}: ` +
+          'exchange rate is not configured. Please contact support to complete this booking.',
+      }
+    }
+  }
+
   return {
     bookingCode:     booking.bookingCode,
     listingType:     booking.listingType,
@@ -1149,7 +1232,8 @@ export async function getBookingPaymentCapability(userId: string, bookingCode: s
     currency:        bookingCurrency,
     baseAmount:      booking.baseTotalAmount,
     baseCurrency:    booking.baseCurrency ?? bookingCurrency,
-    capability,
+    capability:      effectiveCapability,
+    payablePreview,
   }
 }
 

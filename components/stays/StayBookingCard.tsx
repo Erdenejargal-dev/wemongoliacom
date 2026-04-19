@@ -323,10 +323,10 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
         </div>
       )}
 
-      {/* Phase 3 — payment currency capability notice, shown before the CTA. */}
-      {mustRequest && (
-        <PaymentCapabilityNotice capability={capability} className="mb-4" />
-      )}
+      {/* Phase 3/6.2 — payment currency capability notice.
+          Renders for both the legacy non-payable path AND the new MNT
+          conversion path (USD listings payable via MNT at checkout). */}
+      <PaymentCapabilityNotice capability={capability} className="mb-4" />
 
       {/* Phase 6 — Reserve (MNT) vs Request Booking (non-MNT) */}
       {mustRequest ? (

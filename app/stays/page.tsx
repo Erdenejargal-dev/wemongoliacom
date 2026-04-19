@@ -19,6 +19,8 @@ import {
   ACCOMMODATION_TYPE_LABELS,
 } from '@/lib/api/stays'
 import { formatMoney } from '@/lib/money'
+import { usePreferences } from '@/components/providers/PreferencesProvider'
+import { readPricing, formatPricing } from '@/lib/pricing'
 
 // ── Type filter options ───────────────────────────────────────────────────────
 
@@ -49,12 +51,17 @@ const FALLBACK_IMAGE =
 
 function StayCard({ stay }: { stay: BackendStay }) {
   const [imgError, setImgError] = useState(false)
+  const { currency: displayCurrency } = usePreferences()
   const imageUrl   = stay.images?.[0]?.imageUrl ?? FALLBACK_IMAGE
   const typeLabel  = ACCOMMODATION_TYPE_LABELS[stay.accommodationType] ?? stay.accommodationType
   const typeDot    = TYPE_COLOURS[stay.accommodationType] ?? 'bg-gray-500'
   const cheapestRoom = stay.roomTypes.length > 0
     ? stay.roomTypes.reduce((a, b) => (a.basePricePerNight <= b.basePricePerNight ? a : b))
     : null
+  // Prefer the Phase 2 Pricing DTO when the room carries it so the card
+  // reflects the user's display currency (MNT↔USD) via `formatPricing`.
+  // Falls back to legacy per-night + native currency otherwise.
+  const pricing = cheapestRoom ? readPricing(cheapestRoom as unknown as Parameters<typeof readPricing>[0]) : null
   const priceFrom  = cheapestRoom?.basePricePerNight ?? null
   const priceCurrency = cheapestRoom?.currency ?? 'USD'
 
@@ -112,7 +119,11 @@ function StayCard({ stay }: { stay: BackendStay }) {
             <div>
               <span className="text-[10px] text-gray-400 uppercase tracking-wide block">From</span>
               <div className="flex items-baseline gap-0.5">
-                <span className="text-base font-bold text-gray-900">{formatMoney(priceFrom, priceCurrency)}</span>
+                <span className="text-base font-bold text-gray-900">
+                  {pricing
+                    ? formatPricing(pricing, displayCurrency)
+                    : formatMoney(priceFrom, priceCurrency)}
+                </span>
                 <span className="text-[10px] text-gray-400">/night</span>
               </div>
             </div>
@@ -148,6 +159,10 @@ export default function StaysPage() {
   const [search,  setSearch]  = useState('')
   const [typeFilter, setTypeFilter] = useState<AccommodationType | 'all'>('all')
 
+  // Phase 6.2 — refetch when the display currency changes so the backend's
+  // `X-Display-Currency`-aware pricing DTO is refreshed for every card.
+  const { currency: displayCurrency } = usePreferences()
+
   useEffect(() => {
     setLoading(true)
     const params = typeFilter !== 'all'
@@ -157,7 +172,7 @@ export default function StaysPage() {
       .then(res => setStays(res.data))
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [typeFilter])
+  }, [typeFilter, displayCurrency])
 
   const filtered = stays.filter(s => {
     if (!search.trim()) return true

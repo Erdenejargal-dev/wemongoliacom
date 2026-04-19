@@ -282,10 +282,10 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
       </div>
 
       {/* Phase 3 — payment currency capability notice. Shown BEFORE the CTA
-          so a traveler never discovers Bonum's MNT-only limit via a 400. */}
-      {mustRequest && (
-        <PaymentCapabilityNotice capability={capability} className="mb-4" />
-      )}
+          so a traveler never discovers Bonum's MNT-only limit via a 400.
+          Phase 6.2: also shown for the conversion path so travelers know
+          they'll be charged in MNT at checkout even for USD-priced tours. */}
+      <PaymentCapabilityNotice capability={capability} className="mb-4" />
 
       {/* Reserve / Request CTA — Phase 6 differentiates MNT (instant) vs
           non-MNT (contact host) without relying on a backend 400. */}

@@ -2,29 +2,35 @@
  * backend/src/utils/payment-capability.ts
  *
  * Phase 3 — payment-method capability registry.
+ * Phase 6.2 (MVP) — non-MNT bookings are now payable via MNT conversion at
+ * payment-initiation time. Bonum still only receives MNT; the conversion
+ * happens in `payment.service.initiatePayment` using the FX layer.
  *
  * PURPOSE:
  *   A pure module that answers, deterministically, "can processor X charge
- *   this booking/listing in currency Y?" without touching the database or
- *   talking to the processor. The registry is the single place where
- *   processor constraints live; everything else (UI, booking creation,
- *   payment initiation, admin visibility) consults it.
+ *   this booking/listing in currency Y — directly or via conversion?"
+ *   without touching the database or talking to the processor. The registry
+ *   is the single place where processor constraints live; everything else
+ *   (UI, booking creation, payment initiation, admin visibility) consults
+ *   it.
  *
  * PHASE 1/2 CONSTRAINTS IT MODELS:
- *   - Bonum (`bonum`, `bonum_stub`): MNT-only. Bonum's invoice/QR API only
- *     accepts integer MNT minor units. Until a non-MNT pipeline exists,
- *     attempting to pass anything else is incorrect and is refused loudly.
+ *   - Bonum (`bonum`, `bonum_stub`): settles in MNT only. Bonum's invoice/QR
+ *     API only accepts integer MNT minor units. For non-MNT bookings, the
+ *     payment service converts to MNT first (see `initiatePayment`).
  *
  * FUTURE VISA / GLOBAL CARD:
- *   A future processor entry (e.g. `visa_stripe`) will declare USD support.
- *   When it's added, no other file needs to change — UI copy, admin
- *   visibility, and backend validation will pick it up automatically.
+ *   A future processor entry (e.g. `visa_stripe`) will declare USD support
+ *   directly (no conversion required). When it's added, no other file needs
+ *   to change — UI copy, admin visibility, and backend validation will pick
+ *   it up automatically.
  *
  * DESIGN RULES:
  *   - No DB access here. Registry is data.
- *   - No silent auto-conversion. If the only processor for a booking's
- *     currency does not exist, the caller must surface that to the user
- *     explicitly, not auto-swap currencies.
+ *   - Conversion is expressed as a capability-level signal
+ *     (`conversionRequired`, `payableCurrency`). The actual FX lookup and
+ *     conversion happens in the payment service, where DB access is allowed
+ *     and FX snapshots can be persisted on the Payment row.
  *   - `describeBookingPaymentCapability` returns a serializable object so
  *     the same shape can be sent to the frontend verbatim.
  */
@@ -71,78 +77,108 @@ export const PAYMENT_PROCESSORS: readonly PaymentProcessor[] = Object.freeze([
 ]) as readonly PaymentProcessor[]
 
 export interface PaymentCapability {
-  /** True when at least one live processor supports the given currency. */
+  /**
+   * True when the booking CAN be charged online today — either directly in
+   * its own currency or via MNT conversion at payment time (MVP).
+   */
   payable:                  boolean
   /** The currency the listing/booking is priced in. */
   bookingCurrency:          Currency
-  /** Processors that CAN settle in `bookingCurrency` today. */
+  /**
+   * The currency Bonum (or whichever processor is used) will actually settle
+   * in. For MNT bookings this equals `bookingCurrency`. For non-MNT bookings
+   * it is 'MNT' — the payment service converts the amount at initiation
+   * time using the active FX rate and persists the snapshot on the Payment.
+   */
+  payableCurrency:          Currency
+  /**
+   * True when the payable amount is produced by converting the booking
+   * total to `payableCurrency` at payment time. UI should surface this so
+   * travelers understand they'll be charged in MNT even though prices were
+   * shown in their display currency.
+   */
+  conversionRequired:       boolean
+  /** Processors that CAN settle in `payableCurrency` today. */
   supportingProcessors:     PaymentProcessorId[]
   /**
-   * Processors that are planned but not yet live (e.g. future Visa support
-   * for USD). Surfaced so UI can say "coming soon" honestly instead of
-   * offering a dead path.
+   * Processors that are planned but not yet live. Surfaced so UI can say
+   * "coming soon" honestly instead of offering a dead path. Retained for
+   * forward compatibility even though MVP collapses most cases to "payable".
    */
   plannedProcessors:        PaymentProcessorId[]
   /**
-   * User-facing explanation when `payable === false`. Intentionally neutral
-   * and trust-building. Never null when `payable === false`.
+   * User-facing explanation when payment is not fully straightforward
+   * (e.g. conversion, or unsupported currency). Null when there's nothing
+   * noteworthy to tell the user.
    */
   userMessage:              string | null
   /**
    * Stable machine-readable code consumed by UI or alerts.
-   *   - 'ok'                       : at least one live processor can charge
-   *   - 'bonum_mnt_only'           : MNT-only processor; booking is non-MNT
-   *   - 'unsupported_currency'     : no processor (live or planned) matches
+   *   - 'ok'                       : live processor charges `bookingCurrency` directly
+   *   - 'ok_via_mnt_conversion'    : payable after MNT conversion at checkout (MVP)
+   *   - 'unsupported_currency'     : no processor (direct or via MNT) matches
    */
-  reasonCode:               'ok' | 'bonum_mnt_only' | 'unsupported_currency'
+  reasonCode:               'ok' | 'ok_via_mnt_conversion' | 'unsupported_currency'
 }
 
 /**
  * Returns the capability object for a booking/listing priced in `currency`.
  * Pure; safe to call anywhere (UI, admin audits, payment initiation).
+ *
+ * MVP behavior (Phase 6.2):
+ *   - MNT booking → payable directly via Bonum ('ok').
+ *   - Non-MNT booking → payable via MNT conversion ('ok_via_mnt_conversion').
+ *     The actual FX lookup and conversion is done in `payment.service` at
+ *     initiation time; if no rate exists, that path fails clearly.
  */
 export function describeBookingPaymentCapability(currency: Currency): PaymentCapability {
-  const supporting  = PAYMENT_PROCESSORS
+  const directSupporting = PAYMENT_PROCESSORS
     .filter((p) => p.status === 'live' && p.supportedCurrencies.includes(currency))
     .map((p) => p.id)
-  const planned     = PAYMENT_PROCESSORS
+  const planned = PAYMENT_PROCESSORS
     .filter((p) => p.status === 'planned' && p.supportedCurrencies.includes(currency))
     .map((p) => p.id)
 
-  if (supporting.length > 0) {
+  if (directSupporting.length > 0) {
     return {
-      payable:               true,
-      bookingCurrency:       currency,
-      supportingProcessors:  supporting,
-      plannedProcessors:     planned,
-      userMessage:           null,
-      reasonCode:            'ok',
+      payable:              true,
+      bookingCurrency:      currency,
+      payableCurrency:      currency,
+      conversionRequired:   false,
+      supportingProcessors: directSupporting,
+      plannedProcessors:    planned,
+      userMessage:          null,
+      reasonCode:           'ok',
     }
   }
 
-  // No live processor for this currency.
-  // Today that means the booking is priced in USD and Bonum only does MNT.
-  const hasAnyMntProcessor = PAYMENT_PROCESSORS.some(
-    (p) => p.status === 'live' && p.supportedCurrencies.includes('MNT'),
-  )
-  if (currency !== 'MNT' && hasAnyMntProcessor) {
+  // No processor settles in `currency` directly.
+  // MVP rule: if at least one live processor can charge MNT, we convert
+  // to MNT at payment time so the booking is still payable.
+  const mntSupporting = PAYMENT_PROCESSORS
+    .filter((p) => p.status === 'live' && p.supportedCurrencies.includes('MNT'))
+    .map((p) => p.id)
+
+  if (mntSupporting.length > 0 && currency !== 'MNT') {
     return {
-      payable:              false,
+      payable:              true,
       bookingCurrency:      currency,
-      supportingProcessors: [],
+      payableCurrency:      'MNT',
+      conversionRequired:   true,
+      supportingProcessors: mntSupporting,
       plannedProcessors:    planned,
       userMessage:
-        `This tour is priced in ${currency}, but our current payment gateway can only charge ` +
-        'Mongolian tögrög (MNT). You can still browse the listing in ' +
-        `${currency}; when international card payments go live we will email you — ` +
-        'or you can contact support for manual arrangements.',
-      reasonCode:           'bonum_mnt_only',
+        `Pricing is shown in ${currency}. Payment will be charged in Mongolian tögrög (MNT) ` +
+        'using the current exchange rate at checkout.',
+      reasonCode:           'ok_via_mnt_conversion',
     }
   }
 
   return {
     payable:              false,
     bookingCurrency:      currency,
+    payableCurrency:      currency,
+    conversionRequired:   false,
     supportingProcessors: [],
     plannedProcessors:    planned,
     userMessage:
@@ -153,10 +189,10 @@ export function describeBookingPaymentCapability(currency: Currency): PaymentCap
 }
 
 /**
- * True if the given booking currency CAN be charged by Bonum. Used by the
- * payment service's pre-flight guard in addition to the explicit MNT check,
- * so the truth is sourced from this registry and future processors slot in
- * cleanly.
+ * True if the given booking currency CAN be charged by Bonum directly (no
+ * conversion). Used as a narrow check where the caller specifically wants
+ * to know whether Bonum will settle in the booking's own currency — e.g.
+ * legacy guards that predate the conversion path.
  */
 export function bonumCanCharge(currency: Currency): boolean {
   const bonum = PAYMENT_PROCESSORS.find((p) => p.id === 'bonum' || p.id === 'bonum_stub')

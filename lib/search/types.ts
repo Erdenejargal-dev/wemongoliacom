@@ -1,3 +1,5 @@
+import type { Pricing } from '@/lib/pricing'
+
 export interface Tour {
   id: string
   slug: string              // URL-friendly identifier
@@ -10,6 +12,13 @@ export interface Tour {
   price: number
   /** Currency for `price` — 'MNT' or 'USD' (backend-sourced; defaults to 'USD' in legacy fixtures). */
   currency: string
+  /**
+   * Phase 2/6.2 — normalized pricing DTO from the backend so the card can
+   * format in the user's display currency (MNT↔USD) without reaching for
+   * a per-request FX call. `null`/absent when the backend has no rate
+   * seeded or when the source is a legacy fixture.
+   */
+  pricing?: Pricing | null
   duration: string
   durationDays: number
   rating: number

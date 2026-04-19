@@ -125,6 +125,9 @@ export function mapSearchTourToFrontend(t: BackendSearchTour) {
     regionSlug: dest?.slug ?? '',
     price: t.basePrice,
     currency: t.currency ?? 'USD',
+    // Phase 6.2 — preserve the backend pricing DTO so the card can format
+    // in the user's display currency without refetching.
+    pricing: t.pricing ?? null,
     duration: t.durationDays ? `${t.durationDays} day${t.durationDays > 1 ? 's' : ''}` : '',
     durationDays: t.durationDays ?? 0,
     rating: t.ratingAverage,

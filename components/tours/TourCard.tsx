@@ -5,6 +5,8 @@ import { Star, Clock, Users, MapPin, Heart } from 'lucide-react'
 import { useState } from 'react'
 import type { Tour } from '@/lib/search/types'
 import { formatMoney } from '@/lib/money'
+import { formatPricing } from '@/lib/pricing'
+import { usePreferences } from '@/components/providers/PreferencesProvider'
 
 interface TourCardProps {
   tour: Tour
@@ -22,7 +24,14 @@ const STYLE_COLORS: Record<string, string> = {
 
 export function TourCard({ tour }: TourCardProps) {
   const [saved, setSaved] = useState(false)
+  const { currency: displayCurrency } = usePreferences()
   const hasRealStyle = tour.style && tour.style !== 'adventure' && STYLE_COLORS[tour.style]
+  // Prefer the normalized Pricing DTO so the card flips between MNT and USD
+  // when the user switches currency. Falls back to the legacy (price, currency)
+  // pair for listings the backend hasn't normalized yet.
+  const priceLabel = tour.pricing
+    ? formatPricing(tour.pricing, displayCurrency)
+    : formatMoney(tour.price, tour.currency)
 
   return (
     <Link href={`/tours/${tour.slug}`} className="group block bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden">
@@ -89,7 +98,7 @@ export function TourCard({ tour }: TourCardProps) {
           </div>
           {/* Price — base price per person; departure-specific prices on detail page */}
           <div className="text-right">
-            <span className="text-lg font-bold text-gray-900">{formatMoney(tour.price, tour.currency)}</span>
+            <span className="text-lg font-bold text-gray-900">{priceLabel}</span>
             <span className="text-xs text-gray-400">/person from</span>
           </div>
         </div>

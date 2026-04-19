@@ -55,6 +55,8 @@ export interface BackendStay {
     maxGuests: number
     basePricePerNight: number
     currency: string
+    /** Phase 2 Option B — canonical Pricing DTO, when the backend has a rate. */
+    pricing?: import('../pricing').Pricing | null
   }[]
 }
 

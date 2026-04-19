@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { DEFAULT_QUERY, type SearchQuery, type Tour } from './types'
 import { searchTours } from './searchService'
+import { usePreferences } from '@/components/providers/PreferencesProvider'
 
 /** Sync query from URL when it changes (e.g. back/forward, external nav). */
 function useUrlSync(
@@ -37,6 +38,12 @@ export function useSearch(initialQuery?: Partial<SearchQuery>) {
   const [total, setTotal] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
+  // Phase 6.2 — refetch when the user's display currency changes so the
+  // /tours list actually reflects MNT↔USD switches immediately. Listing
+  // cards display using `pricing` DTO + displayCurrency, but refetching
+  // also lets the backend vary future `X-Display-Currency`-aware fields.
+  const { currency: displayCurrency } = usePreferences()
+
   const runSearch = useCallback(async (q: SearchQuery) => {
     setLoading(true)
     setError(null)
@@ -53,7 +60,7 @@ export function useSearch(initialQuery?: Partial<SearchQuery>) {
     }
   }, [])
 
-  useEffect(() => { runSearch(query) }, [query, runSearch])
+  useEffect(() => { runSearch(query) }, [query, runSearch, displayCurrency])
 
   const updateQuery = useCallback((patch: Partial<SearchQuery>) => {
     setQuery(prev => {

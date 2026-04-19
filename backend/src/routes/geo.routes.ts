@@ -33,14 +33,20 @@ function readCountry(req: Request): string | null {
 router.get('/hint', (req: Request, res: Response) => {
   const country = readCountry(req)
   const isMongolia = country === 'MN'
+  // MVP fix: when no CDN country header is present, do NOT claim EN+USD
+  // as a suggestion. The frontend falls back to `navigator.language`
+  // which is more accurate than an empty-guess from the server (which
+  // would otherwise overwrite a correct browser-derived MN+MNT hint).
   return ok(res, {
     country,                               // may be null if no header
-    suggestedLanguage: isMongolia ? 'mn' : 'en',
-    suggestedCurrency: isMongolia ? 'MNT' : 'USD',
+    suggestedLanguage: country ? (isMongolia ? 'mn' : 'en') : null,
+    suggestedCurrency: country ? (isMongolia ? 'MNT' : 'USD') : null,
     /**
      * `source` tells the frontend how confident this is:
-     *   - 'cdn-header'  : we read CF/Vercel country header
-     *   - 'fallback'    : no header was present → default to EN + USD
+     *   - 'cdn-header'  : we read CF/Vercel country header — trusted
+     *   - 'fallback'    : no header was present → suggestions are null;
+     *                     client should use its own browser-language
+     *                     heuristic instead of trusting this.
      */
     source: country ? 'cdn-header' : 'fallback',
   })

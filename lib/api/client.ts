@@ -83,7 +83,22 @@ async function request<T>(
     ...(options.headers as Record<string, string> | undefined ?? {}),
   }
 
+  // Phase 6.2 — preference-sensitive server fetches must NOT be cached by
+  // the Next.js fetch memo / data cache. The default Next data cache keys
+  // by (url, method, body) and does NOT vary on request headers, so an
+  // MNT-first response could otherwise serve back to a USD-switched user
+  // after `router.refresh()`. Force no-store on the server side so every
+  // server render picks up the fresh X-Display-Currency cookie.
+  //
+  // Callers who explicitly want caching can pass `options.cache` or
+  // `options.next` and it will win (we preserve their intent).
+  const hasExplicitCache =
+    'cache' in options || (options as RequestInit & { next?: unknown }).next !== undefined
+  const serverNoStore =
+    typeof window === 'undefined' && !hasExplicitCache ? { cache: 'no-store' as const } : {}
+
   const res = await fetch(`${BASE}${path}`, {
+    ...serverNoStore,
     ...options,
     headers,
     // Next.js cache options can be passed via options.next

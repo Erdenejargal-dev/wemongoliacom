@@ -31,16 +31,38 @@ export interface PaymentCapabilityNoticeProps {
 
 export function PaymentCapabilityNotice({ capability, extra, className }: PaymentCapabilityNoticeProps) {
   const { t } = usePublicLocale()
-  if (capability.payable) return null
 
+  // Phase 6.2 — three states:
+  //   1. `ok`                    : nothing to show (booking == processor currency)
+  //   2. `ok_via_mnt_conversion` : info notice — shown in X, charged in MNT
+  //   3. not payable             : warn/error notice (legacy non-payable paths)
+  if (capability.reasonCode === 'ok') return null
+
+  if (capability.reasonCode === 'ok_via_mnt_conversion') {
+    return (
+      <div
+        role="status"
+        className={[
+          'rounded-md border border-brand-200 bg-brand-50 text-brand-900 px-4 py-3 text-sm leading-relaxed',
+          className ?? '',
+        ].join(' ')}
+      >
+        <div className="font-medium">{t.capability.conversionTitle}</div>
+        <p className="mt-1">
+          {t.capability.conversionDescription(capability.bookingCurrency)}
+        </p>
+        {extra && <div className="mt-2">{extra}</div>}
+      </div>
+    )
+  }
+
+  // Rare / legacy path: a truly unsupported currency (no MNT rate, etc.).
   const variant = capability.reasonCode === 'bonum_mnt_only' ? 'warn' : 'error'
   const styles =
     variant === 'warn'
       ? 'border-amber-300 bg-amber-50 text-amber-900'
       : 'border-red-300 bg-red-50 text-red-900'
 
-  // Fall back to the backend-supplied message in rare exotic reason codes;
-  // otherwise use our localized copy.
   const title = t.capability.unpayableMnTitle
   const body = capability.reasonCode === 'bonum_mnt_only'
     ? t.capability.unpayableDescription(capability.bookingCurrency)
