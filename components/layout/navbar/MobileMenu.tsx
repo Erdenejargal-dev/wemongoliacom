@@ -32,6 +32,7 @@ import { AuthModal } from '@/components/AuthModal'
 import { Button } from '@/components/ui/button'
 import { showBecomeAHost } from '@/lib/navigation'
 import { PreferenceSwitcher } from './PreferenceSwitcher'
+import { usePublicLocale } from '@/lib/i18n/public/context'
 
 // ── Featured destinations (max 4 in accordion) ───────────────────────────────
 
@@ -178,6 +179,7 @@ export function MobileMenu({ session, onClose }: MobileMenuProps) {
   const isProvider = role === 'provider_owner'
   const name       = session?.user?.name
   const email      = session?.user?.email
+  const { t }      = usePublicLocale()
 
   const initials = name
     ? name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
@@ -195,7 +197,7 @@ export function MobileMenu({ session, onClose }: MobileMenuProps) {
           without a desktop view can still set their preference. */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
         <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
-          Language & Currency
+          {t.nav.languageAndCurrency}
         </span>
         <PreferenceSwitcher compact />
       </div>
@@ -345,12 +347,12 @@ export function MobileMenu({ session, onClose }: MobileMenuProps) {
           <div className="px-4 pb-6 space-y-2.5 border-t border-gray-100 pt-4">
             <AuthModal defaultTab="login" trigger={
               <button className="w-full py-3 text-sm font-semibold text-gray-700 border border-gray-200 rounded-2xl hover:bg-gray-50 active:opacity-70 transition-colors">
-                Sign in
+                {t.nav.signIn}
               </button>
             } />
             <AuthModal defaultTab="register" trigger={
               <Button className="w-full bg-brand-500 hover:bg-brand-600 text-white rounded-2xl py-3 text-sm font-semibold flex items-center justify-center gap-2 h-auto">
-                Get Started <ArrowRight className="w-4 h-4" />
+                {t.nav.getStarted} <ArrowRight className="w-4 h-4" />
               </Button>
             } />
             <Link
@@ -359,7 +361,7 @@ export function MobileMenu({ session, onClose }: MobileMenuProps) {
               className="flex items-center justify-center gap-2 w-full py-3 text-sm font-semibold text-brand-700 border border-brand-200 rounded-2xl hover:bg-brand-50 transition-colors"
             >
               <Sparkles className="w-4 h-4" />
-              Харилцагч болох
+              {t.nav.becomeHost}
             </Link>
           </div>
         </>

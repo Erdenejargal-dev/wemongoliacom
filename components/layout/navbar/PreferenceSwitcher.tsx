@@ -16,6 +16,7 @@
 import * as React from 'react'
 import { Check, Globe, ChevronDown } from 'lucide-react'
 import { usePreferences } from '@/components/providers/PreferencesProvider'
+import { usePublicLocale } from '@/lib/i18n/public/context'
 import type { Currency } from '@/lib/money'
 import type { Language } from '@/components/providers/PreferencesProvider'
 
@@ -31,6 +32,7 @@ const CUR_OPTIONS: { value: Currency; label: string }[] = [
 
 export function PreferenceSwitcher({ compact = false }: { compact?: boolean }) {
   const { currency, language, setCurrency, setLanguage } = usePreferences()
+  const { t } = usePublicLocale()
   const [open, setOpen] = React.useState(false)
   const wrapRef = React.useRef<HTMLDivElement>(null)
 
@@ -66,7 +68,7 @@ export function PreferenceSwitcher({ compact = false }: { compact?: boolean }) {
         ].join(' ')}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="Change language or currency"
+        aria-label={t.switcher.openLabel}
       >
         <Globe className="w-4 h-4 text-gray-500" />
         <span className="hidden sm:inline">{currentLang.native}</span>
@@ -81,7 +83,7 @@ export function PreferenceSwitcher({ compact = false }: { compact?: boolean }) {
           className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-gray-100 bg-white shadow-lg p-3 z-50"
         >
           <div className="mb-3">
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Language</p>
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">{t.switcher.languageHeader}</p>
             <div className="grid grid-cols-2 gap-1.5">
               {LANG_OPTIONS.map((opt) => {
                 const selected = opt.value === language
@@ -106,7 +108,7 @@ export function PreferenceSwitcher({ compact = false }: { compact?: boolean }) {
           </div>
 
           <div>
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Currency</p>
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">{t.switcher.currencyHeader}</p>
             <div className="grid grid-cols-2 gap-1.5">
               {CUR_OPTIONS.map((opt) => {
                 const selected = opt.value === currency
@@ -131,8 +133,7 @@ export function PreferenceSwitcher({ compact = false }: { compact?: boolean }) {
           </div>
 
           <p className="mt-3 text-[11px] leading-relaxed text-gray-400">
-            Prices may be displayed in your chosen currency. Payments are processed
-            in the listing&apos;s original currency.
+            {t.switcher.footnote}
           </p>
         </div>
       )}

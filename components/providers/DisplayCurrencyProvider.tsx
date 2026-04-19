@@ -3,29 +3,27 @@
 /**
  * components/providers/DisplayCurrencyProvider.tsx
  *
- * Phase 3 — production-ready display-currency preference flow.
+ * Phase 3 provider kept for back-compat. In Phase 6.1 it became a thin
+ * bridge: when a component anywhere in the tree changes the currency
+ * through `PreferencesProvider.setCurrency()`, that call dispatches a
+ * same-tab `wm:preference-changed` event which this provider listens
+ * to and uses to update its own state. Cross-tab `storage` events are
+ * still handled for multi-tab scenarios.
  *
- * RESOLUTION ORDER (authoritative; matches the audit prompt):
- *   1. User profile preference   (future, see notes below)
- *   2. Client storage            (localStorage key "wm.displayCurrency")
- *   3. Request / locale hint     (not implemented here — reserved)
- *   4. Default                   ("MNT", matching the production MNT-Bonum path)
- *
- * GEO-LOCATION DEFAULTS:
- *   Deliberately NOT implemented yet. The resolution order above is designed
- *   so that when we add "Mongolia → MNT, everywhere else → USD" defaults, we
- *   do it in ONE place (the `resolveInitial` helper) without touching any
- *   consumer. User override remains authoritative — that is the spec.
- *
- * NEEDS CLARIFICATION:
- *   Whether `users.preferredCurrency` should be added to the user model in
- *   this phase. For now the provider reads localStorage + ignores a session
- *   preference; wiring the profile field in is a future additive change.
+ * All existing `useDisplayCurrency()` consumers therefore re-render
+ * immediately when the user flips the navbar switcher — no refresh,
+ * no refactor at the call site.
  */
 
 import * as React from 'react'
-import { writeDisplayCurrency, readDisplayCurrency } from '@/lib/pricing'
 import { SUPPORTED_CURRENCIES, type Currency } from '@/lib/money'
+import {
+  CURRENCY_STORAGE_KEY,
+  PREFERENCE_EVENT,
+  readPreferredCurrencyClient,
+  writePreferredCurrency,
+  type PreferenceChangedDetail,
+} from '@/lib/preferences-storage'
 
 export interface DisplayCurrencyContextValue {
   displayCurrency:    Currency
@@ -38,34 +36,37 @@ const DEFAULT_CURRENCY: Currency = 'MNT'
 
 const Ctx = React.createContext<DisplayCurrencyContextValue | null>(null)
 
-function resolveInitial(): { currency: Currency; isUserSelected: boolean } {
-  // SSR: default only — localStorage is not available.
-  if (typeof window === 'undefined') return { currency: DEFAULT_CURRENCY, isUserSelected: false }
-  const stored = readDisplayCurrency()
-  if (stored) return { currency: stored, isUserSelected: true }
-  return { currency: DEFAULT_CURRENCY, isUserSelected: false }
-}
-
 export function DisplayCurrencyProvider({ children }: { children: React.ReactNode }) {
-  // Initial render must match SSR to avoid hydration warnings → always start
-  // from default, then hydrate from localStorage in an effect.
+  // SSR-safe: start from default; hydrate from cookie/localStorage on mount.
   const [state, setState] = React.useState<{ currency: Currency; isUserSelected: boolean }>({
     currency:       DEFAULT_CURRENCY,
     isUserSelected: false,
   })
 
   React.useEffect(() => {
-    setState(resolveInitial())
+    const stored = readPreferredCurrencyClient()
+    if (stored) setState({ currency: stored, isUserSelected: true })
   }, [])
 
-  // Sync across tabs — one tab changes preference → every other tab reflects it.
+  // Same-tab update — PreferencesProvider (or any caller of
+  // writePreferredCurrency) dispatches this after it writes.
+  React.useEffect(() => {
+    function onSameTab(e: Event) {
+      const detail = (e as CustomEvent<PreferenceChangedDetail>).detail
+      if (!detail || detail.field !== 'currency') return
+      const v = detail.value
+      if (v === 'MNT' || v === 'USD') setState({ currency: v, isUserSelected: true })
+    }
+    window.addEventListener(PREFERENCE_EVENT, onSameTab)
+    return () => window.removeEventListener(PREFERENCE_EVENT, onSameTab)
+  }, [])
+
+  // Cross-tab update — still honored.
   React.useEffect(() => {
     function onStorage(e: StorageEvent) {
-      if (e.key !== 'wm.displayCurrency') return
-      const next = e.newValue
-      if (next === 'MNT' || next === 'USD') {
-        setState({ currency: next, isUserSelected: true })
-      }
+      if (e.key !== CURRENCY_STORAGE_KEY) return
+      const v = e.newValue
+      if (v === 'MNT' || v === 'USD') setState({ currency: v, isUserSelected: true })
     }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
@@ -73,8 +74,11 @@ export function DisplayCurrencyProvider({ children }: { children: React.ReactNod
 
   const setDisplayCurrency = React.useCallback((currency: Currency) => {
     if (!SUPPORTED_CURRENCIES.includes(currency)) return
-    writeDisplayCurrency(currency)
+    writePreferredCurrency(currency)
     setState({ currency, isUserSelected: true })
+    window.dispatchEvent(new CustomEvent<PreferenceChangedDetail>(PREFERENCE_EVENT, {
+      detail: { field: 'currency', value: currency },
+    }))
   }, [])
 
   const value = React.useMemo<DisplayCurrencyContextValue>(() => ({
@@ -89,8 +93,6 @@ export function DisplayCurrencyProvider({ children }: { children: React.ReactNod
 export function useDisplayCurrency(): DisplayCurrencyContextValue {
   const v = React.useContext(Ctx)
   if (!v) {
-    // Graceful fallback: components that render outside the provider (stray
-    // story/test setups) get the default. Production layout wraps the app.
     return {
       displayCurrency:    DEFAULT_CURRENCY,
       setDisplayCurrency: () => {},

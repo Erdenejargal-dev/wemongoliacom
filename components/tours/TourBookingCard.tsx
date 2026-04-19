@@ -13,6 +13,7 @@ import { describeListingPaymentCapability } from '@/lib/payment-capability'
 import { PaymentCapabilityNotice } from '@/components/payments/PaymentCapabilityNotice'
 import { RequestBookingModal } from '@/components/booking-requests/RequestBookingModal'
 import { track } from '@/lib/analytics'
+import { usePublicLocale } from '@/lib/i18n/public/context'
 
 interface TourBookingCardProps {
   tour: {
@@ -45,10 +46,12 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
   const router = useRouter()
   // Phase 6 — preferences drive the display currency for public pages.
   // We still read useDisplayCurrency for back-compat (the two are kept in
-  // sync via the shared localStorage key), but preferences is authoritative.
+  // sync via the shared custom event + cookie), but preferences is
+  // authoritative and its changes re-render this component immediately.
   const { currency: preferredCurrency } = usePreferences()
   const { displayCurrency: dcLegacy } = useDisplayCurrency()
   const displayCurrency = preferredCurrency ?? dcLegacy
+  const { t } = usePublicLocale()
   const [guests, setGuests] = useState(1)
   const [selectedDepId, setSelectedDepId] = useState<string | null>(
     departures?.[0]?.id ?? null,
@@ -149,7 +152,7 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
           only when the backend provided a normalized figure. */}
       <div className="flex items-baseline gap-1 mb-1">
         <span className="text-2xl font-bold text-gray-900">{primaryPrice}</span>
-        <span className="text-sm text-gray-500">/ person</span>
+        <span className="text-sm text-gray-500">{t.tourCard.perPerson}</span>
       </div>
       {secondaryPrice && (
         <p className="text-xs text-gray-500 mb-1">≈ {secondaryPrice}</p>
@@ -171,7 +174,7 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
       {/* Departure selection */}
       <div className="mb-4">
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">
-          Select Departure
+          {t.tourCard.selectDeparture}
         </label>
         {hasDepartures ? (
           <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
@@ -199,11 +202,11 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
                       {fmtDate(dep.startDate)} — {fmtDate(dep.endDate ?? dep.startDate)}
                     </p>
                     <p className="text-[11px] text-gray-500">
-                      {seats} seat{seats !== 1 ? 's' : ''} left
-                      {seats <= 4 && seats > 0 && <span className="text-amber-600 ml-1">· Selling fast</span>}
+                      {t.tourCard.seatsRemaining(seats)}
+                      {seats <= 4 && seats > 0 && <span className="text-amber-600 ml-1">· {t.tourCard.sellingFast}</span>}
                       {hasOverride && depAmount != null && (
                         <span className="text-brand-600 ml-1">
-                          · {formatMoney(depAmount, depCur)}/person
+                          · {formatMoney(depAmount, depCur)}{t.tourCard.perPerson}
                         </span>
                       )}
                     </p>
@@ -220,9 +223,7 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
         ) : (
           <div className="flex items-center gap-2 px-3 py-3 bg-gray-50 border border-gray-200 rounded-xl">
             <AlertCircle className="w-4 h-4 text-gray-400 shrink-0" />
-            <p className="text-xs text-gray-500">
-              No upcoming departures available. Contact the provider for more information.
-            </p>
+            <p className="text-xs text-gray-500">{t.tourCard.noDepartures}</p>
           </div>
         )}
       </div>
@@ -239,12 +240,12 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
       {/* Guests */}
       <div className="mb-5">
         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
-          Guests
+          {t.tourCard.guests}
         </label>
         <div className="flex items-center justify-between border border-gray-200 rounded-xl px-4 py-3">
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-brand-500" />
-            <span className="text-sm text-gray-700">{guests} guest{guests !== 1 ? 's' : ''}</span>
+            <span className="text-sm text-gray-700">{guests === 1 ? t.tourCard.guestsOne : `${guests} ${t.tourCard.guestsMany}`}</span>
           </div>
           <div className="flex items-center gap-3">
             <button onClick={() => setGuests(g => Math.max(1, g - 1))} disabled={guests <= 1}
@@ -260,13 +261,13 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
         </div>
         {remainingSeats != null ? (
           <p className="text-xs text-gray-400 mt-1">
-            {remainingSeats} seat{remainingSeats !== 1 ? 's' : ''} remaining
+            {t.tourCard.seatsRemaining(remainingSeats)}
             {remainingSeats < 5 && remainingSeats > 0 && (
-              <span className="text-amber-600 ml-1">· Selling out</span>
+              <span className="text-amber-600 ml-1">· {t.tourCard.sellingOut}</span>
             )}
           </p>
         ) : (
-          <p className="text-xs text-gray-400 mt-1">Max {tour.maxGuests} guests per booking</p>
+          <p className="text-xs text-gray-400 mt-1">{t.tourCard.maxGuests(tour.maxGuests)}</p>
         )}
       </div>
 
@@ -275,9 +276,9 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
           /bookings/quote and displays the real subtotal/serviceFee/total. */}
       <div className="border-t border-gray-100 pt-4 mb-4">
         <p className="text-xs text-gray-500">
-          {formatMoney(pricePerPerson, baseCurrency)} per person · {guests} guest{guests !== 1 ? 's' : ''}
+          {t.tourCard.pricePerPerson(formatMoney(pricePerPerson, baseCurrency), guests)}
         </p>
-        <p className="text-xs text-gray-400 mt-1">Service fee and final total shown at checkout</p>
+        <p className="text-xs text-gray-400 mt-1">{t.tourCard.serviceFeeAtCheckout}</p>
       </div>
 
       {/* Phase 3 — payment currency capability notice. Shown BEFORE the CTA
@@ -294,10 +295,10 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
             onClick={handleReserve}
             className="w-full py-3.5 bg-gray-900 hover:bg-gray-800 text-white font-bold text-sm rounded-xl transition-colors flex items-center justify-center gap-2 active:scale-[0.98]"
           >
-            Request Booking <ChevronRight className="w-4 h-4" />
+            {t.tourCard.requestCta} <ChevronRight className="w-4 h-4" />
           </button>
           <p className="text-center text-xs text-gray-400 mt-2">
-            Pay later with international options (coming soon)
+            {t.tourCard.visaComingSoon}
           </p>
         </>
       ) : (
@@ -307,11 +308,11 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
           className="w-full py-3.5 bg-brand-500 hover:bg-brand-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold text-sm rounded-xl transition-colors shadow-sm shadow-brand-200 flex items-center justify-center gap-2 active:scale-[0.98]"
         >
           {canReserve ? (
-            <>Reserve Tour <ChevronRight className="w-4 h-4" /></>
+            <>{t.tourCard.reserveCta} <ChevronRight className="w-4 h-4" /></>
           ) : hasDepartures ? (
-            'Select a departure to book'
+            t.tourCard.noDepartureSelected
           ) : (
-            'No departures available'
+            t.tourCard.notAvailableCta
           )}
         </button>
       )}
@@ -332,15 +333,15 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
       <div className="mt-4 space-y-2">
         <div className="flex items-center gap-2 text-xs text-gray-500">
           <Shield className="w-3.5 h-3.5 text-brand-500 shrink-0" />
-          Free cancellation up to 7 days before tour
+          {t.tourCard.freeCancellation}
         </div>
         <div className="flex items-center gap-2 text-xs text-gray-500">
           <Clock className="w-3.5 h-3.5 text-brand-500 shrink-0" />
-          Confirmation after provider review
+          {t.tourCard.confirmationNotice}
         </div>
       </div>
 
-      <p className="text-center text-xs text-gray-400 mt-3">You won&apos;t be charged yet</p>
+      <p className="text-center text-xs text-gray-400 mt-3">{t.tourCard.notChargedYet}</p>
     </div>
   )
 }

@@ -14,11 +14,13 @@ import { PreferenceSwitcher } from './navbar/PreferenceSwitcher'
 import { navItems } from './navbar/mega-menu-data'
 import { cn } from '@/lib/utils'
 import { WeMongoliaLogo } from '@/components/brand/WeMongoliaLogo'
+import { usePublicLocale } from '@/lib/i18n/public/context'
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const { data: session, status } = useSession()
+  const { t } = usePublicLocale()
   const isLoading = status === 'loading'
   const role      = session?.user?.role
 
@@ -82,7 +84,7 @@ export default function Navbar() {
                 'p-2 rounded-lg transition-colors text-gray-500',
                 searchOpen ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50 hover:text-gray-700',
               )}
-              aria-label="Search"
+              aria-label={t.nav.search}
             >
               <Search className="w-5 h-5" />
             </button>
@@ -105,12 +107,12 @@ export default function Navbar() {
                 <div className="hidden sm:flex items-center gap-2 ml-1">
                   <AuthModal defaultTab="login" trigger={
                     <button className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors">
-                      Sign in
+                      {t.nav.signIn}
                     </button>
                   } />
                   <AuthModal defaultTab="register" trigger={
                     <Button className="bg-brand-500 hover:bg-brand-600 text-white rounded-xl px-4 py-1.5 text-sm font-medium flex items-center gap-1.5 h-auto">
-                      Get Started
+                      {t.nav.getStarted}
                       <ArrowRight className="w-3.5 h-3.5" />
                     </Button>
                   } />
@@ -121,7 +123,7 @@ export default function Navbar() {
                   href="/auth/login?callbackUrl=%2Fonboarding"
                   className="hidden md:block text-xs font-medium text-gray-500 hover:text-gray-700 ml-2 border-l border-gray-200 pl-3 transition-colors whitespace-nowrap"
                 >
-                  Харилцагч болох
+                  {t.nav.becomeHost}
                 </Link>
               </>
             )}
@@ -130,7 +132,7 @@ export default function Navbar() {
             <button
               className="lg:hidden ml-1 p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-600"
               onClick={() => setMobileOpen(v => !v)}
-              aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+              aria-label={mobileOpen ? t.nav.closeMenu : t.nav.openMenu}
               aria-expanded={mobileOpen}
             >
               {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}

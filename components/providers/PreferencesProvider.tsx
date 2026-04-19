@@ -3,54 +3,60 @@
 /**
  * components/providers/PreferencesProvider.tsx
  *
- * Phase 6 — UX + Growth Layer.
+ * Phase 6 (with Phase 6.1 live-update fixes).
  *
  * Single source of truth for two user preferences:
  *   - currency  (MNT | USD)
  *   - language  (mn  | en)
  *
- * RESOLUTION ORDER (authoritative, matches the Phase 6 spec):
- *   1. Logged-in user profile      (User.preferredCurrency / preferredLanguage)
- *   2. Client storage              (localStorage keys: "wm.displayCurrency", "wm_dashboard_lang")
- *   3. Geo hint from backend       (GET /geo/hint — CF/Vercel country header)
- *   4. Browser language            (navigator.language — only for language)
- *   5. Fallback default            ("en" + "USD")
+ * RESOLUTION ORDER:
+ *   1. Logged-in user profile      (session.user.preferredCurrency / preferredLanguage)
+ *   2. Cookie                      (wm_currency / wm_lang — also readable by server)
+ *   3. localStorage                (wm.displayCurrency / wm_dashboard_lang — Phase 3 keys)
+ *   4. Geo hint from backend       (GET /geo/hint)
+ *   5. Browser language            (navigator.language — language only)
+ *   6. Default                     ('USD' + 'en')
  *
- * User override ALWAYS wins once selected. We never silently re-apply a
- * geo default over a user's explicit choice.
- *
- * This provider DELIBERATELY uses the same localStorage keys as the
- * pre-existing `DisplayCurrencyProvider` and `wm_dashboard_lang` so that
- * other parts of the app that already read those keys continue to work
- * unchanged. `DisplayCurrencyProvider` remains mounted (for back-compat
- * with traveler dashboard code that reads `useDisplayCurrency()`), but
- * this provider is the one wired into the public site navbar.
+ * PHASE 6.1 — WHAT CHANGED FROM PHASE 6:
+ *   - Cookies are now written in addition to localStorage so server
+ *     components can attach `X-Display-Currency` at fetch time. The
+ *     cookie is also the fastest SSR-consistent hydration source.
+ *   - A same-tab `wm:preference-changed` custom event is dispatched on
+ *     every change. `DisplayCurrencyProvider` and any other legacy
+ *     listener subscribe to it so their state stays in sync without
+ *     relying on cross-tab `storage` events (which don't fire in the
+ *     originating tab).
+ *   - `router.refresh()` is called after every change so App Router
+ *     server components re-run their data fetches with the new header.
  */
 
 import * as React from 'react'
+import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { SUPPORTED_CURRENCIES, type Currency } from '@/lib/money'
-import { writeDisplayCurrency } from '@/lib/pricing'
 import {
-  DASHBOARD_LANG_KEY,
-  getStoredLang,
-  setStoredLang,
-  type DashboardLang,
-} from '@/lib/i18n/config'
+  CURRENCY_COOKIE, LANGUAGE_COOKIE,
+  CURRENCY_STORAGE_KEY, LANGUAGE_STORAGE_KEY,
+  PREFERENCE_EVENT,
+  readPreferredCurrencyClient,
+  readPreferredLanguageClient,
+  writePreferredCurrency,
+  writePreferredLanguage,
+  type PreferenceChangedDetail,
+} from '@/lib/preferences-storage'
+import { type DashboardLang } from '@/lib/i18n/config'
 
 export type Language = DashboardLang  // 'mn' | 'en'
 
-type Source = 'user' | 'storage' | 'geo' | 'browser' | 'default'
+type Source = 'user' | 'cookie' | 'storage' | 'geo' | 'browser' | 'default'
 
 export interface PreferencesContextValue {
   currency:           Currency
   language:           Language
   setCurrency:        (c: Currency) => void
   setLanguage:        (l: Language) => void
-  /** For analytics / debugging — where did each value come from? */
   currencySource:     Source
   languageSource:     Source
-  /** Did the user ever explicitly pick a value, or are these just defaults? */
   isUserSelected:     boolean
 }
 
@@ -59,17 +65,7 @@ const DEFAULT_LANGUAGE: Language = 'en'
 
 const Ctx = React.createContext<PreferencesContextValue | null>(null)
 
-// ── Storage helpers ────────────────────────────────────────────────────
-
-const CURRENCY_STORAGE_KEY = 'wm.displayCurrency'
-
-function readStoredCurrency(): Currency | null {
-  if (typeof window === 'undefined') return null
-  try {
-    const raw = window.localStorage.getItem(CURRENCY_STORAGE_KEY)
-    return raw === 'MNT' || raw === 'USD' ? raw : null
-  } catch { return null }
-}
+// ── Helpers ────────────────────────────────────────────────────────────
 
 function readBrowserLang(): Language | null {
   if (typeof window === 'undefined') return null
@@ -82,12 +78,13 @@ function readBrowserLang(): Language | null {
 // ── Provider ───────────────────────────────────────────────────────────
 
 export function PreferencesProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter()
   const { data: session } = useSession()
   const userPrefCurrency = (session?.user as any)?.preferredCurrency as Currency | undefined
   const userPrefLanguage = (session?.user as any)?.preferredLanguage as Language | undefined
 
-  // SSR-safe: start from defaults so server markup matches the first client
-  // render; hydrate from storage + geo in a useEffect.
+  // SSR-safe: start from defaults so server markup matches the first
+  // client render; hydrate from cookie/storage/geo in a useEffect.
   const [state, setState] = React.useState<{
     currency: Currency;  currencySource: Source
     language: Language;  languageSource: Source
@@ -96,7 +93,8 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     language: DEFAULT_LANGUAGE, languageSource: 'default',
   })
 
-  // 1. Fold user profile → local state. Fires whenever the session changes.
+  // 1. Fold user profile preference → state. Fires whenever the session
+  //    changes. User preference beats everything else.
   React.useEffect(() => {
     if (userPrefCurrency && SUPPORTED_CURRENCIES.includes(userPrefCurrency)) {
       setState((s) => ({ ...s, currency: userPrefCurrency, currencySource: 'user' }))
@@ -106,29 +104,27 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     }
   }, [userPrefCurrency, userPrefLanguage])
 
-  // 2. Hydrate from storage + geo on first client mount (only if user profile
-  //    didn't already provide a value).
+  // 2. Hydrate from cookie / localStorage / geo on first client mount.
   React.useEffect(() => {
     let cancelled = false
 
-    const storedCur = readStoredCurrency()
-    const storedLang = getStoredLang()
+    const storedCur  = readPreferredCurrencyClient()
+    const storedLang = readPreferredLanguageClient()
 
     setState((s) => {
       const next = { ...s }
       if (s.currencySource !== 'user' && storedCur) {
         next.currency = storedCur
-        next.currencySource = 'storage'
+        next.currencySource = 'cookie'
       }
       if (s.languageSource !== 'user' && storedLang) {
         next.language = storedLang
-        next.languageSource = 'storage'
+        next.languageSource = 'cookie'
       }
       return next
     })
 
-    // Still need to resolve defaults? Try geo then browser.
-    const needGeo = !userPrefCurrency && !storedCur
+    const needGeo  = !userPrefCurrency && !storedCur
     const needLang = !userPrefLanguage && !storedLang
 
     if (!needGeo && !needLang) return
@@ -144,7 +140,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
         if (d?.suggestedCurrency === 'MNT' || d?.suggestedCurrency === 'USD') geoCurrency = d.suggestedCurrency
         if (d?.suggestedLanguage === 'mn'  || d?.suggestedLanguage === 'en')  geoLanguage = d.suggestedLanguage
       } catch {
-        // geo endpoint failure must never break the site
+        // geo failure must never break the site
       }
 
       if (cancelled) return
@@ -164,18 +160,17 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     }
     resolveDefaults()
     return () => { cancelled = true }
-    // Run once per mount — user pref changes are handled by effect 1 above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 3. Cross-tab sync for both keys.
+  // 3. Cross-tab sync for both keys (storage event).
   React.useEffect(() => {
     function onStorage(e: StorageEvent) {
       if (e.key === CURRENCY_STORAGE_KEY) {
         if (e.newValue === 'MNT' || e.newValue === 'USD') {
           setState((s) => ({ ...s, currency: e.newValue as Currency, currencySource: 'storage' }))
         }
-      } else if (e.key === DASHBOARD_LANG_KEY) {
+      } else if (e.key === LANGUAGE_STORAGE_KEY) {
         if (e.newValue === 'mn' || e.newValue === 'en') {
           setState((s) => ({ ...s, language: e.newValue as Language, languageSource: 'storage' }))
         }
@@ -189,26 +184,33 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
 
   const setCurrency = React.useCallback((c: Currency) => {
     if (!SUPPORTED_CURRENCIES.includes(c)) return
-    writeDisplayCurrency(c)
+    writePreferredCurrency(c)  // cookie + localStorage
     setState((s) => ({ ...s, currency: c, currencySource: 'user' }))
-    // Fire a lightweight analytics ping (no-op if the hook isn't wired up).
+
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('wm:preference-changed', {
+      window.dispatchEvent(new CustomEvent<PreferenceChangedDetail>(PREFERENCE_EVENT, {
         detail: { field: 'currency', value: c },
       }))
     }
-  }, [])
+
+    // Force App Router server components to re-run with the new cookie /
+    // header so server-rendered pricing reflects the change.
+    router.refresh()
+  }, [router])
 
   const setLanguage = React.useCallback((l: Language) => {
     if (l !== 'mn' && l !== 'en') return
-    setStoredLang(l)
+    writePreferredLanguage(l)  // cookie + localStorage
     setState((s) => ({ ...s, language: l, languageSource: 'user' }))
+
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('wm:preference-changed', {
+      window.dispatchEvent(new CustomEvent<PreferenceChangedDetail>(PREFERENCE_EVENT, {
         detail: { field: 'language', value: l },
       }))
     }
-  }, [])
+
+    router.refresh()
+  }, [router])
 
   const value = React.useMemo<PreferencesContextValue>(() => ({
     currency:       state.currency,
@@ -226,8 +228,6 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
 export function usePreferences(): PreferencesContextValue {
   const v = React.useContext(Ctx)
   if (!v) {
-    // Graceful fallback outside provider — components rendered in storybook
-    // or tests still work with defaults.
     return {
       currency:       DEFAULT_CURRENCY,
       language:       DEFAULT_LANGUAGE,
@@ -240,3 +240,7 @@ export function usePreferences(): PreferencesContextValue {
   }
   return v
 }
+
+// Re-export cookie names for consumers that want to read them on the
+// server via next/headers (see lib/api/server-headers.ts).
+export { CURRENCY_COOKIE, LANGUAGE_COOKIE }

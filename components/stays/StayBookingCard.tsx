@@ -27,6 +27,7 @@ import { PaymentCapabilityNotice } from '@/components/payments/PaymentCapability
 import { RequestBookingModal } from '@/components/booking-requests/RequestBookingModal'
 import { useEffect } from 'react'
 import { track } from '@/lib/analytics'
+import { usePublicLocale } from '@/lib/i18n/public/context'
 
 interface StayBookingCardProps {
   stay: Pick<
@@ -63,6 +64,7 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
   const { currency: preferredCurrency } = usePreferences()
   const { displayCurrency: dcLegacy } = useDisplayCurrency()
   const displayCurrency = preferredCurrency ?? dcLegacy
+  const { t } = usePublicLocale()
 
   const today     = toInputDate(new Date())
   const tomorrow  = toInputDate(new Date(Date.now() + 86_400_000))
@@ -163,7 +165,7 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
         <>
           <div className="flex items-baseline gap-1 mb-1">
             <span className="text-2xl font-bold text-gray-900">{primaryPrice}</span>
-            <span className="text-sm text-gray-500">/ night</span>
+            <span className="text-sm text-gray-500">{t.stayCard.perNight}</span>
           </div>
           {secondaryPrice && (
             <p className="text-xs text-gray-500 mb-1">≈ {secondaryPrice}</p>
@@ -187,9 +189,7 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
       {!hasRooms && (
         <div className="flex items-start gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl mb-4">
           <AlertCircle className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
-          <p className="text-xs text-gray-500">
-            No rooms listed yet. Contact the provider for availability.
-          </p>
+          <p className="text-xs text-gray-500">{t.stayCard.noRoomsYet}</p>
         </div>
       )}
 
@@ -197,7 +197,7 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
       {hasRooms && stay.roomTypes.length > 1 && (
         <div className="mb-4">
           <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">
-            Room Type
+            {t.stayCard.roomType}
           </label>
           <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
             {stay.roomTypes.map((room) => {
@@ -226,7 +226,7 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
                     {formatMoney(
                       room.pricing?.base.amount ?? room.basePricePerNight,
                       (room.pricing?.base.currency ?? (isSupportedCurrency(room.currency) ? room.currency : 'MNT')) as Currency,
-                    )}/night
+                    )}{t.stayCard.perNight}
                   </span>
                 </button>
               )
@@ -240,7 +240,7 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">
-              Check-in
+              {t.stayCard.checkIn}
             </label>
             <input
               type="date"
@@ -253,7 +253,7 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
           </div>
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">
-              Check-out
+              {t.stayCard.checkOut}
             </label>
             <input
               type="date"
@@ -272,9 +272,7 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
       {/* Nights summary pill */}
       {nights > 0 && (
         <div className="px-3 py-2 bg-brand-50 border border-brand-100 rounded-xl mb-4">
-          <p className="text-xs text-brand-800 font-medium">
-            {nights} night{nights !== 1 ? 's' : ''}
-          </p>
+          <p className="text-xs text-brand-800 font-medium">{t.stayCard.nights(nights)}</p>
         </div>
       )}
 
@@ -282,13 +280,13 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
       {hasRooms && (
         <div className="mb-5">
           <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
-            Guests
+            {t.stayCard.guests}
           </label>
           <div className="flex items-center justify-between border border-gray-200 rounded-xl px-4 py-3">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-brand-500" />
               <span className="text-sm text-gray-700">
-                {guests} guest{guests !== 1 ? 's' : ''}
+                {`${guests} ${t.stayCard.guests.toLowerCase()}`}
               </span>
             </div>
             <div className="flex items-center gap-3">
@@ -309,9 +307,7 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
               </button>
             </div>
           </div>
-          <p className="text-xs text-gray-400 mt-1">
-            Max {maxGuests} guest{maxGuests !== 1 ? 's' : ''} for this room
-          </p>
+          <p className="text-xs text-gray-400 mt-1">{t.stayCard.maxGuestsForRoom(maxGuests)}</p>
         </div>
       )}
 
@@ -321,9 +317,9 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
       {nights > 0 && selectedRoom && (
         <div className="border-t border-gray-100 pt-4 mb-4">
           <p className="text-xs text-gray-500">
-            {formatMoney(pricePerNight, currency)} per night · {nights} night{nights !== 1 ? 's' : ''}
+            {t.stayCard.perNightLabel(formatMoney(pricePerNight, currency), nights)}
           </p>
-          <p className="text-xs text-gray-400 mt-1">Service fee and final total shown at checkout</p>
+          <p className="text-xs text-gray-400 mt-1">{t.stayCard.serviceFeeAtCheckout}</p>
         </div>
       )}
 
@@ -339,10 +335,10 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
             onClick={handleReserve}
             className="w-full py-3.5 bg-gray-900 hover:bg-gray-800 text-white font-bold text-sm rounded-xl transition-colors flex items-center justify-center gap-2 active:scale-[0.98]"
           >
-            Request Booking <ChevronRight className="w-4 h-4" />
+            {t.stayCard.requestCta} <ChevronRight className="w-4 h-4" />
           </button>
           <p className="text-center text-xs text-gray-400 mt-2">
-            Pay later with international options (coming soon)
+            {t.stayCard.visaComingSoon}
           </p>
         </>
       ) : (
@@ -352,13 +348,13 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
           className="w-full py-3.5 bg-brand-500 hover:bg-brand-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold text-sm rounded-xl transition-colors shadow-sm shadow-brand-200 flex items-center justify-center gap-2 active:scale-[0.98]"
         >
           {canReserve ? (
-            <>Reserve Stay <ChevronRight className="w-4 h-4" /></>
+            <>{t.stayCard.reserveCta} <ChevronRight className="w-4 h-4" /></>
           ) : !hasRooms ? (
-            'No rooms available'
+            t.stayCard.noRoomsAvailable
           ) : nights === 0 ? (
-            'Select your dates'
+            t.stayCard.selectDates
           ) : (
-            'Unable to reserve'
+            t.stayCard.unableToReserve
           )}
         </button>
       )}
@@ -394,7 +390,7 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
       </div>
 
       <p className="text-center text-xs text-gray-400 mt-3">
-        You won&apos;t be charged yet
+        {t.stayCard.notChargedYet}
       </p>
     </div>
   )

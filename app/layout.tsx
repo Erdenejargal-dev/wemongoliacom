@@ -5,6 +5,7 @@ import "./globals.css";
 import SessionProvider from "@/components/providers/SessionProvider";
 import { DisplayCurrencyProvider } from "@/components/providers/DisplayCurrencyProvider";
 import { PreferencesProvider } from "@/components/providers/PreferencesProvider";
+import { PublicLocaleProvider } from "@/lib/i18n/public/context";
 import { ConditionalShell } from "@/components/layout/ConditionalShell";
 
 // ✅ Manrope
@@ -45,7 +46,9 @@ export default function RootLayout({
               components that already call useDisplayCurrency(). */}
           <PreferencesProvider>
             <DisplayCurrencyProvider>
-              <ConditionalShell>{children}</ConditionalShell>
+              <PublicLocaleProvider>
+                <ConditionalShell>{children}</ConditionalShell>
+              </PublicLocaleProvider>
             </DisplayCurrencyProvider>
           </PreferencesProvider>
         </SessionProvider>

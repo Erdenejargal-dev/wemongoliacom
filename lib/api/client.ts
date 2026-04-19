@@ -4,10 +4,47 @@
  * All requests go to NEXT_PUBLIC_API_URL (client) or API_URL (server).
  */
 
+import { CURRENCY_COOKIE } from '@/lib/preferences-storage'
+
 const BASE =
   typeof window === 'undefined'
     ? (process.env.API_URL ?? 'http://localhost:4000/api/v1')
     : (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1')
+
+/**
+ * Server-side reader for the display-currency cookie. We dynamic-import
+ * `next/headers` so the same module keeps working in pages/routes that
+ * don't (yet) run on the server, and so bundlers don't try to resolve it
+ * in the browser build.
+ */
+async function readDisplayCurrencyOnServer(): Promise<'MNT' | 'USD' | null> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { cookies } = await import('next/headers') as any
+    const jar = typeof cookies === 'function' ? cookies() : null
+    // Next 15 returns a Promise; Next 14 is sync — handle both.
+    const resolved = jar && typeof jar.then === 'function' ? await jar : jar
+    const v = resolved?.get?.(CURRENCY_COOKIE)?.value as string | undefined
+    if (v === 'MNT' || v === 'USD') return v
+  } catch {
+    // Not inside a server component / route handler — ignore silently.
+  }
+  return null
+}
+
+function readDisplayCurrencyOnClient(): 'MNT' | 'USD' | null {
+  if (typeof document === 'undefined') return null
+  const fromCookie = document.cookie.match(new RegExp(`(?:^|; )${CURRENCY_COOKIE}=([^;]*)`))
+  if (fromCookie) {
+    const v = decodeURIComponent(fromCookie[1])
+    if (v === 'MNT' || v === 'USD') return v
+  }
+  try {
+    const raw = window.localStorage.getItem('wm.displayCurrency')
+    if (raw === 'MNT' || raw === 'USD') return raw
+  } catch { /* ignore */ }
+  return null
+}
 
 // ── Error type ──────────────────────────────────────────────────────────────
 
@@ -26,20 +63,17 @@ async function request<T>(
   token?: string | null,
   retryCount = 0,
 ): Promise<T> {
-  // Phase 3 — always attach the user's display-currency preference, if one
-  // is persisted in localStorage. This is the single place the header is
-  // added, so individual endpoints don't need to know about display currency
-  // at all. Explicit `X-Display-Currency` passed in `options.headers` wins.
+  // Phase 3 / 6.1 — always attach the user's display-currency preference
+  // so server-rendered pages and client-side fetches agree. Resolution:
+  //   - on the client: cookie (new) → localStorage (Phase 3 fallback)
+  //   - on the server: cookie via next/headers
   let displayCurrencyHeader: Record<string, string> = {}
-  if (typeof window !== 'undefined') {
-    try {
-      const raw = window.localStorage.getItem('wm.displayCurrency')
-      if (raw === 'MNT' || raw === 'USD') {
-        displayCurrencyHeader = { 'X-Display-Currency': raw }
-      }
-    } catch {
-      // localStorage can throw in private mode / SSR — ignore quietly.
-    }
+  if (typeof window === 'undefined') {
+    const server = await readDisplayCurrencyOnServer()
+    if (server) displayCurrencyHeader = { 'X-Display-Currency': server }
+  } else {
+    const client = readDisplayCurrencyOnClient()
+    if (client) displayCurrencyHeader = { 'X-Display-Currency': client }
   }
 
   const headers: Record<string, string> = {

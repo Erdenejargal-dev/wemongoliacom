@@ -20,6 +20,7 @@ import { useSession } from 'next-auth/react'
 import { X, Mail, Phone, MessageSquare, User, Check, AlertCircle, Loader2 } from 'lucide-react'
 import { createBookingRequest, type BookingRequestListingType } from '@/lib/api/booking-requests'
 import { track } from '@/lib/analytics'
+import { usePublicLocale } from '@/lib/i18n/public/context'
 
 export interface RequestBookingModalProps {
   open:        boolean
@@ -50,6 +51,7 @@ export function RequestBookingModal({
   const { data: session } = useSession()
   const token = session?.user?.accessToken
   const authed = !!session
+  const { t } = usePublicLocale()
 
   const [name,    setName]    = React.useState('')
   const [email,   setEmail]   = React.useState('')
@@ -98,8 +100,8 @@ export function RequestBookingModal({
     if (submitting) return
     setError(null)
 
-    if (name.trim().length < 2)                           return setError('Please enter your name.')
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError('Please enter a valid email.')
+    if (name.trim().length < 2)                           return setError(t.requestModal.errNameRequired)
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError(t.requestModal.errEmailRequired)
 
     setSubmitting(true)
     try {
@@ -120,7 +122,7 @@ export function RequestBookingModal({
       })
       setSuccess(true)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Could not send your request. Please try again.'
+      const msg = err instanceof Error ? err.message : t.requestModal.errGeneric
       setError(msg)
       track('booking_request_error', { listingType, listingId, message: msg })
     } finally {
@@ -139,16 +141,16 @@ export function RequestBookingModal({
         {/* Header */}
         <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-2">
           <div>
-            <p className="text-[11px] font-semibold text-brand-600 uppercase tracking-wide">Booking request</p>
+            <p className="text-[11px] font-semibold text-brand-600 uppercase tracking-wide">{t.requestModal.eyebrow}</p>
             <h2 className="text-lg font-bold text-gray-900 mt-0.5">
-              {success ? 'Request sent' : (listingTitle ? `Contact about "${listingTitle}"` : 'Contact the host')}
+              {success ? t.requestModal.successTitle : (listingTitle ? t.requestModal.titleFor(listingTitle) : t.requestModal.titleDefault)}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-50"
-            aria-label="Close"
+            aria-label={t.requestModal.close}
           >
             <X className="w-4 h-4" />
           </button>
@@ -160,10 +162,8 @@ export function RequestBookingModal({
             <div className="rounded-xl bg-brand-50 border border-brand-100 p-4 flex gap-3">
               <Check className="w-5 h-5 text-brand-600 shrink-0 mt-0.5" />
               <div className="text-sm text-brand-900">
-                <p className="font-semibold mb-1">We&apos;ll contact you to confirm and arrange payment.</p>
-                <p className="text-brand-800">
-                  The host usually responds within 1 business day. You&apos;ll receive a copy at <span className="font-medium">{email}</span>.
-                </p>
+                <p className="font-semibold mb-1">{t.requestModal.successLead}</p>
+                <p className="text-brand-800">{t.requestModal.successBody(email)}</p>
               </div>
             </div>
             <button
@@ -171,20 +171,18 @@ export function RequestBookingModal({
               onClick={onClose}
               className="mt-4 w-full py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 transition-colors"
             >
-              Done
+              {t.requestModal.done}
             </button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="px-5 pb-5 space-y-3">
             {listingCurrency && listingCurrency !== 'MNT' && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12px] text-amber-900 leading-relaxed">
-                This listing is priced in <span className="font-semibold">{listingCurrency}</span>.
-                International card payments are coming soon — for now, send a
-                request and the host will arrange payment directly with you.
+                {t.requestModal.pricedIn(listingCurrency)}
               </div>
             )}
 
-            <Field icon={User} label="Your name" required>
+            <Field icon={User} label={t.requestModal.nameLabel} required>
               <input
                 type="text" value={name} onChange={(e) => setName(e.target.value)}
                 placeholder="Jane Doe"
@@ -192,7 +190,7 @@ export function RequestBookingModal({
               />
             </Field>
 
-            <Field icon={Mail} label="Email" required>
+            <Field icon={Mail} label={t.requestModal.emailLabel} required>
               <input
                 type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
@@ -200,7 +198,7 @@ export function RequestBookingModal({
               />
             </Field>
 
-            <Field icon={Phone} label="Phone (optional)">
+            <Field icon={Phone} label={t.requestModal.phoneLabel}>
               <input
                 type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
                 placeholder="+1 555 1234"
@@ -210,14 +208,14 @@ export function RequestBookingModal({
 
             <div className="grid grid-cols-2 gap-2">
               <label className="flex flex-col border border-gray-200 rounded-xl px-3 py-2">
-                <span className="text-[11px] font-semibold text-gray-500 uppercase">From</span>
+                <span className="text-[11px] font-semibold text-gray-500 uppercase">{t.requestModal.from}</span>
                 <input
                   type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
                   className="bg-transparent outline-none text-sm text-gray-900 mt-0.5"
                 />
               </label>
               <label className="flex flex-col border border-gray-200 rounded-xl px-3 py-2">
-                <span className="text-[11px] font-semibold text-gray-500 uppercase">To (optional)</span>
+                <span className="text-[11px] font-semibold text-gray-500 uppercase">{t.requestModal.to}</span>
                 <input
                   type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
                   className="bg-transparent outline-none text-sm text-gray-900 mt-0.5"
@@ -226,7 +224,7 @@ export function RequestBookingModal({
             </div>
 
             <label className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2">
-              <span className="text-[11px] font-semibold text-gray-500 uppercase">Guests</span>
+              <span className="text-[11px] font-semibold text-gray-500 uppercase">{t.requestModal.guests}</span>
               <input
                 type="number" min={1} max={200} value={guests}
                 onChange={(e) => setGuests(e.target.value === '' ? '' : Math.max(1, Number(e.target.value)))}
@@ -234,12 +232,12 @@ export function RequestBookingModal({
               />
             </label>
 
-            <Field icon={MessageSquare} label="Message (optional)">
+            <Field icon={MessageSquare} label={t.requestModal.messageLabel}>
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 rows={3}
-                placeholder="Anything the host should know?"
+                placeholder={t.requestModal.messagePlaceholder}
                 className="w-full bg-transparent outline-none text-sm text-gray-900 placeholder:text-gray-400 resize-none"
               />
             </Field>
@@ -257,10 +255,10 @@ export function RequestBookingModal({
               className="w-full py-3 rounded-xl bg-brand-500 hover:bg-brand-600 disabled:bg-gray-200 disabled:text-gray-500 text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
             >
               {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              Send request
+              {t.requestModal.send}
             </button>
             <p className="text-[11px] text-gray-400 text-center leading-relaxed">
-              No charge now. The host will contact you to confirm availability and arrange payment.
+              {t.requestModal.footer}
             </p>
           </form>
         )}

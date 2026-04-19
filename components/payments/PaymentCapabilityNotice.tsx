@@ -20,6 +20,7 @@
 
 import * as React from 'react'
 import type { PaymentCapability } from '@/lib/payment-capability'
+import { usePublicLocale } from '@/lib/i18n/public/context'
 
 export interface PaymentCapabilityNoticeProps {
   capability: PaymentCapability
@@ -29,6 +30,7 @@ export interface PaymentCapabilityNoticeProps {
 }
 
 export function PaymentCapabilityNotice({ capability, extra, className }: PaymentCapabilityNoticeProps) {
+  const { t } = usePublicLocale()
   if (capability.payable) return null
 
   const variant = capability.reasonCode === 'bonum_mnt_only' ? 'warn' : 'error'
@@ -36,6 +38,13 @@ export function PaymentCapabilityNotice({ capability, extra, className }: Paymen
     variant === 'warn'
       ? 'border-amber-300 bg-amber-50 text-amber-900'
       : 'border-red-300 bg-red-50 text-red-900'
+
+  // Fall back to the backend-supplied message in rare exotic reason codes;
+  // otherwise use our localized copy.
+  const title = t.capability.unpayableMnTitle
+  const body = capability.reasonCode === 'bonum_mnt_only'
+    ? t.capability.unpayableDescription(capability.bookingCurrency)
+    : capability.userMessage
 
   return (
     <div
@@ -46,14 +55,8 @@ export function PaymentCapabilityNotice({ capability, extra, className }: Paymen
         className ?? '',
       ].join(' ')}
     >
-      <div className="font-medium">
-        {capability.reasonCode === 'bonum_mnt_only'
-          ? 'Online payment currently supports MNT only'
-          : 'Online payment not yet available'}
-      </div>
-      {capability.userMessage && (
-        <p className="mt-1">{capability.userMessage}</p>
-      )}
+      <div className="font-medium">{title}</div>
+      {body && <p className="mt-1">{body}</p>}
       {extra && <div className="mt-2">{extra}</div>}
     </div>
   )
