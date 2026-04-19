@@ -141,7 +141,14 @@ export function resolveOverridePricing(input: ResolveOverridePricingInput): Reso
 // DESIGN NOTES:
 //   * `base` is authoritative: the listing's native price in its native currency.
 //   * `normalized` holds the MNT equivalent used for search/sort/filter. It's
-//     nullable because a row may predate an FX seed (see fx_backfill_reports).
+//     the PERSISTED column, captured at write time, nullable because a row
+//     may predate an FX seed (see fx_backfill_reports).
+//   * `normalizedUsd` holds the USD display equivalent for MNT-base listings.
+//     Unlike `normalized` it is NOT persisted — it's computed at request time
+//     from the active MNT→USD snapshot supplied by the caller (services pass
+//     it in via `ctx.mntToUsdRate`). Purely a display hint; never used for
+//     booking math, search, sort, or payment. Null when the caller didn't
+//     supply a rate (admin/legacy read paths) or when the base is already USD.
 //   * `legacy` mirrors the Phase 1 shape so existing frontend code keeps
 //     working during the transition; it will be removed one release after
 //     the frontend Pricing contract lands.
@@ -158,10 +165,33 @@ export interface PricingDTO {
     fxRate:   number
     fxRateAt: string
   } | null
+  /**
+   * Display-only MNT→USD conversion for MNT-base listings. Never persisted;
+   * computed at request time from the active FX snapshot. Do NOT use this
+   * for booking totals — checkout still runs through `calcBookingPricing`.
+   */
+  normalizedUsd: {
+    amount:   number
+    currency: 'USD'
+    fxRate:   number
+    fxRateAt: string
+  } | null
   legacy: {
     amount:   number
     currency: Currency
   }
+}
+
+/**
+ * Context passed into `toPricingDTO` when the caller has already resolved
+ * a live MNT→USD snapshot for the current request. Kept optional so admin /
+ * legacy readers that don't care about USD display can skip it.
+ */
+export interface PricingDTOContext {
+  mntToUsdRate?: {
+    rate:       number     // 1 MNT === rate * USD (so MNT * rate === USD)
+    capturedAt: Date | string
+  } | null
 }
 
 interface PricingSource {
@@ -175,7 +205,7 @@ interface PricingSource {
   legacyCurrency?:      string | null
 }
 
-export function toPricingDTO(source: PricingSource): PricingDTO | null {
+export function toPricingDTO(source: PricingSource, ctx?: PricingDTOContext): PricingDTO | null {
   const amount =
     source.baseAmount   ?? source.legacyAmount   ?? null
   const currencyRaw =
@@ -198,10 +228,29 @@ export function toPricingDTO(source: PricingSource): PricingDTO | null {
         }
       : null
 
+  // Symmetric USD display hint: only meaningful for MNT-base listings, and
+  // only when the caller threaded a live MNT→USD snapshot through. We never
+  // invent a rate here — missing snapshot = null = UI renders explicit base
+  // fallback.
+  let normalizedUsd: PricingDTO['normalizedUsd'] = null
+  if (currency === 'MNT' && ctx?.mntToUsdRate && Number.isFinite(ctx.mntToUsdRate.rate) && ctx.mntToUsdRate.rate > 0) {
+    const usdAmount = roundMoney(amount * ctx.mntToUsdRate.rate, 'USD')
+    const at = ctx.mntToUsdRate.capturedAt instanceof Date
+      ? ctx.mntToUsdRate.capturedAt
+      : new Date(ctx.mntToUsdRate.capturedAt ?? Date.now())
+    normalizedUsd = {
+      amount:   usdAmount,
+      currency: 'USD' as const,
+      fxRate:   ctx.mntToUsdRate.rate,
+      fxRateAt: at.toISOString(),
+    }
+  }
+
   return {
-    base:       { amount, currency },
+    base:          { amount, currency },
     normalized,
-    legacy:     { amount, currency },
+    normalizedUsd,
+    legacy:        { amount, currency },
   }
 }
 

@@ -92,6 +92,27 @@ export async function getActiveRate(
   }
 }
 
+/**
+ * Soft variant of `getActiveRate`: returns `null` instead of throwing when
+ * the rate is unavailable. Used by read-only display paths (listing cards,
+ * detail pages) where a missing FX rate must NOT break the page — the
+ * frontend formatter renders an explicit base-currency fallback instead.
+ *
+ * Do NOT use this for booking/payment math. Those paths must surface the
+ * 503 from `getActiveRate` so the operator knows to seed a rate.
+ */
+export async function getActiveRateSafe(
+  from: Currency,
+  to:   Currency,
+  at:   Date = new Date(),
+): Promise<FxRateSnapshot | null> {
+  try {
+    return await getActiveRate(from, to, at)
+  } catch {
+    return null
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // convert — pure math, uses a caller-supplied snapshot so the same rate is
 // applied consistently across subtotal / serviceFee / total.

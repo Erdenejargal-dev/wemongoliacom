@@ -1,8 +1,8 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma'
 import { AppError } from '../middleware/error'
-import { toPricingDTO } from '../utils/pricing'
-import { getActiveRate } from '../utils/fx'
+import { toPricingDTO, type PricingDTOContext } from '../utils/pricing'
+import { getActiveRate, getActiveRateSafe } from '../utils/fx'
 import { assertSupportedCurrency } from '../utils/currency'
 
 /** Returns tour IDs that have at least one departure with remainingSeats >= minRequired. */
@@ -144,7 +144,7 @@ export async function listTours(query: TourListQuery = {}) {
     where.id = { in: tourIds }
   }
 
-  const [tours, total] = await Promise.all([
+  const [tours, total, mntToUsd] = await Promise.all([
     prisma.tour.findMany({
       where,
       orderBy: buildOrderBy(query.sort),
@@ -153,10 +153,15 @@ export async function listTours(query: TourListQuery = {}) {
       select:  tourCardSelect,
     }),
     prisma.tour.count({ where }),
+    // Phase 6.3 — one live MNT→USD snapshot per request, shared across every
+    // card in this page, so USD display on MNT-base listings converts through
+    // the same central FX layer (no client-side math).
+    getActiveRateSafe('MNT', 'USD'),
   ])
+  const pricingCtx: PricingDTOContext = { mntToUsdRate: mntToUsd }
 
   return {
-    data:       tours.map((t) => ({ ...t, pricing: toPricingDTO(t) })),
+    data:       tours.map((t) => ({ ...t, pricing: toPricingDTO(t, pricingCtx) })),
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
   }
 }
@@ -189,6 +194,12 @@ export async function getTourBySlug(slug: string) {
   if (!tour)               throw new AppError('Tour not found.', 404)
   if (tour.status !== 'active') throw new AppError('Tour not found.', 404)
 
+  // Phase 6.3 — resolve the live MNT→USD snapshot once for the whole detail
+  // payload so headline pricing AND every departure override flip to the
+  // user's display currency via the same central FX layer.
+  const mntToUsd = await getActiveRateSafe('MNT', 'USD')
+  const pricingCtx: PricingDTOContext = { mntToUsdRate: mntToUsd }
+
   // Only expose departures with at least 1 remaining seat (consistent with search)
   // Phase 3 — attach a per-departure `pricing` DTO when the departure has a
   // price override, so the frontend can read a single consistent shape and
@@ -203,13 +214,13 @@ export async function getTourBySlug(slug: string) {
         baseCurrency:   d.baseOverrideCurrency ?? undefined,
         legacyAmount:   d.priceOverride ?? undefined,
         legacyCurrency: d.currency ?? undefined,
-      }),
+      }, pricingCtx),
     }))
 
   return {
     ...tour,
     departures,
-    pricing: toPricingDTO(tour),
+    pricing: toPricingDTO(tour, pricingCtx),
   }
 }
 

@@ -1,8 +1,8 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma'
 import { AppError } from '../middleware/error'
-import { toPricingDTO } from '../utils/pricing'
-import { getActiveRate } from '../utils/fx'
+import { toPricingDTO, type PricingDTOContext } from '../utils/pricing'
+import { getActiveRate, getActiveRateSafe } from '../utils/fx'
 import { assertSupportedCurrency } from '../utils/currency'
 
 export interface VehicleListQuery {
@@ -121,8 +121,13 @@ export async function listVehicles(query: VehicleListQuery = {}) {
     prisma.vehicle.count({ where }),
   ])
 
+  // Phase 6.3 — single MNT→USD snapshot for display-only USD conversion
+  // on MNT-base vehicle cards. Does not affect booking math.
+  const mntToUsd = await getActiveRateSafe('MNT', 'USD')
+  const pricingCtx: PricingDTOContext = { mntToUsdRate: mntToUsd }
+
   return {
-    data:       vehicles.map((v) => ({ ...v, pricing: toPricingDTO(v) })),
+    data:       vehicles.map((v) => ({ ...v, pricing: toPricingDTO(v, pricingCtx) })),
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
   }
 }
@@ -144,5 +149,8 @@ export async function getVehicleBySlug(slug: string) {
 
   if (!vehicle || vehicle.status !== 'active') throw new AppError('Vehicle not found.', 404)
 
-  return { ...vehicle, pricing: toPricingDTO(vehicle) }
+  const mntToUsd = await getActiveRateSafe('MNT', 'USD')
+  const pricingCtx: PricingDTOContext = { mntToUsdRate: mntToUsd }
+
+  return { ...vehicle, pricing: toPricingDTO(vehicle, pricingCtx) }
 }

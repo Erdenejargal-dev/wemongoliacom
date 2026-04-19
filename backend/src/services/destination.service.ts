@@ -1,5 +1,7 @@
 import { prisma } from '../lib/prisma'
 import { AppError } from '../middleware/error'
+import { toPricingDTO, type PricingDTOContext } from '../utils/pricing'
+import { getActiveRateSafe } from '../utils/fx'
 
 // ── Slug helper ───────────────────────────────────────────────────────────────
 
@@ -59,38 +61,54 @@ export async function getDestinationBySlug(slug: string) {
   })
   if (!destination) throw new AppError('Destination not found.', 404)
 
-  // Fetch featured active tours linked to this destination (up to 6)
-  const tours = await prisma.tour.findMany({
-    where: {
-      destinationId: destination.id,
-      status:        'active',
-    },
-    orderBy: [{ featured: 'desc' }, { ratingAverage: 'desc' }],
-    take: 6,
-    select: {
-      id:               true,
-      slug:             true,
-      title:            true,
-      shortDescription: true,
-      basePrice:        true,
-      currency:         true,
-      durationDays:     true,
-      difficulty:       true,
-      ratingAverage:    true,
-      reviewsCount:     true,
-      featured:         true,
-      images: {
-        orderBy: { sortOrder: 'asc' },
-        take:    1,
-        select:  { imageUrl: true },
+  // Fetch featured active tours linked to this destination (up to 6).
+  //
+  // Phase 6.3 — project the Phase-2 normalized pricing columns AND attach a
+  // `pricing` DTO, mirroring the tours-list card contract. Destination cards
+  // previously selected only `basePrice`+`currency`, which stranded them on
+  // the legacy fallback path and prevented display-currency switching.
+  const [tours, mntToUsd] = await Promise.all([
+    prisma.tour.findMany({
+      where: {
+        destinationId: destination.id,
+        status:        'active',
       },
-      provider: {
-        select: { name: true, slug: true, logoUrl: true },
+      orderBy: [{ featured: 'desc' }, { ratingAverage: 'desc' }],
+      take: 6,
+      select: {
+        id:                  true,
+        slug:                true,
+        title:               true,
+        shortDescription:    true,
+        basePrice:           true,
+        currency:            true,
+        baseAmount:          true,
+        baseCurrency:        true,
+        normalizedAmountMnt: true,
+        normalizedFxRate:    true,
+        normalizedFxRateAt:  true,
+        durationDays:        true,
+        difficulty:          true,
+        ratingAverage:       true,
+        reviewsCount:        true,
+        featured:            true,
+        images: {
+          orderBy: { sortOrder: 'asc' },
+          take:    1,
+          select:  { imageUrl: true },
+        },
+        provider: {
+          select: { name: true, slug: true, logoUrl: true },
+        },
       },
-    },
-  })
+    }),
+    getActiveRateSafe('MNT', 'USD'),
+  ])
 
-  return { destination, tours }
+  const pricingCtx: PricingDTOContext = { mntToUsdRate: mntToUsd }
+  const toursWithPricing = tours.map((t) => ({ ...t, pricing: toPricingDTO(t, pricingCtx) }))
+
+  return { destination, tours: toursWithPricing }
 }
 
 // ── Admin CRUD ────────────────────────────────────────────────────────────────

@@ -47,6 +47,20 @@ export interface Pricing {
     fxRateAt: string
   } | null
   /**
+   * Phase 6.3 — symmetric USD display hint for MNT-base listings. Populated
+   * by the backend at request time from the active MNT→USD FX snapshot.
+   * Purely a display value; booking math still goes through
+   * `calcBookingPricing` and the persisted FX snapshot. Null when:
+   *   - the listing is USD-base (no conversion needed — `base` is authoritative), or
+   *   - no active FX rate was available server-side.
+   */
+  normalizedUsd: {
+    amount:   number
+    currency: 'USD'
+    fxRate:   number
+    fxRateAt: string
+  } | null
+  /**
    * Phase 2 transition: mirrors `base` so templates that still read legacy
    * fields on the listing keep working. Removed one release after the
    * frontend Pricing contract lands on every page.
@@ -89,44 +103,62 @@ export function readPricing(listing: LegacyPriceFields): Pricing | null {
   if (amount === null || amount === undefined || currency === null) return null
 
   return {
-    base:       { amount, currency },
-    normalized: null,
-    legacy:     { amount, currency },
+    base:          { amount, currency },
+    normalized:    null,
+    normalizedUsd: null,
+    legacy:        { amount, currency },
   }
 }
 
 // ─── Display helpers ───────────────────────────────────────────────────────
 
 /**
- * Primary price string for listing cards / detail pages:
- *   - Prefers the display currency when the backend has a normalized figure.
- *   - Otherwise shows the base amount in its native currency.
+ * Primary price string for PUBLIC LISTING surfaces (cards, detail headline,
+ * stays / tours / destination listings). Honours the user's display
+ * currency via the pre-computed backend DTO — never invents a rate.
  *
- * `displayCurrency` is the user's preferred currency (passed through via
- * X-Display-Currency). When it's the same as `pricing.base.currency`, this
- * is effectively a passthrough with locale-correct formatting.
+ * Symmetry rules (Phase 6.3):
+ *   - displayCurrency === base.currency        → base (no conversion needed).
+ *   - displayCurrency === 'MNT' + normalized   → persisted MNT normalization.
+ *   - displayCurrency === 'USD' + normalizedUsd → live MNT→USD normalization.
+ *   - otherwise                                 → EXPLICIT base fallback
+ *     ("$X (base)") so the missing conversion is visible instead of silent.
+ *
+ * This helper is display-only. Booking totals and payment amounts must
+ * continue to flow through the booking/payment services, which own the
+ * authoritative FX snapshot at the moment of commit.
  */
 export function formatPricing(pricing: Pricing | null, displayCurrency?: Currency): string {
   if (!pricing) return ''
+  const baseStr = formatMoney(pricing.base.amount, pricing.base.currency)
+
   if (!displayCurrency || displayCurrency === pricing.base.currency) {
-    return formatMoney(pricing.base.amount, pricing.base.currency)
+    return baseStr
   }
   if (displayCurrency === 'MNT' && pricing.normalized) {
     return formatMoney(pricing.normalized.amount, 'MNT')
   }
-  return formatMoney(pricing.base.amount, pricing.base.currency)
+  if (displayCurrency === 'USD' && pricing.normalizedUsd) {
+    return formatMoney(pricing.normalizedUsd.amount, 'USD')
+  }
+
+  // Explicit fallback — the user asked for a currency we can't honour
+  // (no FX rate server-side, or legacy row without a normalized column).
+  // Render the base amount with a visible marker so the gap is diagnosable
+  // in the UI instead of silently showing the wrong currency.
+  return `${baseStr} (base)`
 }
 
 /**
- * When a card wants to show something like "$420 (≈₮1,470,000)", this
- * returns the secondary label. Returns null when no conversion is needed or
- * no rate is available.
+ * When a card wants to show "$420 (≈₮1,470,000)" style layout this returns
+ * the secondary label. Returns null when no secondary is needed.
  *
- * Phase 6 — also supports an explicit `secondaryRate` hint (MNT→USD)
- * resolved from `GET /fx/rate`, so MNT-base listings viewed by a USD
- * traveler can still show a "≈ $X" hint without the frontend inventing
- * a rate. When `secondaryRate` is null/omitted the helper falls back to
- * the Phase 2 behavior.
+ * Phase 6.3 — `formatPricing` now does the primary MNT↔USD switch directly
+ * off the DTO (including the symmetric `normalizedUsd` field). The only
+ * remaining role of this helper is to surface the "also-in" hint for
+ * non-MNT base listings when the user is browsing in their native currency,
+ * e.g. USD base + USD display → "≈ ₮X" underneath. Nothing here drives
+ * booking math.
  */
 export function formatSecondaryPricing(
   pricing: Pricing | null,
@@ -135,23 +167,31 @@ export function formatSecondaryPricing(
 ): string | null {
   if (!pricing) return null
   // Same currency → no secondary needed.
-  if (displayCurrency && displayCurrency === pricing.base.currency) return null
-
-  // Case A: display == MNT and listing base != MNT → primary already uses MNT
-  // normalized, no secondary needed.
-  if (pricing.normalized && displayCurrency === 'MNT' && pricing.base.currency !== 'MNT') {
+  if (displayCurrency && displayCurrency === pricing.base.currency) {
+    // USD base + USD display → show "≈ ₮X" underneath if we have MNT normalization.
+    if (displayCurrency === 'USD' && pricing.base.currency === 'USD' && pricing.normalized) {
+      return formatMoney(pricing.normalized.amount, 'MNT')
+    }
+    // MNT base + MNT display → show "≈ $X" underneath if we have USD normalization.
+    if (displayCurrency === 'MNT' && pricing.base.currency === 'MNT' && pricing.normalizedUsd) {
+      return formatMoney(pricing.normalizedUsd.amount, 'USD')
+    }
     return null
   }
 
-  // Case B: listing base != MNT → always surface the MNT equivalent as a
-  // secondary hint (e.g. primary "$420" + secondary "≈ ₮1,470,000").
-  if (pricing.normalized && pricing.base.currency !== 'MNT') {
-    return formatMoney(pricing.normalized.amount, 'MNT')
+  // Cross-currency rendering is handled by `formatPricing` as the primary
+  // value via the DTO's normalized / normalizedUsd fields. No secondary
+  // needed on top of it.
+  if (pricing.normalized && displayCurrency === 'MNT' && pricing.base.currency !== 'MNT') {
+    return null
+  }
+  if (pricing.normalizedUsd && displayCurrency === 'USD' && pricing.base.currency !== 'USD') {
+    return null
   }
 
-  // Case C (Phase 6): listing base == MNT and display == USD → use the
-  // MNT→USD rate the caller resolved from /fx/rate. Purely a display hint;
-  // the authoritative price is still the MNT base.
+  // Legacy compatibility: caller resolved an MNT→USD rate off /fx/rate
+  // before the DTO carried `normalizedUsd`. Still honoured so existing
+  // booking-card code paths keep working.
   if (
     pricing.base.currency === 'MNT' &&
     displayCurrency === 'USD' &&

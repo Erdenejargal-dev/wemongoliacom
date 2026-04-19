@@ -7,7 +7,8 @@ import { HostHero } from '@/components/hosts/HostHero'
 import { HostStats } from '@/components/hosts/HostStats'
 import { HostReviews } from '@/components/hosts/HostReviews'
 import { ContactHost } from '@/components/hosts/ContactHost'
-import { formatMoney } from '@/lib/money'
+import { formatPricing, readPricing } from '@/lib/pricing'
+import { readPreferredCurrencyServer } from '@/lib/preferences-storage.server'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -19,6 +20,11 @@ export default async function HostPage({ params }: Props) {
   if (!host) notFound()
 
   const hostTours = mockTours.filter(t => t.hostSlug === slug && t.available)
+  // Phase 6.3 — honour the user's display-currency preference on this public
+  // listing surface (host profile tour grid). Mock-data tours don't have a
+  // real `pricing` DTO yet, so conversion is not possible and `formatPricing`
+  // will render an explicit "(base)" fallback when displayCurrency differs.
+  const displayCurrency = await readPreferredCurrencyServer()
 
   const styleColors: Record<string, string> = {
     adventure:   'bg-orange-50 text-orange-600',
@@ -96,7 +102,7 @@ export default async function HostPage({ params }: Props) {
                             <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
                             <span className="text-xs font-semibold text-gray-900">{tour.rating}</span>
                           </div>
-                          <span className="text-sm font-bold text-gray-900">{formatMoney(tour.price, tour.currency ?? 'USD')}<span className="text-xs font-normal text-gray-400">/p</span></span>
+                          <span className="text-sm font-bold text-gray-900">{formatPricing(readPricing({ basePrice: tour.price, currency: tour.currency ?? 'USD' }), displayCurrency ?? undefined)}<span className="text-xs font-normal text-gray-400">/p</span></span>
                         </div>
                       </div>
                     </Link>

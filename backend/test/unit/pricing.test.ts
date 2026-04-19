@@ -61,6 +61,56 @@ test('toPricingDTO surfaces normalized MNT figure when FX metadata is present', 
   assert.equal(typeof dto!.normalized?.fxRateAt, 'string')
 })
 
+test('toPricingDTO leaves normalizedUsd null when no mntToUsdRate is supplied', () => {
+  const dto = toPricingDTO({
+    baseAmount:   420000,
+    baseCurrency: 'MNT',
+  })
+  assert.ok(dto)
+  assert.equal(dto!.normalizedUsd, null)
+})
+
+test('toPricingDTO computes normalizedUsd for MNT base when mntToUsdRate is supplied', () => {
+  const capturedAt = new Date('2026-04-19T00:00:00Z')
+  const dto = toPricingDTO(
+    {
+      baseAmount:   420000,
+      baseCurrency: 'MNT',
+    },
+    { mntToUsdRate: { rate: 0.00028, capturedAt } },
+  )
+  assert.ok(dto)
+  assert.ok(dto!.normalizedUsd)
+  assert.equal(dto!.normalizedUsd!.currency, 'USD')
+  // 420000 * 0.00028 = 117.6 → roundMoney('USD') → 117.6
+  assert.ok(Math.abs(dto!.normalizedUsd!.amount - 117.6) < 0.01)
+  assert.equal(dto!.normalizedUsd!.fxRate, 0.00028)
+  assert.equal(dto!.normalizedUsd!.fxRateAt, capturedAt.toISOString())
+})
+
+test('toPricingDTO ignores mntToUsdRate for non-MNT base listings', () => {
+  // USD-base listings never need a USD conversion — the frontend renders
+  // `base` directly when displayCurrency === USD.
+  const dto = toPricingDTO(
+    {
+      baseAmount:   100,
+      baseCurrency: 'USD',
+    },
+    { mntToUsdRate: { rate: 0.00028, capturedAt: new Date() } },
+  )
+  assert.ok(dto)
+  assert.equal(dto!.normalizedUsd, null)
+})
+
+test('toPricingDTO ignores invalid mntToUsdRate values', () => {
+  const dto = toPricingDTO(
+    { baseAmount: 420000, baseCurrency: 'MNT' },
+    { mntToUsdRate: { rate: 0, capturedAt: new Date() } },
+  )
+  assert.ok(dto)
+  assert.equal(dto!.normalizedUsd, null)
+})
+
 test('resolveListingBasePricePerUnit prefers override when present', () => {
   const out = resolveListingBasePricePerUnit({
     baseAmount:            420000,

@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma'
-import { toPricingDTO } from '../utils/pricing'
-import { getActiveRate } from '../utils/fx'
+import { toPricingDTO, type PricingDTOContext } from '../utils/pricing'
+import { getActiveRate, getActiveRateSafe } from '../utils/fx'
 import { assertSupportedCurrency, type Currency } from '../utils/currency'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -189,8 +189,11 @@ async function searchTours(query: SearchQuery) {
     prisma.tour.count({ where }),
   ])
 
+  const mntToUsd = await getActiveRateSafe('MNT', 'USD')
+  const pricingCtx: PricingDTOContext = { mntToUsdRate: mntToUsd }
+
   return {
-    data: data.map((t) => ({ ...t, pricing: toPricingDTO(t) })),
+    data: data.map((t) => ({ ...t, pricing: toPricingDTO(t, pricingCtx) })),
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
   }
 }
@@ -265,8 +268,11 @@ async function searchVehicles(query: SearchQuery) {
     prisma.vehicle.count({ where }),
   ])
 
+  const mntToUsd = await getActiveRateSafe('MNT', 'USD')
+  const pricingCtx: PricingDTOContext = { mntToUsdRate: mntToUsd }
+
   return {
-    data: data.map((v) => ({ ...v, pricing: toPricingDTO(v) })),
+    data: data.map((v) => ({ ...v, pricing: toPricingDTO(v, pricingCtx) })),
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
   }
 }
@@ -350,10 +356,13 @@ async function searchAccommodations(query: SearchQuery) {
     prisma.accommodation.count({ where }),
   ])
 
+  const mntToUsd = await getActiveRateSafe('MNT', 'USD')
+  const pricingCtx: PricingDTOContext = { mntToUsdRate: mntToUsd }
+
   return {
     data: data.map((a) => ({
       ...a,
-      roomTypes: a.roomTypes.map((rt) => ({ ...rt, pricing: toPricingDTO(rt) })),
+      roomTypes: a.roomTypes.map((rt) => ({ ...rt, pricing: toPricingDTO(rt, pricingCtx) })),
     })),
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
   }

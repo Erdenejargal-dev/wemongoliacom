@@ -95,6 +95,11 @@ export function mapTour(t: BackendTour) {
     regionSlug: t.destination?.slug ?? '',
     price: t.basePrice,
     currency: t.currency ?? 'USD',
+    // Phase 6.3 — forward the canonical Pricing DTO so cards fed by
+    // `fetchTours()` can flip between MNT and USD on currency switch.
+    // Previously dropped here, which forced every consumer into the legacy
+    // `readPricing` fallback and froze cards on their native currency.
+    pricing: t.pricing ?? null,
     duration: t.durationDays ? `${t.durationDays} day${t.durationDays > 1 ? 's' : ''}` : '',
     durationDays: t.durationDays ?? 0,
     rating: t.ratingAverage,

@@ -1,8 +1,8 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma'
 import { AppError } from '../middleware/error'
-import { toPricingDTO } from '../utils/pricing'
-import { getActiveRate } from '../utils/fx'
+import { toPricingDTO, type PricingDTOContext } from '../utils/pricing'
+import { getActiveRate, getActiveRateSafe } from '../utils/fx'
 import { assertSupportedCurrency } from '../utils/currency'
 
 export interface AccommodationListQuery {
@@ -150,10 +150,16 @@ export async function listAccommodations(query: AccommodationListQuery = {}) {
     prisma.accommodation.count({ where }),
   ])
 
+  // Phase 6.3 — one live MNT→USD snapshot per request for display-currency
+  // conversion on MNT-base rooms. Booking totals continue to flow through
+  // `calcBookingPricing` / persisted FX snapshots; this is display only.
+  const mntToUsd = await getActiveRateSafe('MNT', 'USD')
+  const pricingCtx: PricingDTOContext = { mntToUsdRate: mntToUsd }
+
   return {
     data: accommodations.map((a) => ({
       ...a,
-      roomTypes: a.roomTypes.map((rt) => ({ ...rt, pricing: toPricingDTO(rt) })),
+      roomTypes: a.roomTypes.map((rt) => ({ ...rt, pricing: toPricingDTO(rt, pricingCtx) })),
     })),
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
   }
@@ -186,8 +192,11 @@ export async function getAccommodationBySlug(slug: string) {
 
   if (!acc || acc.status !== 'active') throw new AppError('Accommodation not found.', 404)
 
+  const mntToUsd = await getActiveRateSafe('MNT', 'USD')
+  const pricingCtx: PricingDTOContext = { mntToUsdRate: mntToUsd }
+
   return {
     ...acc,
-    roomTypes: acc.roomTypes.map((rt) => ({ ...rt, pricing: toPricingDTO(rt) })),
+    roomTypes: acc.roomTypes.map((rt) => ({ ...rt, pricing: toPricingDTO(rt, pricingCtx) })),
   }
 }
