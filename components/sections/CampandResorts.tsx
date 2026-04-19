@@ -17,6 +17,7 @@ import {
   type AccommodationType,
   ACCOMMODATION_TYPE_LABELS,
 } from "@/lib/api/stays";
+import { formatMoney } from "@/lib/money";
 import {
   Carousel,
   CarouselContent,
@@ -94,12 +95,7 @@ function formatPrice(value: number | null, currency: string): string {
   if (value === null || !Number.isFinite(value) || value <= 0) {
     return "Price on request";
   }
-
-  if (currency === "USD") {
-    return `$${value.toLocaleString()}`;
-  }
-
-  return `${value.toLocaleString()} ${currency}`;
+  return formatMoney(value, currency);
 }
 
 function MetaPill({

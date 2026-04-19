@@ -18,9 +18,11 @@ export async function getMyProfile(userId: string) {
       email:       true,
       phone:       true,
       avatarUrl:   true,
-      country:   true,
-      role:      true,
+      country:     true,
+      role:        true,
       bio:         true,
+      preferredLanguage: true,
+      preferredCurrency: true,
       createdAt:   true,
       _count: {
         select: {
@@ -46,12 +48,23 @@ export interface UpdateProfileInput {
   avatarUrl?: string
   country?:   string
   bio?:       string
+  // Phase 6 — preference fields. Accept both canonical and short names.
+  preferredLanguage?: 'mn' | 'en'
+  preferredCurrency?: 'MNT' | 'USD'
+  language?: 'mn' | 'en'
+  currency?: 'MNT' | 'USD'
 }
 
 export async function updateMyProfile(userId: string, data: UpdateProfileInput) {
+  // Normalize short aliases → canonical columns on the User model.
+  const { language, currency, ...rest } = data
+  const patch: Record<string, unknown> = { ...rest }
+  if (language && !patch.preferredLanguage) patch.preferredLanguage = language
+  if (currency && !patch.preferredCurrency) patch.preferredCurrency = currency
+
   return prisma.user.update({
     where: { id: userId },
-    data,
+    data:  patch,
     select: {
       id:        true,
       firstName: true,
@@ -60,6 +73,8 @@ export async function updateMyProfile(userId: string, data: UpdateProfileInput) 
       avatarUrl: true,
       country:   true,
       bio:       true,
+      preferredLanguage: true,
+      preferredCurrency: true,
     },
   })
 }

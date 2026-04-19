@@ -8,6 +8,18 @@ import { apiClient, type Paginated } from './client'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+// Phase 2/3 — grouped revenue bucket. One per time window (all/this/last).
+//
+// Shape matches `backend/src/services/admin.service.ts#summarize`:
+//   - `byCurrency`        : raw sums kept per currency (never summed across!)
+//   - `normalizedMnt`     : best-effort MNT equivalent (null if FX missing)
+//   - `normalizationStatus`: 'ok' | 'missing_rate'
+export interface RevenueBucket {
+  byCurrency:           Record<string, number>
+  normalizedMnt:        number | null
+  normalizationStatus:  'ok' | 'missing_rate'
+}
+
 export interface AdminAnalytics {
   users: {
     total: number
@@ -23,9 +35,9 @@ export interface AdminAnalytics {
     thisMonth: number
   }
   revenue: {
-    total: number
-    thisMonth: number
-    lastMonth: number
+    total:     RevenueBucket
+    thisMonth: RevenueBucket
+    lastMonth: RevenueBucket
   }
   reviews: {
     total: number
@@ -306,4 +318,132 @@ export async function toggleAdminDestinationFeatured(
   token: string,
 ): Promise<AdminDestinationDetail> {
   return apiClient.patch<AdminDestinationDetail>(`/admin/destinations/${id}/featured`, undefined, token)
+}
+
+// ─── Pricing health (Phase 3) ────────────────────────────────────────────
+
+export interface FxRateHealth {
+  fromCurrency:   'MNT' | 'USD'
+  toCurrency:     'MNT' | 'USD'
+  rate:           number | null
+  source:         string | null
+  effectiveFrom:  string | null
+  ageSeconds:     number | null
+  status:         'ok' | 'stale' | 'missing'
+}
+
+export interface CurrencyDistribution {
+  listings: {
+    tours:    Record<string, number>
+    rooms:    Record<string, number>
+    vehicles: Record<string, number>
+  }
+  bookings: {
+    byChargeCurrency: Record<string, { count: number; totalAmount: number }>
+    byBaseCurrency:   Record<string, { count: number; totalAmount: number }>
+  }
+}
+
+export interface MissingNormalizationSummary {
+  tours:    number
+  rooms:    number
+  vehicles: number
+  samples: {
+    tours:    string[]
+    rooms:    string[]
+    vehicles: string[]
+  }
+}
+
+export interface PaymentBlockedBooking {
+  id:             string
+  bookingCode:    string
+  currency:       string
+  baseCurrency:   string | null
+  totalAmount:    number
+  paymentStatus:  string
+  bookingStatus:  string
+  reasonCode:     'ok' | 'bonum_mnt_only' | 'unsupported_currency'
+  userMessage:    string
+  createdAt:      string
+}
+
+export interface BackfillReport {
+  id:          string
+  entityType:  string
+  entityId:    string
+  issue:       string
+  context:     any
+  resolvedAt:  string | null
+  resolvedBy:  string | null
+  createdAt:   string
+  category:    'missing_fx_rate' | 'unknown_units' | 'legacy_currency' | 'other'
+}
+
+export interface PaymentProcessor {
+  id:                  string
+  label:               string
+  supportedCurrencies: ('MNT' | 'USD')[]
+  status:              'live' | 'stub' | 'planned'
+  constraintNote?:     string
+}
+
+export interface PricingHealthOverview {
+  generatedAt:            string
+  processors:             PaymentProcessor[]
+  fxRates:                FxRateHealth[]
+  currencyDistribution:   CurrencyDistribution
+  missingNormalization:   MissingNormalizationSummary
+  paymentBlockedBookings: PaymentBlockedBooking[]
+}
+
+export async function fetchAdminPricingHealth(token: string): Promise<PricingHealthOverview> {
+  return apiClient.get<PricingHealthOverview>('/admin/pricing-health', token)
+}
+
+export async function fetchAdminBackfillReports(
+  params: { resolved?: boolean; entityType?: string; page?: number; limit?: number },
+  token: string,
+): Promise<Paginated<BackfillReport> & { categoryCounts: Record<string, { total: number; unresolved: number }> }> {
+  const qs = new URLSearchParams()
+  if (params.resolved !== undefined) qs.set('resolved',   String(params.resolved))
+  if (params.entityType)             qs.set('entityType', params.entityType)
+  if (params.page)                   qs.set('page',       String(params.page))
+  if (params.limit)                  qs.set('limit',      String(params.limit))
+  const query = qs.toString()
+  return apiClient.get(
+    `/admin/pricing-health/backfill-reports${query ? `?${query}` : ''}`,
+    token,
+  )
+}
+
+/**
+ * Phase 3 — inspect one backfill report (read-only). Returns the report
+ * plus the live state of the flagged entity so ops can decide what to do
+ * next. Never mutates the flagged entity.
+ */
+export async function fetchAdminBackfillReportDetail(
+  reportId: string,
+  token: string,
+): Promise<{ report: BackfillReport & { category: string }; target: unknown | null }> {
+  return apiClient.get(
+    `/admin/pricing-health/backfill-reports/${encodeURIComponent(reportId)}`,
+    token,
+  )
+}
+
+/**
+ * Phase 3 — close a backfill report (marks the REPORT resolved only).
+ * This does NOT touch the flagged entity. Any data repair is a separate,
+ * explicit action outside this audit surface.
+ */
+export async function resolveAdminBackfillReport(
+  reportId: string,
+  token: string,
+): Promise<{ report: BackfillReport & { category: string } }> {
+  return apiClient.post(
+    `/admin/pricing-health/backfill-reports/${encodeURIComponent(reportId)}/resolve`,
+    {},
+    token,
+  )
 }

@@ -7,6 +7,7 @@ import { HostHero } from '@/components/hosts/HostHero'
 import { HostStats } from '@/components/hosts/HostStats'
 import { HostReviews } from '@/components/hosts/HostReviews'
 import { ContactHost } from '@/components/hosts/ContactHost'
+import { formatMoney } from '@/lib/money'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -95,7 +96,7 @@ export default async function HostPage({ params }: Props) {
                             <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
                             <span className="text-xs font-semibold text-gray-900">{tour.rating}</span>
                           </div>
-                          <span className="text-sm font-bold text-gray-900">${tour.price}<span className="text-xs font-normal text-gray-400">/p</span></span>
+                          <span className="text-sm font-bold text-gray-900">{formatMoney(tour.price, tour.currency ?? 'USD')}<span className="text-xs font-normal text-gray-400">/p</span></span>
                         </div>
                       </div>
                     </Link>

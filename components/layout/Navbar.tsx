@@ -10,6 +10,7 @@ import { MegaMenu } from './navbar/MegaMenu'
 import { SearchBar } from './navbar/SearchBar'
 import { UserMenu } from './navbar/UserMenu'
 import { MobileMenu } from './navbar/MobileMenu'
+import { PreferenceSwitcher } from './navbar/PreferenceSwitcher'
 import { navItems } from './navbar/mega-menu-data'
 import { cn } from '@/lib/utils'
 import { WeMongoliaLogo } from '@/components/brand/WeMongoliaLogo'
@@ -67,6 +68,12 @@ export default function Navbar() {
 
           {/* ── RIGHT: Actions ──────────────────────────────────────── */}
           <div className="flex items-center gap-1 shrink-0">
+
+            {/* Phase 6 — language + currency switcher. Hidden on very small
+                screens (below md); MobileMenu surfaces the same control. */}
+            <div className="hidden md:block">
+              <PreferenceSwitcher compact />
+            </div>
 
             {/* Search toggle */}
             <button

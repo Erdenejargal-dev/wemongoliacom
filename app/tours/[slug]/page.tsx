@@ -226,6 +226,8 @@ export default async function TourDetailPage({ params }: Props) {
                   slug: tour.slug,
                   basePrice: tour.basePrice,
                   currency: tour.currency,
+                  // Phase 3 — prefer the canonical Pricing DTO from the backend.
+                  pricing: tour.pricing ?? null,
                   durationDays: tour.durationDays,
                   ratingAverage: tour.ratingAverage,
                   reviewsCount: tour.reviewsCount,

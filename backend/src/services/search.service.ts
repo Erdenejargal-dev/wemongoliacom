@@ -1,5 +1,8 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma'
+import { toPricingDTO } from '../utils/pricing'
+import { getActiveRate } from '../utils/fx'
+import { assertSupportedCurrency, type Currency } from '../utils/currency'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared query options
@@ -12,6 +15,12 @@ export interface SearchQuery {
   region?:      string  // destination.region (e.g. "Gobi", "Northern Mongolia")
   minPrice?:    number
   maxPrice?:    number
+  /**
+   * Currency of the caller's minPrice/maxPrice filter. Phase 2 Option B:
+   * search/sort/filter runs against `normalizedAmountMnt`, so the service
+   * converts the user's bounds into MNT via the FX layer. Defaults to 'MNT'.
+   */
+  priceCurrency?: 'MNT' | 'USD'
   minRating?:   number
   minDays?:     number  // duration filter
   maxDays?:     number
@@ -21,6 +30,32 @@ export interface SearchQuery {
   sortBy?:      'price_asc' | 'price_desc' | 'rating' | 'newest' | 'popular'
   page?:        number
   limit?:       number
+}
+
+/**
+ * Converts (minPrice, maxPrice) in the caller's currency into MNT bounds so
+ * that price filters can run against `normalizedAmountMnt`. Returns nulls for
+ * bounds that weren't provided. Same-currency is a no-op (rate = 1).
+ *
+ * Throws AppError(503) when no USD→MNT rate has been seeded (loud failure
+ * is intentional — see utils/fx.ts).
+ */
+async function toMntBounds(query: SearchQuery): Promise<{ minMnt: number | null; maxMnt: number | null }> {
+  const from: Currency = query.priceCurrency ? assertSupportedCurrency(query.priceCurrency) : 'MNT'
+  if (query.minPrice === undefined && query.maxPrice === undefined) {
+    return { minMnt: null, maxMnt: null }
+  }
+  if (from === 'MNT') {
+    return {
+      minMnt: query.minPrice ?? null,
+      maxMnt: query.maxPrice ?? null,
+    }
+  }
+  const snap = await getActiveRate(from, 'MNT')
+  return {
+    minMnt: query.minPrice !== undefined ? query.minPrice * snap.rate : null,
+    maxMnt: query.maxPrice !== undefined ? query.maxPrice * snap.rate : null,
+  }
 }
 
 /** Returns tour IDs that have at least one departure with remainingSeats >= minRequired. */
@@ -87,8 +122,12 @@ async function searchTours(query: SearchQuery) {
       region: { contains: query.region, mode: 'insensitive' as const },
     }
   }
-  if (query.minPrice)  where.basePrice = { ...where.basePrice, gte: query.minPrice }
-  if (query.maxPrice)  where.basePrice = { ...where.basePrice, lte: query.maxPrice }
+  const { minMnt, maxMnt } = await toMntBounds(query)
+  if (minMnt !== null || maxMnt !== null) {
+    where.normalizedAmountMnt = {}
+    if (minMnt !== null) (where.normalizedAmountMnt as any).gte = minMnt
+    if (maxMnt !== null) (where.normalizedAmountMnt as any).lte = maxMnt
+  }
   if (query.minRating) where.ratingAverage = { gte: query.minRating }
   if (query.minDays !== undefined || query.maxDays !== undefined) {
     where.durationDays = {}
@@ -111,9 +150,11 @@ async function searchTours(query: SearchQuery) {
   const tourIdsWithSeats = await getTourIdsWithRemainingSeats(minRequired, minDate, maxDate)
   where.id = { in: tourIdsWithSeats }
 
+  // Phase 2 Option B — price sort runs against normalizedAmountMnt so MNT
+  // and USD listings are directly comparable.
   let orderBy: any = { createdAt: 'desc' }
-  if (query.sortBy === 'price_asc')  orderBy = { basePrice: 'asc' }
-  if (query.sortBy === 'price_desc') orderBy = { basePrice: 'desc' }
+  if (query.sortBy === 'price_asc')  orderBy = { normalizedAmountMnt: 'asc' }
+  if (query.sortBy === 'price_desc') orderBy = { normalizedAmountMnt: 'desc' }
   if (query.sortBy === 'rating')     orderBy = { ratingAverage: 'desc' }
   if (query.sortBy === 'newest')     orderBy = { createdAt: 'desc' }
   if (query.sortBy === 'popular')    orderBy = { reviewsCount: 'desc' }
@@ -125,12 +166,17 @@ async function searchTours(query: SearchQuery) {
       skip,
       take: limit,
       select: {
-        id:             true,
-        slug:           true,
-        title:          true,
+        id:               true,
+        slug:             true,
+        title:            true,
         shortDescription: true,
-        basePrice:      true,
-        currency:       true,
+        basePrice:           true,
+        currency:            true,
+        baseAmount:          true,
+        baseCurrency:        true,
+        normalizedAmountMnt: true,
+        normalizedFxRate:    true,
+        normalizedFxRateAt:  true,
         durationDays:   true,
         maxGuests:      true,
         ratingAverage:  true,
@@ -143,7 +189,10 @@ async function searchTours(query: SearchQuery) {
     prisma.tour.count({ where }),
   ])
 
-  return { data, pagination: { page, limit, total, pages: Math.ceil(total / limit) } }
+  return {
+    data: data.map((t) => ({ ...t, pricing: toPricingDTO(t) })),
+    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -171,13 +220,17 @@ async function searchVehicles(query: SearchQuery) {
       ],
     }
   }
-  if (query.minPrice)  where.pricePerDay = { ...where.pricePerDay, gte: query.minPrice }
-  if (query.maxPrice)  where.pricePerDay = { ...where.pricePerDay, lte: query.maxPrice }
+  const { minMnt, maxMnt } = await toMntBounds(query)
+  if (minMnt !== null || maxMnt !== null) {
+    where.normalizedAmountMnt = {}
+    if (minMnt !== null) (where.normalizedAmountMnt as any).gte = minMnt
+    if (maxMnt !== null) (where.normalizedAmountMnt as any).lte = maxMnt
+  }
   if (query.minRating) where.ratingAverage = { gte: query.minRating }
 
   let orderBy: any = { createdAt: 'desc' }
-  if (query.sortBy === 'price_asc')  orderBy = { pricePerDay: 'asc' }
-  if (query.sortBy === 'price_desc') orderBy = { pricePerDay: 'desc' }
+  if (query.sortBy === 'price_asc')  orderBy = { normalizedAmountMnt: 'asc' }
+  if (query.sortBy === 'price_desc') orderBy = { normalizedAmountMnt: 'desc' }
   if (query.sortBy === 'rating')     orderBy = { ratingAverage: 'desc' }
 
   const [data, total] = await Promise.all([
@@ -195,6 +248,11 @@ async function searchVehicles(query: SearchQuery) {
         year:         true,
         pricePerDay:  true,
         currency:     true,
+        baseAmount:          true,
+        baseCurrency:        true,
+        normalizedAmountMnt: true,
+        normalizedFxRate:    true,
+        normalizedFxRateAt:  true,
         seats:        true,
         vehicleType:  true,
         ratingAverage: true,
@@ -207,7 +265,10 @@ async function searchVehicles(query: SearchQuery) {
     prisma.vehicle.count({ where }),
   ])
 
-  return { data, pagination: { page, limit, total, pages: Math.ceil(total / limit) } }
+  return {
+    data: data.map((v) => ({ ...v, pricing: toPricingDTO(v) })),
+    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -235,6 +296,22 @@ async function searchAccommodations(query: SearchQuery) {
   }
   if (query.minRating) where.ratingAverage = { gte: query.minRating }
 
+  // Phase 2 Option B — accommodation price filter applies at the room type
+  // level (rooms own the price, not the accommodation shell).
+  const { minMnt, maxMnt } = await toMntBounds(query)
+  if (minMnt !== null || maxMnt !== null) {
+    const roomPriceClause: any = {}
+    if (minMnt !== null) roomPriceClause.gte = minMnt
+    if (maxMnt !== null) roomPriceClause.lte = maxMnt
+    where.roomTypes = {
+      ...(where.roomTypes as object || {}),
+      some: {
+        ...((where.roomTypes as any)?.some || {}),
+        normalizedAmountMnt: roomPriceClause,
+      },
+    }
+  }
+
   let orderBy: any = { createdAt: 'desc' }
   if (query.sortBy === 'rating') orderBy = { ratingAverage: 'desc' }
 
@@ -255,13 +332,31 @@ async function searchAccommodations(query: SearchQuery) {
         images: { take: 1, select: { imageUrl: true }, orderBy: { sortOrder: 'asc' } },
         provider:    { select: { id: true, name: true, slug: true } },
         destination: { select: { id: true, name: true, country: true } },
-        roomTypes: { take: 1, orderBy: { basePricePerNight: 'asc' }, select: { basePricePerNight: true, currency: true } },
+        roomTypes: {
+          take:    1,
+          orderBy: { normalizedAmountMnt: 'asc' },
+          select: {
+            basePricePerNight: true,
+            currency:          true,
+            baseAmount:          true,
+            baseCurrency:        true,
+            normalizedAmountMnt: true,
+            normalizedFxRate:    true,
+            normalizedFxRateAt:  true,
+          },
+        },
       },
     }),
     prisma.accommodation.count({ where }),
   ])
 
-  return { data, pagination: { page, limit, total, pages: Math.ceil(total / limit) } }
+  return {
+    data: data.map((a) => ({
+      ...a,
+      roomTypes: a.roomTypes.map((rt) => ({ ...rt, pricing: toPricingDTO(rt) })),
+    })),
+    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

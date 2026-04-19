@@ -30,6 +30,21 @@ import {
   adminToggleDestinationFeatured,
   destinationCreateSchema,
   destinationUpdateSchema,
+  // ── FX Rates (Phase 2 Option B) ───────────────────────────────────────────────
+  adminListFxRates,
+  adminCreateFxRate,
+  fxRateListQuerySchema,
+  fxRateCreateSchema,
+  // ── Pricing health (Phase 3) ──────────────────────────────────────────
+  adminGetPricingHealth,
+  adminGetFxRateHealth,
+  adminGetCurrencyDistribution,
+  adminGetListingsMissingNormalization,
+  adminListBackfillReports,
+  adminGetPaymentBlockedBookings,
+  adminGetBackfillReport,
+  adminResolveBackfillReport,
+  backfillReportQuerySchema,
 } from '../controllers/admin.controller'
 
 const router = Router()
@@ -63,5 +78,23 @@ router.post('/destinations',                              validate(destinationCr
 router.put('/destinations/:id',                           validate(destinationUpdateSchema), adminUpdateDestination)
 router.delete('/destinations/:id',                        adminDeleteDestination)
 router.patch('/destinations/:id/featured',                adminToggleDestinationFeatured)
+
+// ── FX Rates (Phase 2 Option B) ────────────────────────────────────────────
+// Rates are immutable once written — corrections POST a new row with a
+// later effectiveFrom. There is deliberately no PUT/DELETE here.
+router.get ('/fx-rates', validate(fxRateListQuerySchema, 'query'), adminListFxRates)
+router.post('/fx-rates', validate(fxRateCreateSchema),             adminCreateFxRate)
+
+// ── Pricing health (Phase 3) ───────────────────────────────────────────
+// All read-only diagnostics. No repair mutations live on this router.
+router.get('/pricing-health',                              adminGetPricingHealth)
+router.get('/pricing-health/fx-rates',                     adminGetFxRateHealth)
+router.get('/pricing-health/currency-distribution',        adminGetCurrencyDistribution)
+router.get('/pricing-health/missing-normalization',        adminGetListingsMissingNormalization)
+router.get('/pricing-health/backfill-reports',             validate(backfillReportQuerySchema, 'query'), adminListBackfillReports)
+router.get('/pricing-health/backfill-reports/:reportId',   adminGetBackfillReport)
+// Explicit, guarded write: closes the report only. Does NOT mutate the flagged entity.
+router.post('/pricing-health/backfill-reports/:reportId/resolve', adminResolveBackfillReport)
+router.get('/pricing-health/payment-blocked-bookings',     adminGetPaymentBlockedBookings)
 
 export default router

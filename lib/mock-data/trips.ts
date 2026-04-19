@@ -22,6 +22,11 @@ export interface Trip {
   durationUnit: 'day' | 'night'
   guests: number
   price: number
+  /**
+   * Currency of `price` (MNT | USD). Populated from BackendBooking.currency
+   * by mapBackendBookingToTripCard. Defaults to 'USD' for mock fixtures.
+   */
+  currency: string
   status: TripStatus
   cancelReason?: string | null
 }
@@ -42,6 +47,7 @@ export const mockMyTrips: Trip[] = [
     durationUnit: 'day',
     guests: 2,
     price: 2560,
+    currency: 'USD',
     status: 'Upcoming',
   },
   {
@@ -59,6 +65,7 @@ export const mockMyTrips: Trip[] = [
     durationUnit: 'day',
     guests: 2,
     price: 3700,
+    currency: 'USD',
     status: 'Upcoming',
   },
   {
@@ -76,6 +83,7 @@ export const mockMyTrips: Trip[] = [
     durationUnit: 'day',
     guests: 2,
     price: 840,
+    currency: 'USD',
     status: 'Completed',
   },
   {
@@ -93,6 +101,7 @@ export const mockMyTrips: Trip[] = [
     durationUnit: 'day',
     guests: 2,
     price: 170,
+    currency: 'USD',
     status: 'Completed',
   },
   {
@@ -110,6 +119,7 @@ export const mockMyTrips: Trip[] = [
     durationUnit: 'day',
     guests: 2,
     price: 640,
+    currency: 'USD',
     status: 'Completed',
   },
   {
@@ -127,6 +137,7 @@ export const mockMyTrips: Trip[] = [
     durationUnit: 'day',
     guests: 1,
     price: 680,
+    currency: 'USD',
     status: 'Cancelled',
   },
 ]

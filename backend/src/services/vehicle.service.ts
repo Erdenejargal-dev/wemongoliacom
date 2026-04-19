@@ -1,6 +1,9 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma'
 import { AppError } from '../middleware/error'
+import { toPricingDTO } from '../utils/pricing'
+import { getActiveRate } from '../utils/fx'
+import { assertSupportedCurrency } from '../utils/currency'
 
 export interface VehicleListQuery {
   destinationId?: string
@@ -10,6 +13,8 @@ export interface VehicleListQuery {
   minSeats?:      number
   minPrice?:      number
   maxPrice?:      number
+  /** Currency of minPrice/maxPrice — converted to MNT for filtering. Defaults to 'MNT'. */
+  priceCurrency?: 'MNT' | 'USD'
   startDate?:     string
   endDate?:       string
   page?:          number
@@ -19,11 +24,22 @@ export interface VehicleListQuery {
 
 function buildOrderBy(sort?: VehicleListQuery['sort']): Prisma.VehicleOrderByWithRelationInput[] {
   switch (sort) {
-    case 'price_asc':  return [{ pricePerDay: 'asc' }]
-    case 'price_desc': return [{ pricePerDay: 'desc' }]
+    case 'price_asc':  return [{ normalizedAmountMnt: 'asc' }]
+    case 'price_desc': return [{ normalizedAmountMnt: 'desc' }]
     case 'rating':     return [{ ratingAverage: 'desc' }]
     case 'newest':     return [{ createdAt: 'desc' }]
     default:           return [{ ratingAverage: 'desc' }]
+  }
+}
+
+async function resolveMntBounds(query: VehicleListQuery): Promise<{ minMnt: number | null; maxMnt: number | null }> {
+  if (query.minPrice === undefined && query.maxPrice === undefined) return { minMnt: null, maxMnt: null }
+  const from = query.priceCurrency ? assertSupportedCurrency(query.priceCurrency) : 'MNT'
+  if (from === 'MNT') return { minMnt: query.minPrice ?? null, maxMnt: query.maxPrice ?? null }
+  const snap = await getActiveRate(from, 'MNT')
+  return {
+    minMnt: query.minPrice !== undefined ? query.minPrice * snap.rate : null,
+    maxMnt: query.maxPrice !== undefined ? query.maxPrice * snap.rate : null,
   }
 }
 
@@ -39,10 +55,11 @@ export async function listVehicles(query: VehicleListQuery = {}) {
   if (query.transmission)          where.transmission  = query.transmission as any
   if (query.withDriver !== undefined) where.withDriver = query.withDriver
   if (query.minSeats !== undefined)   where.seats      = { gte: query.minSeats }
-  if (query.minPrice !== undefined || query.maxPrice !== undefined) {
-    where.pricePerDay = {}
-    if (query.minPrice !== undefined) (where.pricePerDay as any).gte = query.minPrice
-    if (query.maxPrice !== undefined) (where.pricePerDay as any).lte = query.maxPrice
+  const { minMnt, maxMnt } = await resolveMntBounds(query)
+  if (minMnt !== null || maxMnt !== null) {
+    where.normalizedAmountMnt = {}
+    if (minMnt !== null) (where.normalizedAmountMnt as any).gte = minMnt
+    if (maxMnt !== null) (where.normalizedAmountMnt as any).lte = maxMnt
   }
 
   // Availability check: no confirmed booking overlapping the requested range
@@ -81,6 +98,11 @@ export async function listVehicles(query: VehicleListQuery = {}) {
         features:     true,
         pricePerDay:  true,
         currency:     true,
+        baseAmount:          true,
+        baseCurrency:        true,
+        normalizedAmountMnt: true,
+        normalizedFxRate:    true,
+        normalizedFxRateAt:  true,
         ratingAverage: true,
         reviewsCount:  true,
         images: {
@@ -100,7 +122,7 @@ export async function listVehicles(query: VehicleListQuery = {}) {
   ])
 
   return {
-    data:       vehicles,
+    data:       vehicles.map((v) => ({ ...v, pricing: toPricingDTO(v) })),
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
   }
 }
@@ -122,5 +144,5 @@ export async function getVehicleBySlug(slug: string) {
 
   if (!vehicle || vehicle.status !== 'active') throw new AppError('Vehicle not found.', 404)
 
-  return vehicle
+  return { ...vehicle, pricing: toPricingDTO(vehicle) }
 }

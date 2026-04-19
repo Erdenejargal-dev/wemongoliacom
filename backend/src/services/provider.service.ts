@@ -2,6 +2,9 @@ import { prisma } from '../lib/prisma'
 import { AppError } from '../middleware/error'
 import { uniqueSlug } from '../utils/slug'
 import { getListingLimit, type PlanType } from '../config/limits'
+import { assertSupportedCurrency } from '../utils/currency'
+import { resolveBasePricing, resolveOverridePricing } from '../utils/pricing'
+import { convert, getActiveRate } from '../utils/fx'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Verification submission (provider self-service)
@@ -281,22 +284,65 @@ export async function getProviderAnalytics(ownerUserId: string) {
     prisma.booking.count({ where: { providerId: pid, bookingStatus: 'confirmed' } }),
     prisma.booking.count({ where: { providerId: pid, bookingStatus: 'completed' } }),
     prisma.booking.count({ where: { providerId: pid, bookingStatus: 'cancelled' } }),
-    prisma.booking.aggregate({
+    // Phase 2 Option B — providers can legally mix MNT and USD listings, so
+    // we group revenue by currency and surface it that way. The UI treats
+    // each currency as its own lane. A normalized MNT total is also returned
+    // for ranking / global dashboards (see revenueToMnt helper below).
+    prisma.booking.groupBy({
+      by:   ['currency'],
       where: { providerId: pid, paymentStatus: 'paid' },
-      _sum:  { totalAmount: true },
+      _sum: { totalAmount: true },
     }),
-    prisma.booking.aggregate({
+    prisma.booking.groupBy({
+      by:   ['currency'],
       where: { providerId: pid, paymentStatus: 'paid', createdAt: { gte: startOfMonth } },
-      _sum:   { totalAmount: true },
+      _sum: { totalAmount: true },
       _count: { _all: true },
     }),
-    prisma.booking.aggregate({
+    prisma.booking.groupBy({
+      by:   ['currency'],
       where: { providerId: pid, paymentStatus: 'paid', createdAt: { gte: startOfLastMonth, lte: endOfLastMonth } },
-      _sum:   { totalAmount: true },
+      _sum: { totalAmount: true },
       _count: { _all: true },
     }),
     prisma.review.count({ where: { providerId: pid } }),
     prisma.review.aggregate({ where: { providerId: pid }, _avg: { rating: true } }),
+  ])
+
+  const { getActiveRate } = await import('../utils/fx')
+
+  async function revenueBreakdown(buckets: { currency: string; _sum: { totalAmount: number | null }; _count?: { _all: number } }[]) {
+    const byCurrency: Record<string, number> = {}
+    let count = 0
+    for (const b of buckets) {
+      byCurrency[b.currency] = (byCurrency[b.currency] ?? 0) + (b._sum.totalAmount ?? 0)
+      count += b._count?._all ?? 0
+    }
+
+    let normalizedMnt: number | null = 0
+    let status: 'ok' | 'missing_rate' = 'ok'
+    for (const [currency, amount] of Object.entries(byCurrency)) {
+      if (currency === 'MNT') {
+        normalizedMnt += amount
+        continue
+      }
+      try {
+        const snap = await getActiveRate(currency as 'USD' | 'MNT', 'MNT')
+        normalizedMnt += amount * snap.rate
+      } catch {
+        normalizedMnt = null
+        status = 'missing_rate'
+        break
+      }
+    }
+
+    return { byCurrency, normalizedMnt, normalizationStatus: status, count }
+  }
+
+  const [revTotal, revMonth, revLast] = await Promise.all([
+    revenueBreakdown(revenueAgg),
+    revenueBreakdown(thisMonthAgg),
+    revenueBreakdown(lastMonthAgg),
   ])
 
   return {
@@ -308,11 +354,11 @@ export async function getProviderAnalytics(ownerUserId: string) {
       cancelled: cancelledBookings,
     },
     revenue: {
-      total:          (revenueAgg._sum?.totalAmount    ?? 0),
-      thisMonth:      (thisMonthAgg._sum?.totalAmount  ?? 0),
-      lastMonth:      (lastMonthAgg._sum?.totalAmount  ?? 0),
-      thisMonthCount: (thisMonthAgg._count?._all       ?? 0),
-      lastMonthCount: (lastMonthAgg._count?._all       ?? 0),
+      total:          revTotal,
+      thisMonth:      revMonth,
+      lastMonth:      revLast,
+      thisMonthCount: revMonth.count,
+      lastMonthCount: revLast.count,
     },
     reviews: {
       total:      totalReviews,
@@ -438,27 +484,36 @@ export interface CreateTourInput {
   shortDescription?: string
   description?:     string
   durationDays?:    number
-  basePrice:        number
+  // Phase 2 Option B: prefer baseAmount + baseCurrency. Legacy basePrice +
+  // currency still accepted so pre-update clients keep working.
+  baseAmount?:      number
+  baseCurrency?:    string
+  basePrice?:       number
   currency?:        string
   destinationId?:   string
   status?:          'draft' | 'active' | 'paused'
 }
 
 const providerTourSelect = {
-  id:               true,
-  slug:             true,
-  title:            true,
-  shortDescription: true,
-  durationDays:     true,
-  basePrice:        true,
-  currency:         true,
-  status:           true,
-  ratingAverage:    true,
-  reviewsCount:     true,
-  createdAt:        true,
-  updatedAt:        true,
-  images:           { orderBy: { sortOrder: 'asc' as const }, take: 1, select: { imageUrl: true } },
-  destination:      { select: { id: true, name: true, slug: true } },
+  id:                  true,
+  slug:                true,
+  title:               true,
+  shortDescription:    true,
+  durationDays:        true,
+  basePrice:           true,
+  currency:            true,
+  baseAmount:          true,
+  baseCurrency:        true,
+  normalizedAmountMnt: true,
+  normalizedFxRate:    true,
+  normalizedFxRateAt:  true,
+  status:              true,
+  ratingAverage:       true,
+  reviewsCount:        true,
+  createdAt:           true,
+  updatedAt:           true,
+  images:              { orderBy: { sortOrder: 'asc' as const }, take: 1, select: { imageUrl: true } },
+  destination:         { select: { id: true, name: true, slug: true } },
 } as const
 
 export async function listProviderTours(ownerUserId: string, query: ProviderTourQuery) {
@@ -505,12 +560,21 @@ export async function createProviderTour(ownerUserId: string, input: CreateTourI
   })
   if (!slug) throw new AppError('Title must contain at least one letter or number.', 400)
 
+  // Phase 2 Option B — normalize pricing inputs and compute MNT snapshot.
+  // Fails loudly (503) if no FX rate exists for a non-MNT listing.
+  const pricing = await resolveBasePricing({
+    baseAmount:     input.baseAmount,
+    baseCurrency:   input.baseCurrency,
+    legacyAmount:   input.basePrice,
+    legacyCurrency: input.currency,
+  })
+
   const status = input.status ?? 'draft'
   if (status === 'active') {
     validateTourReadiness({
       title: input.title,
       description: input.description || null,
-      basePrice: input.basePrice,
+      basePrice: pricing.legacyAmount,
       imageCount: 0,
       departureCount: 0,
     })
@@ -542,8 +606,14 @@ export async function createProviderTour(ownerUserId: string, input: CreateTourI
         shortDescription: input.shortDescription || null,
         description:      input.description || null,
         durationDays:     input.durationDays ?? 1,
-        basePrice:        input.basePrice,
-        currency:         input.currency ?? 'USD',
+        // Phase 2 Option B — dual-write base + legacy.
+        basePrice:           pricing.legacyAmount,
+        currency:            pricing.legacyCurrency,
+        baseAmount:          pricing.baseAmount,
+        baseCurrency:        pricing.baseCurrency,
+        normalizedAmountMnt: pricing.normalizedAmountMnt,
+        normalizedFxRate:    pricing.normalizedFxRate,
+        normalizedFxRateAt:  pricing.normalizedFxRateAt,
         destinationId:    input.destinationId || null,
         status,
       },
@@ -573,7 +643,9 @@ export interface UpdateTourInput {
   // Location
   destinationId?:      string | null
   meetingPoint?:       string | null
-  // Pricing & policy
+  // Pricing & policy — Phase 2 Option B: prefer baseAmount + baseCurrency
+  baseAmount?:         number
+  baseCurrency?:       string
   basePrice?:          number
   currency?:           string
   cancellationPolicy?: string | null
@@ -598,6 +670,22 @@ export async function updateProviderTour(ownerUserId: string, tourId: string, in
     if (!slug) throw new AppError('Title must contain at least one letter or number.', 400)
   }
 
+  // Phase 2 Option B — re-resolve pricing only when either side changes.
+  const pricingTouched =
+    input.baseAmount   !== undefined ||
+    input.baseCurrency !== undefined ||
+    input.basePrice    !== undefined ||
+    input.currency     !== undefined
+
+  const resolvedPricing = pricingTouched
+    ? await resolveBasePricing({
+        baseAmount:     input.baseAmount   ?? tour.baseAmount   ?? tour.basePrice,
+        baseCurrency:   input.baseCurrency ?? tour.baseCurrency ?? tour.currency,
+        legacyAmount:   input.basePrice,
+        legacyCurrency: input.currency,
+      })
+    : null
+
   const targetStatus = input.status ?? tour.status
   if (targetStatus === 'active') {
     const [imageCount, departureCount] = await Promise.all([
@@ -607,7 +695,7 @@ export async function updateProviderTour(ownerUserId: string, tourId: string, in
     validateTourReadiness({
       title: input.title ?? tour.title,
       description: input.description !== undefined ? (input.description || null) : tour.description,
-      basePrice: input.basePrice ?? tour.basePrice,
+      basePrice: resolvedPricing?.legacyAmount ?? tour.basePrice,
       imageCount,
       departureCount,
     })
@@ -631,9 +719,16 @@ export async function updateProviderTour(ownerUserId: string, tourId: string, in
       // Location
       ...(input.destinationId     !== undefined && { destinationId:     input.destinationId     || null }),
       ...(input.meetingPoint      !== undefined && { meetingPoint:      input.meetingPoint      || null }),
-      // Pricing & policy
-      ...(input.basePrice         !== undefined && { basePrice:         input.basePrice }),
-      ...(input.currency          !== undefined && { currency:          input.currency }),
+      // Pricing & policy — dual-write new + legacy
+      ...(resolvedPricing && {
+        basePrice:           resolvedPricing.legacyAmount,
+        currency:            resolvedPricing.legacyCurrency,
+        baseAmount:          resolvedPricing.baseAmount,
+        baseCurrency:        resolvedPricing.baseCurrency,
+        normalizedAmountMnt: resolvedPricing.normalizedAmountMnt,
+        normalizedFxRate:    resolvedPricing.normalizedFxRate,
+        normalizedFxRateAt:  resolvedPricing.normalizedFxRateAt,
+      }),
       ...(input.cancellationPolicy !== undefined && { cancellationPolicy: input.cancellationPolicy || null }),
       // Status
       ...(input.status            !== undefined && { status:            input.status }),
@@ -661,30 +756,35 @@ export async function archiveProviderTour(ownerUserId: string, tourId: string) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const providerTourDetailSelect = {
-  id:                 true,
-  providerId:         true,
-  slug:               true,
-  title:              true,
-  shortDescription:   true,
-  description:        true,
-  category:           true,
-  difficulty:         true,
-  durationDays:       true,
-  maxGuests:          true,
-  minGuests:          true,
-  meetingPoint:       true,
-  cancellationPolicy: true,
-  languages:          true,
-  basePrice:          true,
-  currency:           true,
-  status:             true,
-  ratingAverage:      true,
-  reviewsCount:       true,
-  createdAt:          true,
-  updatedAt:          true,
-  destination:        { select: { id: true, name: true, slug: true } },
-  images:             { orderBy: { sortOrder: 'asc' as const }, select: { id: true, imageUrl: true, publicId: true, altText: true, sortOrder: true } },
-  _count:             { select: { departures: true, images: true } },
+  id:                  true,
+  providerId:          true,
+  slug:                true,
+  title:               true,
+  shortDescription:    true,
+  description:         true,
+  category:            true,
+  difficulty:          true,
+  durationDays:        true,
+  maxGuests:           true,
+  minGuests:           true,
+  meetingPoint:        true,
+  cancellationPolicy:  true,
+  languages:           true,
+  basePrice:           true,
+  currency:            true,
+  baseAmount:          true,
+  baseCurrency:        true,
+  normalizedAmountMnt: true,
+  normalizedFxRate:    true,
+  normalizedFxRateAt:  true,
+  status:              true,
+  ratingAverage:       true,
+  reviewsCount:        true,
+  createdAt:           true,
+  updatedAt:           true,
+  destination:         { select: { id: true, name: true, slug: true } },
+  images:              { orderBy: { sortOrder: 'asc' as const }, select: { id: true, imageUrl: true, publicId: true, altText: true, sortOrder: true } },
+  _count:              { select: { departures: true, images: true } },
 } as const
 
 export async function getProviderTourDetail(ownerUserId: string, tourId: string) {
@@ -768,34 +868,41 @@ export async function removeTourImage(ownerUserId: string, tourId: string, image
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface CreateDepartureInput {
-  startDate:      string
-  endDate:        string
-  availableSeats: number
-  priceOverride?: number
-  currency?:      string
+  startDate:             string
+  endDate:               string
+  availableSeats:        number
+  // Phase 2 Option B — prefer baseOverrideAmount/Currency.
+  baseOverrideAmount?:   number | null
+  baseOverrideCurrency?: string | null
+  priceOverride?:        number | null
+  currency?:             string
 }
 
 export interface UpdateDepartureInput {
-  startDate?:      string
-  endDate?:        string
-  availableSeats?: number
-  priceOverride?:  number | null
-  currency?:       string
-  status?:         'scheduled' | 'cancelled'
+  startDate?:            string
+  endDate?:              string
+  availableSeats?:       number
+  baseOverrideAmount?:   number | null
+  baseOverrideCurrency?: string | null
+  priceOverride?:        number | null
+  currency?:             string
+  status?:               'scheduled' | 'cancelled'
 }
 
 const departureSelect = {
-  id:             true,
-  tourId:         true,
-  startDate:      true,
-  endDate:        true,
-  availableSeats: true,
-  bookedSeats:    true,
-  priceOverride:  true,
-  currency:       true,
-  status:         true,
-  createdAt:      true,
-  updatedAt:      true,
+  id:                   true,
+  tourId:               true,
+  startDate:            true,
+  endDate:              true,
+  availableSeats:       true,
+  bookedSeats:          true,
+  priceOverride:        true,
+  currency:             true,
+  baseOverrideAmount:   true,
+  baseOverrideCurrency: true,
+  status:               true,
+  createdAt:            true,
+  updatedAt:            true,
 } as const
 
 export async function listTourDepartures(ownerUserId: string, tourId: string) {
@@ -816,14 +923,24 @@ export async function createTourDeparture(ownerUserId: string, tourId: string, i
   if (isNaN(start.getTime()) || isNaN(end.getTime())) throw new AppError('Invalid date.', 400)
   if (end <= start) throw new AppError('End date must be after start date.', 400)
 
+  // Phase 2 Option B — normalize override input (dual-write).
+  const override = resolveOverridePricing({
+    baseOverrideAmount:   input.baseOverrideAmount ?? undefined,
+    baseOverrideCurrency: input.baseOverrideCurrency ?? undefined,
+    legacyAmount:         input.priceOverride ?? undefined,
+    legacyCurrency:       input.currency ?? undefined,
+  })
+
   return prisma.tourDeparture.create({
     data: {
       tourId,
       startDate:      start,
       endDate:        end,
       availableSeats: input.availableSeats,
-      priceOverride:  input.priceOverride ?? null,
-      currency:       input.currency ?? 'USD',
+      priceOverride:        override.legacyAmount,
+      currency:             assertSupportedCurrency(override.legacyCurrency ?? 'USD'),
+      baseOverrideAmount:   override.baseOverrideAmount,
+      baseOverrideCurrency: override.baseOverrideCurrency,
       status:         'scheduled',
     },
     select: departureSelect,
@@ -847,8 +964,33 @@ export async function updateTourDeparture(ownerUserId: string, tourId: string, d
   if (input.startDate) data.startDate = new Date(input.startDate)
   if (input.endDate) data.endDate = new Date(input.endDate)
   if (input.availableSeats !== undefined) data.availableSeats = input.availableSeats
-  if (input.priceOverride !== undefined) data.priceOverride = input.priceOverride
-  if (input.currency !== undefined) data.currency = input.currency
+
+  // Phase 2 Option B — if any pricing field touched, re-normalize and dual-write.
+  const overrideTouched =
+    input.baseOverrideAmount   !== undefined ||
+    input.baseOverrideCurrency !== undefined ||
+    input.priceOverride        !== undefined ||
+    input.currency             !== undefined
+
+  if (overrideTouched) {
+    const nextAmount =
+      input.baseOverrideAmount !== undefined ? input.baseOverrideAmount :
+      input.priceOverride      !== undefined ? input.priceOverride      :
+      (dep.baseOverrideAmount ?? dep.priceOverride ?? null)
+    const nextCurrency =
+      input.baseOverrideCurrency ?? input.currency ?? dep.baseOverrideCurrency ?? dep.currency ?? 'USD'
+
+    const resolved = resolveOverridePricing({
+      baseOverrideAmount:   nextAmount ?? undefined,
+      baseOverrideCurrency: nextCurrency,
+    })
+
+    data.priceOverride        = resolved.legacyAmount
+    data.currency             = assertSupportedCurrency(resolved.legacyCurrency ?? 'USD')
+    data.baseOverrideAmount   = resolved.baseOverrideAmount
+    data.baseOverrideCurrency = resolved.baseOverrideCurrency
+  }
+
   if (input.status !== undefined) data.status = input.status
 
   return prisma.tourDeparture.update({
@@ -918,7 +1060,18 @@ async function getProviderTour(tourId: string, ownerUserId: string) {
 
   const tour = await prisma.tour.findUnique({
     where: { id: tourId },
-    select: { id: true, slug: true, title: true, description: true, basePrice: true, status: true, providerId: true },
+    select: {
+      id:           true,
+      slug:         true,
+      title:        true,
+      description:  true,
+      basePrice:    true,
+      currency:     true,
+      baseAmount:   true,
+      baseCurrency: true,
+      status:       true,
+      providerId:   true,
+    },
   })
   if (!tour) throw new AppError('Tour not found.', 404)
   if (tour.providerId !== provider.id) throw new AppError('Forbidden.', 403)

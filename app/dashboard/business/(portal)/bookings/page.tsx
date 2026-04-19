@@ -19,6 +19,7 @@ import {
 import { getFreshAccessToken } from '@/lib/auth-utils'
 import { ApiError } from '@/lib/api/client'
 import { useProviderLocale } from '@/lib/i18n/provider/context'
+import { formatMoney } from '@/lib/money'
 
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled'
 const STATUS_VALUES: StatusFilter[] = ['all', 'pending', 'confirmed', 'completed', 'cancelled']
@@ -160,7 +161,7 @@ export default function BookingsPage() {
       key: 'totalAmount',
       header: bt.columns.amount,
       sortable: true,
-      render: r => <span className="font-semibold text-gray-900">{r.currency} {r.totalAmount.toLocaleString()}</span>,
+      render: r => <span className="font-semibold text-gray-900">{formatMoney(r.totalAmount, r.currency)}</span>,
     },
     {
       key: 'actions',

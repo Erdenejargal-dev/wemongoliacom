@@ -9,6 +9,7 @@ import { env } from './config/env'
 import router from './routes/index'
 import bonumWebhookRoutes from './routes/bonum.webhook.routes'
 import { errorHandler } from './middleware/error'
+import { displayCurrencyMiddleware } from './middleware/display-currency'
 
 const app = express()
 
@@ -53,6 +54,9 @@ if (env.NODE_ENV !== 'test') {
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', env: env.NODE_ENV, ts: new Date().toISOString() })
 })
+
+// ── Phase 2 Option B — per-request display currency (X-Display-Currency) ──
+app.use(displayCurrencyMiddleware)
 
 // ── API routes ────────────────────────────────────────────────────────────
 app.use(env.API_PREFIX, router)

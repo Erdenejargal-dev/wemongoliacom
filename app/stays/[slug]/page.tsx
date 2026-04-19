@@ -10,6 +10,7 @@ import { StayBookingCard } from '@/components/stays/StayBookingCard'
 import { PropertyMap } from '@/components/stays/PropertyMap'
 import { ContactProviderButton } from '@/components/ui/ContactProviderButton'
 import { fetchStayBySlug, ACCOMMODATION_TYPE_LABELS } from '@/lib/api/stays'
+import { formatMoney } from '@/lib/money'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -103,7 +104,7 @@ export default async function StayDetailPage({ params }: Props) {
                 {cheapestRoom && (
                   <div className="flex items-center gap-1.5">
                     <BedDouble className="w-4 h-4 text-gray-400" />
-                    From ${cheapestRoom.basePricePerNight.toLocaleString()}/night
+                    From {formatMoney(cheapestRoom.basePricePerNight, cheapestRoom.currency ?? 'USD')}/night
                   </div>
                 )}
               </div>
@@ -202,7 +203,7 @@ export default async function StayDetailPage({ params }: Props) {
                           </div>
                           <div className="text-right shrink-0">
                             <p className="text-xl font-bold text-orange-600">
-                              ${room.basePricePerNight.toLocaleString()}
+                              {formatMoney(room.basePricePerNight, room.currency ?? 'USD')}
                             </p>
                             <p className="text-xs text-gray-500">per night</p>
                           </div>

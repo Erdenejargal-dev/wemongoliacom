@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Star, Clock, Users, MapPin, Heart } from 'lucide-react'
 import { useState } from 'react'
 import type { Tour } from '@/lib/search/types'
+import { formatMoney } from '@/lib/money'
 
 interface TourCardProps {
   tour: Tour
@@ -88,7 +89,7 @@ export function TourCard({ tour }: TourCardProps) {
           </div>
           {/* Price — base price per person; departure-specific prices on detail page */}
           <div className="text-right">
-            <span className="text-lg font-bold text-gray-900">${tour.price}</span>
+            <span className="text-lg font-bold text-gray-900">{formatMoney(tour.price, tour.currency)}</span>
             <span className="text-xs text-gray-400">/person from</span>
           </div>
         </div>

@@ -1,6 +1,9 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma'
 import { AppError } from '../middleware/error'
+import { toPricingDTO } from '../utils/pricing'
+import { getActiveRate } from '../utils/fx'
+import { assertSupportedCurrency } from '../utils/currency'
 
 export interface AccommodationListQuery {
   destinationId?:       string
@@ -11,6 +14,8 @@ export interface AccommodationListQuery {
   accommodationTypes?:  string
   minPrice?:            number
   maxPrice?:            number
+  /** Currency of minPrice/maxPrice — converted to MNT for filtering. Defaults to 'MNT'. */
+  priceCurrency?:       'MNT' | 'USD'
   guests?:              number
   checkIn?:             string
   checkOut?:            string
@@ -20,6 +25,10 @@ export interface AccommodationListQuery {
   sort?:                'price_asc' | 'price_desc' | 'rating' | 'newest'
 }
 
+// Phase 2 Option B — price sorting at the accommodation level is a known
+// NEEDS CLARIFICATION: the shell has no price, and Prisma has no direct
+// "sort parent by MIN(child.normalizedAmountMnt)". Until that product
+// decision lands, price_* sorts fall back to rating so results stay stable.
 function buildOrderBy(sort?: AccommodationListQuery['sort']): Prisma.AccommodationOrderByWithRelationInput[] {
   switch (sort) {
     case 'price_asc':  return [{ ratingAverage: 'asc' }]
@@ -27,6 +36,17 @@ function buildOrderBy(sort?: AccommodationListQuery['sort']): Prisma.Accommodati
     case 'rating':     return [{ ratingAverage: 'desc' }]
     case 'newest':     return [{ createdAt: 'desc' }]
     default:           return [{ ratingAverage: 'desc' }]
+  }
+}
+
+async function resolveMntBounds(query: AccommodationListQuery): Promise<{ minMnt: number | null; maxMnt: number | null }> {
+  if (query.minPrice === undefined && query.maxPrice === undefined) return { minMnt: null, maxMnt: null }
+  const from = query.priceCurrency ? assertSupportedCurrency(query.priceCurrency) : 'MNT'
+  if (from === 'MNT') return { minMnt: query.minPrice ?? null, maxMnt: query.maxPrice ?? null }
+  const snap = await getActiveRate(from, 'MNT')
+  return {
+    minMnt: query.minPrice !== undefined ? query.minPrice * snap.rate : null,
+    maxMnt: query.maxPrice !== undefined ? query.maxPrice * snap.rate : null,
   }
 }
 
@@ -52,21 +72,23 @@ export async function listAccommodations(query: AccommodationListQuery = {}) {
 
   if (query.amenities?.length) where.amenities = { hasEvery: query.amenities }
 
-  // Check room availability if dates provided
+  // Phase 2 Option B — price filter is converted to MNT and applied on
+  // the room-level `normalizedAmountMnt`. Kept consistent whether or not
+  // the caller specified check-in/out dates.
+  const { minMnt, maxMnt } = await resolveMntBounds(query)
+  const priceClause: any = {}
+  if (minMnt !== null) priceClause.gte = minMnt
+  if (maxMnt !== null) priceClause.lte = maxMnt
+  const hasPriceClause = Object.keys(priceClause).length > 0
+
   if (query.checkIn && query.checkOut) {
     const checkIn  = new Date(query.checkIn)
     const checkOut = new Date(query.checkOut)
 
-    // Must have at least one room type with available units on all requested dates
     where.roomTypes = {
       some: {
         ...(query.guests ? { maxGuests: { gte: query.guests } } : {}),
-        ...(query.minPrice || query.maxPrice ? {
-          basePricePerNight: {
-            ...(query.minPrice ? { gte: query.minPrice } : {}),
-            ...(query.maxPrice ? { lte: query.maxPrice } : {}),
-          },
-        } : {}),
+        ...(hasPriceClause ? { normalizedAmountMnt: priceClause } : {}),
         availability: {
           every: {
             date:           { gte: checkIn, lt: checkOut },
@@ -74,6 +96,13 @@ export async function listAccommodations(query: AccommodationListQuery = {}) {
             status:         'available',
           },
         },
+      },
+    }
+  } else if (hasPriceClause || query.guests) {
+    where.roomTypes = {
+      some: {
+        ...(query.guests ? { maxGuests: { gte: query.guests } } : {}),
+        ...(hasPriceClause ? { normalizedAmountMnt: priceClause } : {}),
       },
     }
   }
@@ -108,7 +137,12 @@ export async function listAccommodations(query: AccommodationListQuery = {}) {
           select: { name: true, slug: true },
         },
         roomTypes: {
-          select: { id: true, name: true, maxGuests: true, basePricePerNight: true, currency: true },
+          select: {
+            id: true, name: true, maxGuests: true,
+            basePricePerNight: true, currency: true,
+            baseAmount: true, baseCurrency: true,
+            normalizedAmountMnt: true, normalizedFxRate: true, normalizedFxRateAt: true,
+          },
           take: 3,
         },
       },
@@ -117,7 +151,10 @@ export async function listAccommodations(query: AccommodationListQuery = {}) {
   ])
 
   return {
-    data:       accommodations,
+    data: accommodations.map((a) => ({
+      ...a,
+      roomTypes: a.roomTypes.map((rt) => ({ ...rt, pricing: toPricingDTO(rt) })),
+    })),
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
   }
 }
@@ -149,5 +186,8 @@ export async function getAccommodationBySlug(slug: string) {
 
   if (!acc || acc.status !== 'active') throw new AppError('Accommodation not found.', 404)
 
-  return acc
+  return {
+    ...acc,
+    roomTypes: acc.roomTypes.map((rt) => ({ ...rt, pricing: toPricingDTO(rt) })),
+  }
 }

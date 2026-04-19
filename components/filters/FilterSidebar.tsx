@@ -2,6 +2,7 @@
 
 import { SlidersHorizontal, RotateCcw, Star, MapPin, Users } from 'lucide-react'
 import type { SearchQuery } from '@/lib/search/types'
+import { formatMoney } from '@/lib/money'
 
 interface FilterSidebarProps {
   query: SearchQuery
@@ -64,8 +65,8 @@ export function FilterSidebar({ query, onUpdate, onReset, total }: FilterSidebar
             onChange={e => onUpdate({ priceRange: [query.priceRange[0], Number(e.target.value)] })}
             className="w-full accent-brand-500" />
           <div className="flex justify-between text-xs text-gray-500">
-            <span>${query.priceRange[0]}</span>
-            <span>${query.priceRange[1]}</span>
+            <span>{formatMoney(query.priceRange[0], 'USD')}</span>
+            <span>{formatMoney(query.priceRange[1], 'USD')}</span>
           </div>
         </div>
       </div>

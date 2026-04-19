@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma'
 import { AppError } from '../middleware/error'
 import { uniqueSlug } from '../utils/slug'
 import { getListingLimit, type PlanType } from '../config/limits'
+import { resolveBasePricing } from '../utils/pricing'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Input types
@@ -44,14 +45,18 @@ export interface UpdateAccommodationInput {
 }
 
 export interface CreateRoomTypeInput {
-  name:              string
-  description?:      string
-  maxGuests?:        number
-  bedType?:          string
-  quantity?:         number
-  basePricePerNight: number
-  currency?:         string
-  amenities?:        string[]
+  name:               string
+  description?:       string
+  maxGuests?:         number
+  bedType?:           string
+  quantity?:          number
+  // Phase 2 Option B — prefer baseAmount + baseCurrency; legacy
+  // basePricePerNight + currency still accepted during transition.
+  baseAmount?:        number
+  baseCurrency?:      string
+  basePricePerNight?: number
+  currency?:          string
+  amenities?:         string[]
 }
 
 export interface UpdateRoomTypeInput {
@@ -60,8 +65,10 @@ export interface UpdateRoomTypeInput {
   maxGuests?:         number
   bedType?:           string
   quantity?:          number
+  baseAmount?:        number
+  baseCurrency?:      string
   basePricePerNight?: number
-  currency?:         string
+  currency?:          string
   amenities?:         string[]
 }
 
@@ -122,7 +129,10 @@ const accommodationDetailSelect = {
     select: {
       id: true, name: true, description: true, maxGuests: true,
       bedType: true, quantity: true, basePricePerNight: true,
-      currency: true, amenities: true, createdAt: true, updatedAt: true,
+      currency: true,
+      baseAmount: true, baseCurrency: true,
+      normalizedAmountMnt: true, normalizedFxRate: true, normalizedFxRateAt: true,
+      amenities: true, createdAt: true, updatedAt: true,
       // Room-level images — distinct from property gallery (AccommodationImage)
       images: {
         orderBy: { sortOrder: 'asc' as const },
@@ -136,7 +146,10 @@ const accommodationDetailSelect = {
 const roomTypeSelect = {
   id: true, accommodationId: true, name: true, description: true,
   maxGuests: true, bedType: true, quantity: true,
-  basePricePerNight: true, currency: true, amenities: true,
+  basePricePerNight: true, currency: true,
+  baseAmount: true, baseCurrency: true,
+  normalizedAmountMnt: true, normalizedFxRate: true, normalizedFxRateAt: true,
+  amenities: true,
   createdAt: true, updatedAt: true,
   images: {
     orderBy: { sortOrder: 'asc' as const },
@@ -422,17 +435,30 @@ export async function listRoomTypes(ownerUserId: string, accId: string) {
 export async function createRoomType(ownerUserId: string, accId: string, input: CreateRoomTypeInput) {
   await getOwnedAccommodation(accId, ownerUserId)
 
+  // Phase 2 Option B — normalize pricing inputs (dual-write legacy + new + MNT).
+  const pricing = await resolveBasePricing({
+    baseAmount:     input.baseAmount,
+    baseCurrency:   input.baseCurrency,
+    legacyAmount:   input.basePricePerNight,
+    legacyCurrency: input.currency,
+  })
+
   return prisma.roomType.create({
     data: {
-      accommodationId:   accId,
-      name:              input.name,
-      description:       input.description || null,
-      maxGuests:         input.maxGuests ?? 2,
-      bedType:           input.bedType || null,
-      quantity:          input.quantity ?? 1,
-      basePricePerNight: input.basePricePerNight,
-      currency:          input.currency ?? 'USD',
-      amenities:         input.amenities ?? [],
+      accommodationId:     accId,
+      name:                input.name,
+      description:         input.description || null,
+      maxGuests:           input.maxGuests ?? 2,
+      bedType:             input.bedType || null,
+      quantity:            input.quantity ?? 1,
+      basePricePerNight:   pricing.legacyAmount,
+      currency:            pricing.legacyCurrency,
+      baseAmount:          pricing.baseAmount,
+      baseCurrency:        pricing.baseCurrency,
+      normalizedAmountMnt: pricing.normalizedAmountMnt,
+      normalizedFxRate:    pricing.normalizedFxRate,
+      normalizedFxRateAt:  pricing.normalizedFxRateAt,
+      amenities:           input.amenities ?? [],
     },
     select: roomTypeSelect,
   })
@@ -444,6 +470,22 @@ export async function updateRoomType(ownerUserId: string, accId: string, roomId:
   const rt = await prisma.roomType.findUnique({ where: { id: roomId } })
   if (!rt || rt.accommodationId !== accId) throw new AppError('Room type not found.', 404)
 
+  // Phase 2 Option B — re-resolve pricing only when any price field touched.
+  const pricingTouched =
+    input.baseAmount        !== undefined ||
+    input.baseCurrency      !== undefined ||
+    input.basePricePerNight !== undefined ||
+    input.currency          !== undefined
+
+  const resolvedPricing = pricingTouched
+    ? await resolveBasePricing({
+        baseAmount:     input.baseAmount        ?? rt.baseAmount        ?? rt.basePricePerNight,
+        baseCurrency:   input.baseCurrency      ?? rt.baseCurrency      ?? rt.currency,
+        legacyAmount:   input.basePricePerNight,
+        legacyCurrency: input.currency,
+      })
+    : null
+
   return prisma.roomType.update({
     where: { id: roomId },
     data: {
@@ -452,8 +494,15 @@ export async function updateRoomType(ownerUserId: string, accId: string, roomId:
       ...(input.maxGuests !== undefined && { maxGuests: input.maxGuests }),
       ...(input.bedType !== undefined && { bedType: input.bedType || null }),
       ...(input.quantity !== undefined && { quantity: input.quantity }),
-      ...(input.basePricePerNight !== undefined && { basePricePerNight: input.basePricePerNight }),
-      ...(input.currency !== undefined && { currency: input.currency }),
+      ...(resolvedPricing && {
+        basePricePerNight:   resolvedPricing.legacyAmount,
+        currency:            resolvedPricing.legacyCurrency,
+        baseAmount:          resolvedPricing.baseAmount,
+        baseCurrency:        resolvedPricing.baseCurrency,
+        normalizedAmountMnt: resolvedPricing.normalizedAmountMnt,
+        normalizedFxRate:    resolvedPricing.normalizedFxRate,
+        normalizedFxRateAt:  resolvedPricing.normalizedFxRateAt,
+      }),
       ...(input.amenities !== undefined && { amenities: input.amenities }),
     },
     select: roomTypeSelect,

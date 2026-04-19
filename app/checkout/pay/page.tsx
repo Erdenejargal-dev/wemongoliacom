@@ -43,6 +43,7 @@ import {
 } from '@/lib/checkout-session-storage'
 import { getFreshAccessToken } from '@/lib/auth-utils'
 import { ApiError } from '@/lib/api/client'
+import { formatMoney } from '@/lib/money'
 
 /** Dedupe concurrent initiate calls for the same booking (e.g. React Strict Mode, effect re-runs). */
 const initiatePromiseByBookingId = new Map<string, Promise<InitiatePaymentResponse>>()
@@ -71,19 +72,6 @@ type UiPhase =
   | 'failed'
   | 'expired'
   | 'hosted_fallback'
-
-function formatMoney(amount: number, currency: string) {
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style:    'currency',
-      currency: currency || 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(amount)
-  } catch {
-    return `${amount} ${currency}`
-  }
-}
 
 function PayContent() {
   const params = useSearchParams()

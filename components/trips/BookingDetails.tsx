@@ -20,6 +20,7 @@ import {
   MessageSquare, Send, Loader2, X, AlertCircle,
 } from 'lucide-react'
 import type { Trip } from '@/lib/mock-data/trips'
+import { formatMoney } from '@/lib/money'
 import { TripTimeline } from './TripTimeline'
 import { startConversation } from '@/lib/api/conversations'
 import { getFreshAccessToken } from '@/lib/auth-utils'
@@ -110,7 +111,7 @@ export function BookingDetails({ trip }: BookingDetailsProps) {
           } />
           <Row label="Price Paid" value={
             <span className="flex items-center gap-1 justify-end text-brand-700">
-              <Receipt className="w-3 h-3" />${trip.price.toLocaleString()}
+              <Receipt className="w-3 h-3" />{formatMoney(trip.price, trip.currency)}
             </span>
           } />
         </div>

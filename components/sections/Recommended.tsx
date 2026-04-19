@@ -12,6 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import { fetchTours, type BackendTour } from "@/lib/api/tours";
+import { formatMoney } from "@/lib/money";
 import {
   Carousel,
   CarouselContent,
@@ -29,6 +30,7 @@ interface RecommendedTourCardModel {
   category: string;
   destinationName: string;
   priceFrom: number;
+  priceCurrency: string;
   imageUrl: string;
   durationDays: number;
   durationNights: number;
@@ -71,6 +73,7 @@ function mapBackendTourToCard(t: BackendTour): RecommendedTourCardModel {
       typeof t.basePrice === "number" && Number.isFinite(t.basePrice)
         ? t.basePrice
         : 0,
+    priceCurrency: t.currency ?? "USD",
     imageUrl:
       t.images?.find((image) => Boolean(image?.imageUrl))?.imageUrl ??
       FALLBACK_IMAGE,
@@ -93,9 +96,9 @@ function mapBackendTourToCard(t: BackendTour): RecommendedTourCardModel {
   };
 }
 
-function formatPrice(value: number): string {
+function formatPrice(value: number, currency: string): string {
   if (!Number.isFinite(value) || value <= 0) return "Custom";
-  return `$${value.toLocaleString()}`;
+  return formatMoney(value, currency);
 }
 
 function MetaPill({
@@ -166,7 +169,7 @@ function TourCard({ tour }: { tour: RecommendedTourCardModel }) {
 
                 <div className="shrink-0 text-right">
                   <p className="text-base font-bold leading-none text-white sm:text-lg">
-                    {formatPrice(tour.priceFrom)}
+                    {formatPrice(tour.priceFrom, tour.priceCurrency)}
                   </p>
                 </div>
               </div>

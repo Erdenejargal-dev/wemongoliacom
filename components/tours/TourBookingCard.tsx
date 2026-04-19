@@ -4,13 +4,25 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Shield, Star, Users, CalendarDays, Minus, Plus, ChevronRight, Clock, AlertCircle } from 'lucide-react'
 import type { BackendDeparture } from '@/lib/api/tours'
+import { formatMoney, type Currency, isSupportedCurrency } from '@/lib/money'
+import { readPricing, formatPricing, formatSecondaryPricing, type Pricing } from '@/lib/pricing'
+import { useMntToUsdHint } from '@/lib/fx-hint'
+import { usePreferences } from '@/components/providers/PreferencesProvider'
+import { useDisplayCurrency } from '@/components/providers/DisplayCurrencyProvider'
+import { describeListingPaymentCapability } from '@/lib/payment-capability'
+import { PaymentCapabilityNotice } from '@/components/payments/PaymentCapabilityNotice'
+import { RequestBookingModal } from '@/components/booking-requests/RequestBookingModal'
+import { track } from '@/lib/analytics'
 
 interface TourBookingCardProps {
   tour: {
     id: string
     slug: string
+    title?: string | null
+    /** Legacy fields retained ONLY as fallback. Prefer `pricing`. */
     basePrice: number
     currency?: string
+    pricing?: Pricing | null
     durationDays?: number | null
     ratingAverage?: number | null
     reviewsCount?: number | null
@@ -31,6 +43,12 @@ function fmtDateFull(dateLike: string): string {
 
 export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
   const router = useRouter()
+  // Phase 6 — preferences drive the display currency for public pages.
+  // We still read useDisplayCurrency for back-compat (the two are kept in
+  // sync via the shared localStorage key), but preferences is authoritative.
+  const { currency: preferredCurrency } = usePreferences()
+  const { displayCurrency: dcLegacy } = useDisplayCurrency()
+  const displayCurrency = preferredCurrency ?? dcLegacy
   const [guests, setGuests] = useState(1)
   const [selectedDepId, setSelectedDepId] = useState<string | null>(
     departures?.[0]?.id ?? null,
@@ -54,10 +72,63 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
     }
   }, [remainingSeats])
 
-  const pricePerPerson = selectedDeparture?.priceOverride ?? tour.basePrice
-  const total = pricePerPerson * guests
+  // Phase 3: prefer the Pricing DTO (dep override first, then tour). Fall back
+  // to legacy basePrice/currency only if the backend hasn't yet re-populated
+  // the row (incomplete backfill). The legacy branch is explicitly marked so
+  // the next cleanup pass can remove it once backfill coverage is 100%.
+  const depPricing  = selectedDeparture?.pricing ?? null
+  const tourPricing = tour.pricing ?? null
+  const pricing: Pricing | null = depPricing ?? tourPricing ?? readPricing({
+    pricing:   null,
+    basePrice: selectedDeparture?.priceOverride ?? tour.basePrice,
+    currency:  selectedDeparture?.currency ?? tour.currency,
+  })
+
+  const baseCurrency: Currency = pricing?.base.currency
+    ?? (isSupportedCurrency(tour.currency) ? tour.currency : 'MNT')
+  const pricePerPerson = pricing?.base.amount
+    ?? selectedDeparture?.priceOverride
+    ?? tour.basePrice
+
+  // Phase 6 — resolve MNT→USD hint for secondary label on MNT-priced listings
+  // when the traveler is viewing in USD.
+  const fxHint = useMntToUsdHint(baseCurrency === 'MNT' && displayCurrency === 'USD')
+  const primaryPrice   = formatPricing(pricing, displayCurrency) || formatMoney(pricePerPerson, baseCurrency)
+  const secondaryPrice = formatSecondaryPricing(
+    pricing,
+    displayCurrency,
+    fxHint ? { fromMnt: fxHint.fromMnt ?? 0 } : null,
+  )
+
+  const capability = describeListingPaymentCapability(baseCurrency)
+  // Phase 1: frontend does NOT compute totals. The checkout page fetches the
+  // authoritative subtotal/serviceFee/total from POST /bookings/quote once the
+  // user is on the checkout page. Here we only multiply per-person price by
+  // guests to show a listing-level subtotal — the grand total (with service
+  // fee) is shown after the backend quotes it.
+
+  const [requestOpen, setRequestOpen] = useState(false)
+
+  // Phase 6 — USD listings are not directly payable today (Bonum is MNT-only).
+  // Instead of surfacing that at the checkout 400, we branch the CTA here.
+  const mustRequest = !capability.payable
+
+  // Emit an analytics event once when the card renders in "request" mode so
+  // we can measure how often travelers hit non-payable listings.
+  useEffect(() => {
+    if (!mustRequest) return
+    track('view_listing_unpayable', {
+      listingType:  'tour',
+      listingId:    tour.id,
+      baseCurrency: baseCurrency,
+    })
+  }, [mustRequest, tour.id, baseCurrency])
 
   const handleReserve = () => {
+    if (mustRequest) {
+      setRequestOpen(true)
+      return
+    }
     if (!selectedDeparture) return
     const params = new URLSearchParams({
       tourId: tour.id,
@@ -65,7 +136,6 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
       slug: tour.slug,
       guests: String(guests),
       date: selectedDeparture.startDate.slice(0, 10),
-      total: String(total),
     })
     router.push(`/checkout?${params.toString()}`)
   }
@@ -75,11 +145,15 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-xl p-6">
-      {/* Price */}
+      {/* Price — base currency is authoritative; secondary shows conversion
+          only when the backend provided a normalized figure. */}
       <div className="flex items-baseline gap-1 mb-1">
-        <span className="text-2xl font-bold text-gray-900">${pricePerPerson}</span>
+        <span className="text-2xl font-bold text-gray-900">{primaryPrice}</span>
         <span className="text-sm text-gray-500">/ person</span>
       </div>
+      {secondaryPrice && (
+        <p className="text-xs text-gray-500 mb-1">≈ {secondaryPrice}</p>
+      )}
 
       {/* Rating */}
       <div className="flex items-center gap-1.5 mb-5 text-sm">
@@ -104,7 +178,10 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
             {departures.map(dep => {
               const seats = dep.availableSeats - (dep.bookedSeats ?? 0)
               const isSelected = dep.id === selectedDepId
-              const hasOverride = dep.priceOverride != null && dep.priceOverride !== tour.basePrice
+              const depAmount  = dep.pricing?.base.amount ?? dep.priceOverride
+              const depCur     = (dep.pricing?.base.currency
+                ?? (isSupportedCurrency(dep.currency) ? dep.currency : baseCurrency)) as Currency
+              const hasOverride = depAmount != null && depAmount !== pricePerPerson
               return (
                 <button
                   key={dep.id}
@@ -124,7 +201,11 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
                     <p className="text-[11px] text-gray-500">
                       {seats} seat{seats !== 1 ? 's' : ''} left
                       {seats <= 4 && seats > 0 && <span className="text-amber-600 ml-1">· Selling fast</span>}
-                      {hasOverride && <span className="text-brand-600 ml-1">· ${dep.priceOverride}/person</span>}
+                      {hasOverride && depAmount != null && (
+                        <span className="text-brand-600 ml-1">
+                          · {formatMoney(depAmount, depCur)}/person
+                        </span>
+                      )}
                     </p>
                   </div>
                   <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
@@ -189,32 +270,63 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
         )}
       </div>
 
-      {/* Price breakdown */}
-      <div className="border-t border-gray-100 pt-4 mb-4 space-y-2">
-        <div className="flex justify-between text-sm text-gray-600">
-          <span>${pricePerPerson} × {guests} guest{guests !== 1 ? 's' : ''}</span>
-          <span>${total}</span>
-        </div>
-        <div className="flex justify-between text-sm font-bold text-gray-900 pt-1 border-t border-gray-100">
-          <span>Total</span>
-          <span>${total}</span>
-        </div>
+      {/* No price breakdown here — Phase 1 moved all total/fee math to the
+          backend. The checkout page fetches an authoritative quote via POST
+          /bookings/quote and displays the real subtotal/serviceFee/total. */}
+      <div className="border-t border-gray-100 pt-4 mb-4">
+        <p className="text-xs text-gray-500">
+          {formatMoney(pricePerPerson, baseCurrency)} per person · {guests} guest{guests !== 1 ? 's' : ''}
+        </p>
+        <p className="text-xs text-gray-400 mt-1">Service fee and final total shown at checkout</p>
       </div>
 
-      {/* Reserve button */}
-      <button
-        onClick={handleReserve}
-        disabled={!canReserve}
-        className="w-full py-3.5 bg-brand-500 hover:bg-brand-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold text-sm rounded-xl transition-colors shadow-sm shadow-brand-200 flex items-center justify-center gap-2 active:scale-[0.98]"
-      >
-        {canReserve ? (
-          <>Reserve Tour <ChevronRight className="w-4 h-4" /></>
-        ) : hasDepartures ? (
-          'Select a departure to book'
-        ) : (
-          'No departures available'
-        )}
-      </button>
+      {/* Phase 3 — payment currency capability notice. Shown BEFORE the CTA
+          so a traveler never discovers Bonum's MNT-only limit via a 400. */}
+      {mustRequest && (
+        <PaymentCapabilityNotice capability={capability} className="mb-4" />
+      )}
+
+      {/* Reserve / Request CTA — Phase 6 differentiates MNT (instant) vs
+          non-MNT (contact host) without relying on a backend 400. */}
+      {mustRequest ? (
+        <>
+          <button
+            onClick={handleReserve}
+            className="w-full py-3.5 bg-gray-900 hover:bg-gray-800 text-white font-bold text-sm rounded-xl transition-colors flex items-center justify-center gap-2 active:scale-[0.98]"
+          >
+            Request Booking <ChevronRight className="w-4 h-4" />
+          </button>
+          <p className="text-center text-xs text-gray-400 mt-2">
+            Pay later with international options (coming soon)
+          </p>
+        </>
+      ) : (
+        <button
+          onClick={handleReserve}
+          disabled={!canReserve}
+          className="w-full py-3.5 bg-brand-500 hover:bg-brand-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold text-sm rounded-xl transition-colors shadow-sm shadow-brand-200 flex items-center justify-center gap-2 active:scale-[0.98]"
+        >
+          {canReserve ? (
+            <>Reserve Tour <ChevronRight className="w-4 h-4" /></>
+          ) : hasDepartures ? (
+            'Select a departure to book'
+          ) : (
+            'No departures available'
+          )}
+        </button>
+      )}
+
+      <RequestBookingModal
+        open={requestOpen}
+        onClose={() => setRequestOpen(false)}
+        listingType="tour"
+        listingId={tour.id}
+        listingTitle={tour.title ?? undefined}
+        listingCurrency={baseCurrency}
+        initialStartDate={selectedDeparture?.startDate}
+        initialEndDate={selectedDeparture?.endDate ?? selectedDeparture?.startDate}
+        initialGuests={guests}
+      />
 
       {/* Trust badges */}
       <div className="mt-4 space-y-2">

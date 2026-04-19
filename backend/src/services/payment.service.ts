@@ -20,6 +20,11 @@ import {
   type BonumQrDeeplink,
 } from '../integrations/bonum/bonum.mapper'
 import { releaseRoomAvailabilityForCancel } from './booking.service'
+import {
+  describeBookingPaymentCapability,
+  bonumCanCharge,
+} from '../utils/payment-capability'
+import { assertSupportedCurrency } from '../utils/currency'
 
 function mergePaymentMetadata(
   current: Prisma.JsonValue | null | undefined,
@@ -602,6 +607,28 @@ export async function initiatePayment(userId: string, bookingId: string) {
     throw new AppError('Booking is already paid.', 409)
   }
 
+  // ── Phase 1 payment-currency guard (Phase 3: routed via capability) ────
+  //
+  // Bonum expects integer MNT minor units. The single source of truth for
+  // processor constraints is `utils/payment-capability.ts` — this guard
+  // consults the registry rather than hard-coding the string 'MNT' so a
+  // future Visa/global-card processor auto-unlocks the path without
+  // another diff here.
+  //
+  // The hard-coded 'MNT' comparison below is retained as a defense-in-
+  // depth assertion: if the registry changes shape, we STILL refuse to
+  // send a non-MNT amount to Bonum. Phase 1's loud-fail invariant stands.
+  const bookingCurrency = assertSupportedCurrency(booking.currency, 'booking.currency')
+  const capability = describeBookingPaymentCapability(bookingCurrency)
+  if (!capability.payable || !bonumCanCharge(bookingCurrency) || bookingCurrency !== 'MNT') {
+    throw new AppError(
+      capability.userMessage ??
+        `Payment unavailable: this booking is priced in ${booking.currency}, ` +
+          'but the payment gateway only accepts MNT. Please contact support.',
+      400,
+    )
+  }
+
   const now = new Date()
   if (booking.holdExpiresAt && booking.holdExpiresAt < now) {
     throw new AppError('Payment window has expired. Please create a new booking.', 410)
@@ -632,7 +659,8 @@ export async function initiatePayment(userId: string, bookingId: string) {
         providerId:     booking.providerId,
         userId:         booking.userId,
         amount:         booking.totalAmount,
-        currency:       booking.currency ?? 'USD',
+        // Safe: booking.currency === 'MNT' was just asserted above.
+        currency:       booking.currency,
         status:         'unpaid',
         paymentGateway: env.BONUM_USE_STUB === 'true' || !env.BONUM_API_BASE_URL?.trim() ? 'bonum_stub' : 'bonum',
         idempotencyKey,
@@ -1080,6 +1108,49 @@ export async function getPayment(userId: string, paymentId: string, role: string
   }
 
   throw new AppError('Forbidden.', 403)
+}
+
+/**
+ * Phase 3 — pre-flight payment-capability probe.
+ *
+ * The traveler UI (booking cards, checkout, payment init) hits this to
+ * decide what to show BEFORE trying to initiate. Returns the pure
+ * capability object plus the booking's own currency so the frontend can
+ * render "payable in X — your listing is priced in Y" without guessing.
+ */
+export async function getBookingPaymentCapability(userId: string, bookingCode: string) {
+  const booking = await prisma.booking.findUnique({
+    where: { bookingCode },
+    select: {
+      id:            true,
+      bookingCode:   true,
+      userId:        true,
+      currency:      true,
+      baseCurrency:  true,
+      bookingStatus: true,
+      paymentStatus: true,
+      totalAmount:   true,
+      baseTotalAmount: true,
+      listingType:   true,
+    },
+  })
+  if (!booking) throw new AppError('Booking not found.', 404)
+  if (booking.userId !== userId) throw new AppError('Forbidden.', 403)
+
+  const bookingCurrency = assertSupportedCurrency(booking.currency, 'booking.currency')
+  const capability = describeBookingPaymentCapability(bookingCurrency)
+
+  return {
+    bookingCode:     booking.bookingCode,
+    listingType:     booking.listingType,
+    bookingStatus:   booking.bookingStatus,
+    paymentStatus:   booking.paymentStatus,
+    amount:          booking.totalAmount,
+    currency:        bookingCurrency,
+    baseAmount:      booking.baseTotalAmount,
+    baseCurrency:    booking.baseCurrency ?? bookingCurrency,
+    capability,
+  }
 }
 
 export async function listMyPayments(userId: string, page = 1, limit = 20) {

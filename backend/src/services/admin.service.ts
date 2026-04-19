@@ -384,20 +384,76 @@ export async function getPlatformAnalytics() {
     prisma.provider.count({ where: { verificationStatus: 'pending_review' } }),
     prisma.booking.count(),
     prisma.booking.count({ where: { createdAt: { gte: startOfMonth } } }),
-    prisma.booking.aggregate({
+    // Phase 2 Option B — revenue MUST be grouped by currency. Adding a MNT
+    // USD booking together (as Phase 1 did) silently undercounts MNT revenue
+    // or overcounts USD revenue. We return per-currency buckets AND a
+    // best-effort normalized MNT total computed from each booking's own
+    // fx snapshot (fxRate * totalAmount in booking currency). Bookings that
+    // predate the backfill will have fxRate = 1 and source =
+    // 'backfill_same_currency'; those are still correct because Phase 1
+    // never crossed currencies.
+    prisma.booking.groupBy({
+      by:   ['currency'],
       where: { paymentStatus: 'paid' },
-      _sum:  { totalAmount: true },
+      _sum: { totalAmount: true, baseTotalAmount: true },
     }),
-    prisma.booking.aggregate({
+    prisma.booking.groupBy({
+      by:   ['currency'],
       where: { paymentStatus: 'paid', createdAt: { gte: startOfMonth } },
-      _sum:  { totalAmount: true },
+      _sum: { totalAmount: true, baseTotalAmount: true },
     }),
-    prisma.booking.aggregate({
+    prisma.booking.groupBy({
+      by:   ['currency'],
       where: { paymentStatus: 'paid', createdAt: { gte: startOfLastMonth, lte: endOfLastMonth } },
-      _sum:  { totalAmount: true },
+      _sum: { totalAmount: true, baseTotalAmount: true },
     }),
     prisma.review.count(),
     prisma.review.aggregate({ _avg: { rating: true } }),
+  ])
+
+  // ── Revenue breakdown helpers ──────────────────────────────────────────
+  // For each currency bucket we surface the absolute sum in that currency.
+  // Phase 2 Option B — the canonical comparison currency is MNT, so we also
+  // return a MNT-normalized total per window. Bookings whose currency is
+  // already MNT contribute their totalAmount directly. Bookings in another
+  // currency are converted at the CURRENT MNT rate (not the historical one)
+  // so the figure reflects today's value of booked revenue. If the USD→MNT
+  // rate is missing, we set normalizedMnt to null and mark the bucket
+  // `normalizationStatus: 'missing_rate'` — consumers must show the
+  // breakdown instead.
+  const { getActiveRate } = await import('../utils/fx')
+
+  async function summarize(buckets: { currency: string; _sum: { totalAmount: number | null; baseTotalAmount: number | null } }[]) {
+    const byCurrency: Record<string, number> = {}
+    for (const b of buckets) {
+      byCurrency[b.currency] = (byCurrency[b.currency] ?? 0) + (b._sum.totalAmount ?? 0)
+    }
+
+    let normalizedMnt: number | null = 0
+    let status: 'ok' | 'missing_rate' = 'ok'
+
+    for (const [currency, amount] of Object.entries(byCurrency)) {
+      if (currency === 'MNT') {
+        normalizedMnt += amount
+        continue
+      }
+      try {
+        const snap = await getActiveRate(currency as 'USD' | 'MNT', 'MNT')
+        normalizedMnt += amount * snap.rate
+      } catch {
+        normalizedMnt = null
+        status = 'missing_rate'
+        break
+      }
+    }
+
+    return { byCurrency, normalizedMnt, normalizationStatus: status }
+  }
+
+  const [revTotal, revMonth, revLast] = await Promise.all([
+    summarize(revenueAll),
+    summarize(revenueThisMonth),
+    summarize(revenueLastMonth),
   ])
 
   return {
@@ -415,9 +471,9 @@ export async function getPlatformAnalytics() {
       thisMonth: bookingsThisMonth,
     },
     revenue: {
-      total:     revenueAll._sum?.totalAmount      ?? 0,
-      thisMonth: revenueThisMonth._sum?.totalAmount  ?? 0,
-      lastMonth: revenueLastMonth._sum?.totalAmount  ?? 0,
+      total:     revTotal,
+      thisMonth: revMonth,
+      lastMonth: revLast,
     },
     reviews: {
       total:     totalReviews,

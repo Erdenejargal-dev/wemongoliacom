@@ -8,6 +8,8 @@ export interface Tour {
   region: string
   regionSlug: string        // matches hero region select values
   price: number
+  /** Currency for `price` — 'MNT' or 'USD' (backend-sourced; defaults to 'USD' in legacy fixtures). */
+  currency: string
   duration: string
   durationDays: number
   rating: number

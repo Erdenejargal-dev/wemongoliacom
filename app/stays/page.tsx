@@ -18,6 +18,7 @@ import {
   type AccommodationType,
   ACCOMMODATION_TYPE_LABELS,
 } from '@/lib/api/stays'
+import { formatMoney } from '@/lib/money'
 
 // ── Type filter options ───────────────────────────────────────────────────────
 
@@ -51,9 +52,11 @@ function StayCard({ stay }: { stay: BackendStay }) {
   const imageUrl   = stay.images?.[0]?.imageUrl ?? FALLBACK_IMAGE
   const typeLabel  = ACCOMMODATION_TYPE_LABELS[stay.accommodationType] ?? stay.accommodationType
   const typeDot    = TYPE_COLOURS[stay.accommodationType] ?? 'bg-gray-500'
-  const priceFrom  = stay.roomTypes.length > 0
-    ? Math.min(...stay.roomTypes.map(r => r.basePricePerNight))
+  const cheapestRoom = stay.roomTypes.length > 0
+    ? stay.roomTypes.reduce((a, b) => (a.basePricePerNight <= b.basePricePerNight ? a : b))
     : null
+  const priceFrom  = cheapestRoom?.basePricePerNight ?? null
+  const priceCurrency = cheapestRoom?.currency ?? 'USD'
 
   return (
     <Link
@@ -109,7 +112,7 @@ function StayCard({ stay }: { stay: BackendStay }) {
             <div>
               <span className="text-[10px] text-gray-400 uppercase tracking-wide block">From</span>
               <div className="flex items-baseline gap-0.5">
-                <span className="text-base font-bold text-gray-900">${priceFrom.toLocaleString()}</span>
+                <span className="text-base font-bold text-gray-900">{formatMoney(priceFrom, priceCurrency)}</span>
                 <span className="text-[10px] text-gray-400">/night</span>
               </div>
             </div>

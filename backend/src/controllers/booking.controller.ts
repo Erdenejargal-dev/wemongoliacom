@@ -33,10 +33,32 @@ export const createBookingSchema = z.object({
   travelerEmail:    z.string().regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Invalid email').optional(),
   travelerPhone:    z.string().max(30).optional(),
   travelerCountry:  z.string().max(100).optional(),
+  // Phase 2 Option B — optional traveler-facing currency. Defaults server
+  // side to the listing's baseCurrency when omitted, preserving Phase 1
+  // MNT-only Bonum behavior.
+  bookingCurrency:  z.enum(['MNT', 'USD']).optional(),
 })
 
 export const cancelSchema = z.object({
   reason: z.string().max(500).optional(),
+})
+
+/**
+ * Schema for POST /bookings/quote — Phase 1 single source of truth for
+ * subtotal / serviceFee / totalAmount. Shape mirrors createBookingSchema,
+ * minus traveler fields and stricter minimums.
+ */
+export const quoteBookingSchema = z.object({
+  listingType:     z.enum(['tour', 'vehicle', 'accommodation']),
+  listingId:       z.string().cuid(),
+  tourDepartureId: z.string().cuid().optional(),
+  startDate:       z.string().optional(),
+  endDate:         z.string().optional(),
+  roomTypeId:      z.string().cuid().optional(),
+  checkIn:         z.string().optional(),
+  checkOut:        z.string().optional(),
+  guests:          z.coerce.number().int().min(1),
+  bookingCurrency: z.enum(['MNT', 'USD']).optional(),
 })
 
 export const listQuerySchema = z.object({
@@ -87,6 +109,15 @@ export async function cancelBooking(req: Request, res: Response, next: NextFunct
       req.body?.reason,
     )
     return ok(res, booking)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function quoteBooking(req: Request, res: Response, next: NextFunction) {
+  try {
+    const quote = await bookingService.quoteBooking(req.body)
+    return ok(res, quote)
   } catch (err) {
     next(err)
   }

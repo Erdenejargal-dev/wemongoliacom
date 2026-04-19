@@ -114,6 +114,20 @@ export interface ProviderBooking {
  * Actual analytics shape returned by GET /provider/analytics.
  * Source: backend/src/services/provider.service.ts → getProviderAnalytics()
  */
+/**
+ * Phase 2/3 — provider revenue bucket per time window.
+ *
+ * Matches `backend/src/services/provider.service.ts#revenueBreakdown`. Never
+ * sum across currencies blindly — either show per-currency or the MNT
+ * normalized total accompanied by `normalizationStatus`.
+ */
+export interface ProviderRevenueBucket {
+  byCurrency:           Record<string, number>
+  normalizedMnt:        number | null
+  normalizationStatus:  'ok' | 'missing_rate'
+  count:                number
+}
+
 export interface ProviderAnalytics {
   bookings: {
     total:     number
@@ -123,9 +137,9 @@ export interface ProviderAnalytics {
     cancelled: number
   }
   revenue: {
-    total:          number
-    thisMonth:      number
-    lastMonth:      number
+    total:          ProviderRevenueBucket
+    thisMonth:      ProviderRevenueBucket
+    lastMonth:      ProviderRevenueBucket
     thisMonthCount: number
     lastMonthCount: number
   }

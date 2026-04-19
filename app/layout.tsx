@@ -3,6 +3,8 @@ import { Manrope, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import SessionProvider from "@/components/providers/SessionProvider";
+import { DisplayCurrencyProvider } from "@/components/providers/DisplayCurrencyProvider";
+import { PreferencesProvider } from "@/components/providers/PreferencesProvider";
 import { ConditionalShell } from "@/components/layout/ConditionalShell";
 
 // ✅ Manrope
@@ -37,7 +39,15 @@ export default function RootLayout({
     <html lang="en" className={`${manrope.variable} ${geistMono.variable}`}>
       <body className="antialiased">
         <SessionProvider>
-          <ConditionalShell>{children}</ConditionalShell>
+          {/* Phase 6 — PreferencesProvider is the single source of truth for
+              currency + language, with geo defaults + user-pref resolution.
+              DisplayCurrencyProvider stays mounted for back-compat with
+              components that already call useDisplayCurrency(). */}
+          <PreferencesProvider>
+            <DisplayCurrencyProvider>
+              <ConditionalShell>{children}</ConditionalShell>
+            </DisplayCurrencyProvider>
+          </PreferencesProvider>
         </SessionProvider>
       </body>
     </html>

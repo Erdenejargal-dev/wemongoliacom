@@ -9,6 +9,7 @@ export const listQuerySchema = z.object({
   difficulty:    z.enum(['Easy', 'Moderate', 'Challenging']).optional(),
   minPrice:      z.coerce.number().nonnegative().optional(),
   maxPrice:      z.coerce.number().nonnegative().optional(),
+  priceCurrency: z.enum(['MNT', 'USD']).optional(),
   minDays:       z.coerce.number().int().positive().optional(),
   maxDays:       z.coerce.number().int().positive().optional(),
   guests:        z.coerce.number().int().positive().optional(),

@@ -21,7 +21,9 @@ import {
 import { TravelerForm, type TravelerData } from '@/components/checkout/TravelerForm'
 import { fetchStayBySlug, type BackendStayDetail, ACCOMMODATION_TYPE_LABELS } from '@/lib/api/stays'
 import { createBooking } from '@/lib/api/bookings'
-import { type Booking, saveBooking, calcServiceFee } from '@/lib/booking'
+import { getBookingQuote, type BookingQuote } from '@/lib/api/quotes'
+import { type Booking, saveBooking } from '@/lib/booking'
+import { formatMoney } from '@/lib/money'
 import { getFreshAccessToken } from '@/lib/auth-utils'
 import { ApiError } from '@/lib/api/client'
 
@@ -48,16 +50,15 @@ function StayCheckoutContent() {
   const { data: session } = useSession()
 
   const slug        = params.get('slug')       ?? ''
-  const accId       = params.get('accId')      ?? ''
   const roomTypeId  = params.get('roomTypeId') ?? ''
   const checkIn     = params.get('checkIn')    ?? ''
   const checkOut    = params.get('checkOut')   ?? ''
   const guests      = Math.max(1, Number(params.get('guests') ?? 1))
-  const urlTotal    = params.get('total')      ?? ''
 
   const [stay,      setStay]      = useState<BackendStayDetail | null>(null)
   const [loading,   setLoading]   = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [quote,     setQuote]     = useState<BookingQuote | null>(null)
 
   const [traveler,   setTraveler]   = useState<TravelerData>(EMPTY_TRAVELER)
   const [errors,     setErrors]     = useState<Partial<Record<keyof TravelerData, string>>>({})
@@ -91,9 +92,35 @@ function StayCheckoutContent() {
   const roomType = stay?.roomTypes.find((r) => r.id === roomTypeId) ?? stay?.roomTypes[0] ?? null
   const nights   = nightsBetween(checkIn, checkOut)
   const pricePerNight = roomType?.basePricePerNight ?? 0
-  const subtotal  = pricePerNight * nights
-  const serviceFee = calcServiceFee(subtotal)
-  const total     = subtotal + serviceFee
+  const listingCurrency = roomType?.currency ?? 'USD'
+
+  // Phase 1: fetch authoritative subtotal/serviceFee/total from backend.
+  useEffect(() => {
+    let alive = true
+    async function loadQuote() {
+      if (!session || !stay || !roomType || nights <= 0) { setQuote(null); return }
+      const token = await getFreshAccessToken()
+      if (!alive || !token) return
+      try {
+        const q = await getBookingQuote(
+          {
+            listingType: 'accommodation',
+            listingId:   stay.id,
+            roomTypeId:  roomType.id,
+            checkIn,
+            checkOut,
+            guests,
+          },
+          token,
+        )
+        if (alive) setQuote(q)
+      } catch {
+        if (alive) setQuote(null)
+      }
+    }
+    void loadQuote()
+    return () => { alive = false }
+  }, [session, stay, roomType, checkIn, checkOut, guests, nights])
 
   const stayName     = stay?.name ?? 'Accommodation'
   const stayLocation = stay?.destination?.name ?? 'Mongolia'
@@ -183,6 +210,7 @@ function StayCheckoutContent() {
         subtotal:        backendBooking.subtotal,
         serviceFee:      backendBooking.serviceFee,
         total:           backendBooking.totalAmount,
+        currency:        backendBooking.currency,
         travelerName:    traveler.name,
         email:           traveler.email,
         phone:           traveler.phone,
@@ -393,20 +421,23 @@ function StayCheckoutContent() {
                     </div>
                   </div>
 
-                  {/* Price breakdown */}
+                  {/* Price breakdown — all amounts come from the backend
+                      quote (POST /bookings/quote). Frontend never recomputes. */}
                   {nights > 0 && (
                     <div className="space-y-2 pt-3 border-t border-gray-100">
                       <div className="flex justify-between text-sm text-gray-600">
-                        <span>${pricePerNight.toLocaleString()} × {nights} night{nights !== 1 ? 's' : ''}</span>
-                        <span>${subtotal.toLocaleString()}</span>
+                        <span>
+                          {formatMoney(pricePerNight, listingCurrency)} × {nights} night{nights !== 1 ? 's' : ''}
+                        </span>
+                        <span>{quote ? formatMoney(quote.subtotal, quote.currency) : '—'}</span>
                       </div>
                       <div className="flex justify-between text-sm text-gray-600">
                         <span>Service fee</span>
-                        <span>${serviceFee.toLocaleString()}</span>
+                        <span>{quote ? formatMoney(quote.serviceFee, quote.currency) : '—'}</span>
                       </div>
                       <div className="flex justify-between text-sm font-bold text-gray-900 pt-2 border-t border-gray-100">
                         <span>Total</span>
-                        <span>${total.toLocaleString()}</span>
+                        <span>{quote ? formatMoney(quote.totalAmount, quote.currency) : '—'}</span>
                       </div>
                     </div>
                   )}

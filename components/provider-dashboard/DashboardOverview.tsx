@@ -6,10 +6,41 @@ import {
   BookOpen, CalendarCheck, AlertCircle, CheckCircle2,
   ArrowRight, Plus, MessageSquare, Settings, Compass,
 } from 'lucide-react'
-import type { ProviderBooking, ProviderAnalytics } from '@/lib/api/provider'
+import type { ProviderBooking, ProviderAnalytics, ProviderRevenueBucket } from '@/lib/api/provider'
 import { VerificationBanner } from './VerificationBanner'
 import { useProviderLocale } from '@/lib/i18n/provider/context'
 import type { ProviderType } from '@/lib/provider-menu'
+import { formatMoney, type Currency, isSupportedCurrency } from '@/lib/money'
+
+// ── Revenue formatter (Phase 3 — analytics honesty) ──────────────────────
+//
+// Never output a single "$" or "USD" number when bookings may span MNT
+// and USD. Behavior:
+//   - 0 currencies    → dash
+//   - 1 currency      → authoritative per-currency total (no FX)
+//   - N currencies + ok          → ≈ normalizedMnt (MNT)
+//   - N currencies + missing_rate→ show "X MNT + Y USD" (explicit)
+function formatProviderRevenue(bucket?: ProviderRevenueBucket): { text: string; hint: string | null } {
+  if (!bucket) return { text: '—', hint: null }
+  const entries = Object.entries(bucket.byCurrency).filter(([, v]) => v > 0)
+  if (entries.length === 0) return { text: formatMoney(0, 'MNT'), hint: null }
+  if (entries.length === 1) {
+    const [cur, amt] = entries[0]
+    return { text: formatMoney(amt, (isSupportedCurrency(cur) ? cur : 'MNT') as Currency), hint: null }
+  }
+  if (bucket.normalizationStatus === 'ok' && bucket.normalizedMnt != null) {
+    return {
+      text: `≈ ${formatMoney(bucket.normalizedMnt, 'MNT')}`,
+      hint: 'Converted to MNT at current rates',
+    }
+  }
+  return {
+    text: entries
+      .map(([cur, amt]) => formatMoney(amt, (isSupportedCurrency(cur) ? cur : 'MNT') as Currency))
+      .join(' + '),
+    hint: 'FX unavailable — shown per currency',
+  }
+}
 
 interface DashboardOverviewProps {
   providerName?: string
@@ -158,12 +189,20 @@ export function DashboardOverview({
             sub={ot.stats.pending(analytics.bookings.pending)}
             accent="text-gray-900"
           />
-          <StatCard
-            label={ot.stats.revenue}
-            value={analytics.revenue?.total != null ? `$${analytics.revenue.total.toLocaleString()}` : '—'}
-            sub={analytics.revenue?.thisMonth != null ? ot.stats.thisMonth(`$${analytics.revenue.thisMonth.toLocaleString()}`) : undefined}
-            accent="text-brand-600"
-          />
+          {(() => {
+            const totalRev = formatProviderRevenue(analytics.revenue?.total)
+            const monthRev = formatProviderRevenue(analytics.revenue?.thisMonth)
+            const subCore  = ot.stats.thisMonth(monthRev.text)
+            const sub      = totalRev.hint ? `${subCore} — ${totalRev.hint}` : subCore
+            return (
+              <StatCard
+                label={ot.stats.revenue}
+                value={totalRev.text}
+                sub={sub}
+                accent="text-brand-600"
+              />
+            )
+          })()}
           <StatCard
             label={ot.stats.monthBookings}
             value={analytics.revenue?.thisMonthCount ?? 0}
@@ -231,7 +270,7 @@ export function DashboardOverview({
                     {statusLabel}
                   </span>
                   <span className="text-sm font-semibold text-gray-900 shrink-0">
-                    {b.currency} {b.totalAmount.toLocaleString()}
+                    {formatMoney(b.totalAmount, b.currency)}
                   </span>
                 </div>
               )

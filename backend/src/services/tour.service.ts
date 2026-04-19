@@ -1,6 +1,9 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma'
 import { AppError } from '../middleware/error'
+import { toPricingDTO } from '../utils/pricing'
+import { getActiveRate } from '../utils/fx'
+import { assertSupportedCurrency } from '../utils/currency'
 
 /** Returns tour IDs that have at least one departure with remainingSeats >= minRequired. */
 async function getTourIdsWithRemainingSeats(
@@ -33,6 +36,8 @@ export interface TourListQuery {
   difficulty?:    string
   minPrice?:      number
   maxPrice?:      number
+  /** Currency of minPrice/maxPrice — converted to MNT for filtering. Defaults to 'MNT'. */
+  priceCurrency?: 'MNT' | 'USD'
   minDays?:       number
   maxDays?:       number
   guests?:        number
@@ -44,19 +49,24 @@ export interface TourListQuery {
 }
 
 const tourCardSelect = {
-  id:               true,
-  slug:             true,
-  title:            true,
-  shortDescription: true,
-  category:         true,
-  durationDays:     true,
-  maxGuests:        true,
-  difficulty:       true,
-  basePrice:        true,
-  currency:         true,
-  ratingAverage:    true,
-  reviewsCount:     true,
-  featured:         true,
+  id:                  true,
+  slug:                true,
+  title:               true,
+  shortDescription:    true,
+  category:            true,
+  durationDays:        true,
+  maxGuests:           true,
+  difficulty:          true,
+  basePrice:           true,
+  currency:            true,
+  baseAmount:          true,
+  baseCurrency:        true,
+  normalizedAmountMnt: true,
+  normalizedFxRate:    true,
+  normalizedFxRateAt:  true,
+  ratingAverage:       true,
+  reviewsCount:        true,
+  featured:            true,
   images: {
     orderBy: { sortOrder: 'asc' as const },
     take:    1,
@@ -72,12 +82,25 @@ const tourCardSelect = {
 
 function buildOrderBy(sort?: TourListQuery['sort']): Prisma.TourOrderByWithRelationInput[] {
   switch (sort) {
-    case 'price_asc':  return [{ basePrice: 'asc' }]
-    case 'price_desc': return [{ basePrice: 'desc' }]
+    case 'price_asc':  return [{ normalizedAmountMnt: 'asc' }]
+    case 'price_desc': return [{ normalizedAmountMnt: 'desc' }]
     case 'rating':     return [{ ratingAverage: 'desc' }]
     case 'newest':     return [{ createdAt: 'desc' }]
     case 'popular':    return [{ reviewsCount: 'desc' }]
     default:           return [{ featured: 'desc' }, { ratingAverage: 'desc' }]
+  }
+}
+
+async function resolveMntBounds(query: TourListQuery): Promise<{ minMnt: number | null; maxMnt: number | null }> {
+  if (query.minPrice === undefined && query.maxPrice === undefined) return { minMnt: null, maxMnt: null }
+  const from = query.priceCurrency ? assertSupportedCurrency(query.priceCurrency) : 'MNT'
+  if (from === 'MNT') {
+    return { minMnt: query.minPrice ?? null, maxMnt: query.maxPrice ?? null }
+  }
+  const snap = await getActiveRate(from, 'MNT')
+  return {
+    minMnt: query.minPrice !== undefined ? query.minPrice * snap.rate : null,
+    maxMnt: query.maxPrice !== undefined ? query.maxPrice * snap.rate : null,
   }
 }
 
@@ -92,10 +115,13 @@ export async function listTours(query: TourListQuery = {}) {
   if (query.category)      where.category      = { contains: query.category, mode: 'insensitive' }
   if (query.difficulty)    where.difficulty    = query.difficulty as any
   if (query.featured)      where.featured      = true
-  if (query.minPrice !== undefined || query.maxPrice !== undefined) {
-    where.basePrice = {}
-    if (query.minPrice !== undefined) (where.basePrice as any).gte = query.minPrice
-    if (query.maxPrice !== undefined) (where.basePrice as any).lte = query.maxPrice
+  // Phase 2 Option B — filter on MNT-normalized amount so MNT + USD
+  // listings are comparable.
+  const { minMnt, maxMnt } = await resolveMntBounds(query)
+  if (minMnt !== null || maxMnt !== null) {
+    where.normalizedAmountMnt = {}
+    if (minMnt !== null) (where.normalizedAmountMnt as any).gte = minMnt
+    if (maxMnt !== null) (where.normalizedAmountMnt as any).lte = maxMnt
   }
   if (query.minDays !== undefined || query.maxDays !== undefined) {
     where.durationDays = {}
@@ -130,7 +156,7 @@ export async function listTours(query: TourListQuery = {}) {
   ])
 
   return {
-    data:       tours,
+    data:       tours.map((t) => ({ ...t, pricing: toPricingDTO(t) })),
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
   }
 }
@@ -149,7 +175,13 @@ export async function getTourBySlug(slug: string) {
         where:   { status: 'scheduled', startDate: { gte: new Date() } },
         orderBy: { startDate: 'asc' },
         take:    20,
-        select:  { id: true, startDate: true, endDate: true, availableSeats: true, bookedSeats: true, priceOverride: true, currency: true, status: true },
+        select: {
+          id: true, startDate: true, endDate: true,
+          availableSeats: true, bookedSeats: true,
+          priceOverride: true, currency: true,
+          baseOverrideAmount: true, baseOverrideCurrency: true,
+          status: true,
+        },
       },
     },
   })
@@ -158,11 +190,27 @@ export async function getTourBySlug(slug: string) {
   if (tour.status !== 'active') throw new AppError('Tour not found.', 404)
 
   // Only expose departures with at least 1 remaining seat (consistent with search)
+  // Phase 3 — attach a per-departure `pricing` DTO when the departure has a
+  // price override, so the frontend can read a single consistent shape and
+  // stop branching on legacy override columns.
   const departures = tour.departures
     .filter((d) => d.availableSeats - d.bookedSeats >= 1)
     .slice(0, 10)
+    .map((d) => ({
+      ...d,
+      pricing: toPricingDTO({
+        baseAmount:     d.baseOverrideAmount ?? undefined,
+        baseCurrency:   d.baseOverrideCurrency ?? undefined,
+        legacyAmount:   d.priceOverride ?? undefined,
+        legacyCurrency: d.currency ?? undefined,
+      }),
+    }))
 
-  return { ...tour, departures }
+  return {
+    ...tour,
+    departures,
+    pricing: toPricingDTO(tour),
+  }
 }
 
 export async function getTourDepartures(tourId: string) {

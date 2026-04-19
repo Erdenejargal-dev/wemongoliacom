@@ -26,9 +26,26 @@ async function request<T>(
   token?: string | null,
   retryCount = 0,
 ): Promise<T> {
+  // Phase 3 — always attach the user's display-currency preference, if one
+  // is persisted in localStorage. This is the single place the header is
+  // added, so individual endpoints don't need to know about display currency
+  // at all. Explicit `X-Display-Currency` passed in `options.headers` wins.
+  let displayCurrencyHeader: Record<string, string> = {}
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = window.localStorage.getItem('wm.displayCurrency')
+      if (raw === 'MNT' || raw === 'USD') {
+        displayCurrencyHeader = { 'X-Display-Currency': raw }
+      }
+    } catch {
+      // localStorage can throw in private mode / SSR — ignore quietly.
+    }
+  }
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...displayCurrencyHeader,
     ...(options.headers as Record<string, string> | undefined ?? {}),
   }
 

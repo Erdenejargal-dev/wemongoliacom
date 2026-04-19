@@ -13,8 +13,14 @@ export const updateProfileSchema = z.object({
   avatarUrl: z.string().url().optional(),
   country:   z.string().max(100).optional(),
   bio:       z.string().max(2000).optional(),
-  language:  z.string().max(10).optional(),
-  currency:  z.string().max(10).optional(),
+  // Phase 6 — user preference fields. The canonical columns on `User` are
+  // `preferredLanguage` and `preferredCurrency`; we also accept the short
+  // aliases `language` / `currency` for backward compatibility with older
+  // clients.
+  preferredLanguage: z.enum(['mn', 'en']).optional(),
+  preferredCurrency: z.enum(['MNT', 'USD']).optional(),
+  language: z.enum(['mn', 'en']).optional(),
+  currency: z.enum(['MNT', 'USD']).optional(),
 })
 
 export const changePasswordSchema = z.object({

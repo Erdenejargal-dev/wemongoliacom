@@ -12,6 +12,7 @@ export const listQuerySchema = z.object({
   accommodationTypes: z.string().optional(),
   minPrice:          z.coerce.number().nonnegative().optional(),
   maxPrice:          z.coerce.number().nonnegative().optional(),
+  priceCurrency:     z.enum(['MNT', 'USD']).optional(),
   guests:            z.coerce.number().int().positive().optional(),
   checkIn:           z.string().optional(),
   checkOut:          z.string().optional(),

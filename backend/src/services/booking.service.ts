@@ -1,7 +1,9 @@
 import { prisma } from '../lib/prisma'
 import { env } from '../config/env'
 import { AppError } from '../middleware/error'
-import { generateBookingCode, calcPricing, countNights, eachNight } from '../utils/booking'
+import { generateBookingCode, countNights, eachNight } from '../utils/booking'
+import { assertSupportedCurrency, type Currency } from '../utils/currency'
+import { calcBookingPricing, resolveListingBasePricePerUnit, type BookingPricing } from '../utils/pricing'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Input types
@@ -29,6 +31,13 @@ export interface CreateBookingInput {
   travelerEmail?:    string
   travelerPhone?:    string
   travelerCountry?:  string
+  /**
+   * Phase 2 Option B — currency the traveler is charged in (what lands on
+   * booking.currency and the payment gateway). If omitted we default to the
+   * listing's baseCurrency, which preserves Phase 1 behavior for MNT-only
+   * Bonum flows. Must be one of the platform's supported currencies.
+   */
+  bookingCurrency?: 'MNT' | 'USD'
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -255,8 +264,8 @@ export async function createBooking(input: CreateBookingInput) {
   }
 
   let providerId!:              string
-  let pricePerUnit!:            number
-  let currency =                'USD'
+  let baseAmount!:              number
+  let baseCurrency!:            Currency
   let units =                   1
   let startDate!:               Date
   let endDate:                  Date | undefined
@@ -276,8 +285,19 @@ export async function createBooking(input: CreateBookingInput) {
     const dep = await checkTourDeparture(input.tourDepartureId, guests)
 
     providerId      = tour.providerId
-    pricePerUnit    = dep.priceOverride ?? tour.basePrice
-    currency        = tour.currency
+    const resolved = resolveListingBasePricePerUnit({
+      baseAmount:           tour.baseAmount,
+      baseCurrency:         tour.baseCurrency,
+      baseOverrideAmount:   dep.baseOverrideAmount,
+      baseOverrideCurrency: dep.baseOverrideCurrency,
+      legacyAmount:         tour.basePrice,
+      legacyCurrency:       tour.currency,
+      legacyOverrideAmount: dep.priceOverride,
+      legacyOverrideCurrency: dep.currency,
+      label:                'tour',
+    })
+    baseAmount      = resolved.amount
+    baseCurrency    = resolved.currency
     units           = guests
     startDate       = dep.startDate
     endDate         = dep.endDate
@@ -287,16 +307,18 @@ export async function createBooking(input: CreateBookingInput) {
       : null
 
     listingSnapshot = {
-      type:        'tour',
-      title:       tour.title,
-      slug:        tour.slug,
-      price:       pricePerUnit,
-      currency:    tour.currency,
-      startDate:   dep.startDate.toISOString(),
-      endDate:     dep.endDate.toISOString(),
+      type:          'tour',
+      title:         tour.title,
+      slug:          tour.slug,
+      price:         baseAmount,
+      currency:      baseCurrency,
+      baseAmount,
+      baseCurrency,
+      startDate:     dep.startDate.toISOString(),
+      endDate:       dep.endDate.toISOString(),
       guests,
-      destination: destination?.name ?? null,
-      durationDays: tour.durationDays,
+      destination:   destination?.name ?? null,
+      durationDays:  tour.durationDays,
     }
 
   } else if (listingType === 'vehicle') {
@@ -312,17 +334,26 @@ export async function createBooking(input: CreateBookingInput) {
 
     await checkVehicleAvailability(listingId, startDate, endDate)
 
-    const days   = Math.ceil((endDate.getTime() - startDate.getTime()) / (86400000))
-    pricePerUnit = vehicle.pricePerDay
-    currency     = vehicle.currency
+    const days = Math.ceil((endDate.getTime() - startDate.getTime()) / 86400000)
+    const resolved = resolveListingBasePricePerUnit({
+      baseAmount:     vehicle.baseAmount,
+      baseCurrency:   vehicle.baseCurrency,
+      legacyAmount:   vehicle.pricePerDay,
+      legacyCurrency: vehicle.currency,
+      label:          'vehicle',
+    })
+    baseAmount   = resolved.amount
+    baseCurrency = resolved.currency
     units        = days
     providerId   = vehicle.providerId
     listingSnapshot = {
       type:       'vehicle',
       title:      vehicle.title,
       slug:       vehicle.slug,
-      price:      pricePerUnit,
-      currency:   vehicle.currency,
+      price:      baseAmount,
+      currency:   baseCurrency,
+      baseAmount,
+      baseCurrency,
       startDate:  startDate.toISOString(),
       endDate:    endDate.toISOString(),
       days,
@@ -343,28 +374,50 @@ export async function createBooking(input: CreateBookingInput) {
     if (!acc || acc.status !== 'active') throw new AppError('Accommodation not found.', 404)
 
     const nightCount = countNights(checkIn, checkOut)
-    pricePerUnit   = roomType.basePricePerNight
-    currency       = roomType.currency
-    units          = nightCount
-    nights         = nightCount
-    startDate      = checkIn
-    endDate        = checkOut
-    roomTypeId     = roomType.id
-    providerId     = acc.providerId
+    const resolved = resolveListingBasePricePerUnit({
+      baseAmount:     roomType.baseAmount,
+      baseCurrency:   roomType.baseCurrency,
+      legacyAmount:   roomType.basePricePerNight,
+      legacyCurrency: roomType.currency,
+      label:          'roomType',
+    })
+    baseAmount   = resolved.amount
+    baseCurrency = resolved.currency
+    units        = nightCount
+    nights       = nightCount
+    startDate    = checkIn
+    endDate      = checkOut
+    roomTypeId   = roomType.id
+    providerId   = acc.providerId
     listingSnapshot = {
       type:          'accommodation',
       name:          acc.name,
       slug:          acc.slug,
       roomType:      roomType.name,
-      price:         pricePerUnit,
-      currency:      roomType.currency,
+      price:         baseAmount,
+      currency:      baseCurrency,
+      baseAmount,
+      baseCurrency,
       checkIn:       checkIn.toISOString(),
       checkOut:      checkOut.toISOString(),
       nights:        nightCount,
     }
   }
 
-  const pricing = calcPricing(pricePerUnit, units)
+  // Booking currency default: listing's base currency. This keeps MNT-only
+  // Bonum flows unchanged (MNT listing → MNT booking) while allowing
+  // future-proof USD quoting for international Visa payments.
+  const bookingCurrency: Currency = input.bookingCurrency
+    ? assertSupportedCurrency(input.bookingCurrency, 'bookingCurrency')
+    : baseCurrency
+
+  const pricing: BookingPricing = await calcBookingPricing({
+    basePricePerUnit: baseAmount,
+    baseCurrency,
+    units,
+    bookingCurrency,
+  })
+  const currency = pricing.bookingCurrency
 
   const createdAt = new Date()
   const holdExpiresAt = new Date(createdAt.getTime() + env.PENDING_EXPIRY_MINUTES * 60 * 1000)
@@ -399,8 +452,23 @@ export async function createBooking(input: CreateBookingInput) {
         guests,
         adults:        input.adults  ?? guests,
         children:      input.children ?? 0,
-        ...pricing,
+        // Booking-currency snapshot (what the traveler pays)
+        subtotal:       pricing.subtotal,
+        serviceFee:     pricing.serviceFee,
+        taxes:          pricing.taxes,
+        discountAmount: pricing.discountAmount,
+        totalAmount:    pricing.totalAmount,
         currency,
+        // Phase 2 Option B — unit + base-currency snapshot + FX rate.
+        pricePerUnitAmount: pricing.pricePerUnit,
+        units:              pricing.units,
+        baseCurrency:       pricing.baseCurrency,
+        baseSubtotal:       pricing.baseSubtotal,
+        baseServiceFee:     pricing.baseServiceFee,
+        baseTotalAmount:    pricing.baseTotalAmount,
+        fxRate:             pricing.fxRate,
+        fxRateCapturedAt:   pricing.fxRateCapturedAt,
+        fxRateSource:       pricing.fxRateSource,
         bookingStatus:  'pending',
         paymentStatus:  'unpaid',
         holdExpiresAt,
@@ -610,4 +678,117 @@ export async function cancelBooking(bookingCode: string, userId: string, reason?
     .catch((err) => console.error('[email] notifyBookingCancelledByTraveler schedule failed:', err))
 
   return updated
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Quote pricing (non-persisting) — Phase 1 single source of truth for UI totals
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// The frontend used to compute subtotal / serviceFee / total locally, using
+// rules that drifted from the backend (notably a $5 minimum service fee).
+// This endpoint returns authoritative numbers calculated by calcPricing so the
+// booking cards and checkout pages display the exact values that will later be
+// persisted on the Booking row.
+//
+// It does NOT allocate seats, block rooms, or create any DB row — it is safe
+// to call repeatedly while the user adjusts dates or guest counts.
+
+export interface QuoteBookingInput {
+  listingType:      'tour' | 'vehicle' | 'accommodation'
+  listingId:        string
+  tourDepartureId?: string
+  startDate?:       string
+  endDate?:         string
+  roomTypeId?:      string
+  checkIn?:         string
+  checkOut?:        string
+  guests:           number
+  /**
+   * Phase 2 Option B — target (display/booking) currency. Defaults to the
+   * listing's baseCurrency, which keeps Phase 1 quote responses stable for
+   * MNT-only Bonum flows.
+   */
+  bookingCurrency?: 'MNT' | 'USD'
+}
+
+export async function quoteBooking(input: QuoteBookingInput): Promise<BookingPricing> {
+  const { listingType, listingId, guests } = input
+  if (guests < 1) throw new AppError('guests must be at least 1.', 400)
+
+  let baseAmount!:  number
+  let baseCurrency!: Currency
+  let units = 1
+
+  if (listingType === 'tour') {
+    if (!input.tourDepartureId) throw new AppError('tourDepartureId is required for tour quotes.', 400)
+    const tour = await prisma.tour.findUnique({ where: { id: listingId } })
+    if (!tour || tour.status !== 'active') throw new AppError('Tour not found.', 404)
+    const dep = await prisma.tourDeparture.findUnique({ where: { id: input.tourDepartureId } })
+    if (!dep || dep.tourId !== listingId) throw new AppError('Tour departure not found.', 404)
+    const resolved = resolveListingBasePricePerUnit({
+      baseAmount:            tour.baseAmount,
+      baseCurrency:          tour.baseCurrency,
+      baseOverrideAmount:    dep.baseOverrideAmount,
+      baseOverrideCurrency:  dep.baseOverrideCurrency,
+      legacyAmount:          tour.basePrice,
+      legacyCurrency:        tour.currency,
+      legacyOverrideAmount:  dep.priceOverride,
+      legacyOverrideCurrency: dep.currency,
+      label:                 'tour',
+    })
+    baseAmount   = resolved.amount
+    baseCurrency = resolved.currency
+    units        = guests
+
+  } else if (listingType === 'vehicle') {
+    if (!input.startDate || !input.endDate) {
+      throw new AppError('startDate and endDate are required for vehicle quotes.', 400)
+    }
+    const start = new Date(input.startDate)
+    const end   = new Date(input.endDate)
+    if (end <= start) throw new AppError('endDate must be after startDate.', 400)
+    const vehicle = await prisma.vehicle.findUnique({ where: { id: listingId } })
+    if (!vehicle || vehicle.status !== 'active') throw new AppError('Vehicle not found.', 404)
+    const resolved = resolveListingBasePricePerUnit({
+      baseAmount:     vehicle.baseAmount,
+      baseCurrency:   vehicle.baseCurrency,
+      legacyAmount:   vehicle.pricePerDay,
+      legacyCurrency: vehicle.currency,
+      label:          'vehicle',
+    })
+    baseAmount   = resolved.amount
+    baseCurrency = resolved.currency
+    units        = Math.ceil((end.getTime() - start.getTime()) / 86400000)
+
+  } else {
+    if (!input.roomTypeId || !input.checkIn || !input.checkOut) {
+      throw new AppError('roomTypeId, checkIn, and checkOut are required for accommodation quotes.', 400)
+    }
+    const checkIn  = new Date(input.checkIn)
+    const checkOut = new Date(input.checkOut)
+    if (checkOut <= checkIn) throw new AppError('checkOut must be after checkIn.', 400)
+    const rt = await prisma.roomType.findUnique({ where: { id: input.roomTypeId } })
+    if (!rt || rt.accommodationId !== listingId) throw new AppError('Room type not found.', 404)
+    const resolved = resolveListingBasePricePerUnit({
+      baseAmount:     rt.baseAmount,
+      baseCurrency:   rt.baseCurrency,
+      legacyAmount:   rt.basePricePerNight,
+      legacyCurrency: rt.currency,
+      label:          'roomType',
+    })
+    baseAmount   = resolved.amount
+    baseCurrency = resolved.currency
+    units        = countNights(checkIn, checkOut)
+  }
+
+  const bookingCurrency: Currency = input.bookingCurrency
+    ? assertSupportedCurrency(input.bookingCurrency, 'bookingCurrency')
+    : baseCurrency
+
+  return calcBookingPricing({
+    basePricePerUnit: baseAmount,
+    baseCurrency,
+    units,
+    bookingCurrency,
+  })
 }

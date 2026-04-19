@@ -51,11 +51,18 @@ export const createTourSchema = z.object({
   shortDescription: z.string().trim().max(500).optional(),
   description:      z.string().trim().max(10000).optional(),
   durationDays:     z.number().int().positive().max(365).optional(),
-  basePrice:        z.number().positive(),
+  // Phase 2 Option B — preferred pricing inputs.
+  baseAmount:       z.number().positive().optional(),
+  baseCurrency:     z.enum(['MNT', 'USD']).optional(),
+  // Legacy pricing inputs (kept for one release during rollout).
+  basePrice:        z.number().positive().optional(),
   currency:         z.string().length(3).optional(),
   destinationId:    z.string().optional(),
   status:           z.enum(['draft', 'active', 'paused']).optional(),
-})
+}).refine(
+  (v) => v.baseAmount !== undefined || v.basePrice !== undefined,
+  { message: 'Pricing requires either baseAmount or basePrice.' },
+)
 
 export const updateTourSchema = z.object({
   // ── Core info ───────────────────────────────────────────────────────────────
@@ -73,6 +80,9 @@ export const updateTourSchema = z.object({
   destinationId:      z.string().nullable().optional(),
   meetingPoint:       z.string().trim().max(500).nullable().optional(),
   // ── Pricing & policy ────────────────────────────────────────────────────────
+  // Phase 2 Option B — preferred pricing inputs.
+  baseAmount:         z.number().positive().optional(),
+  baseCurrency:       z.enum(['MNT', 'USD']).optional(),
   basePrice:          z.number().positive().optional(),
   currency:           z.string().length(3).optional(),
   cancellationPolicy: z.string().trim().max(5000).nullable().optional(),
@@ -93,20 +103,25 @@ export const addTourImagesSchema = z.object({
 })
 
 export const createDepartureSchema = z.object({
-  startDate:      z.string(),
-  endDate:        z.string(),
-  availableSeats: z.number().int().positive().max(500),
-  priceOverride:  z.number().positive().optional(),
-  currency:       z.string().length(3).optional(),
+  startDate:             z.string(),
+  endDate:               z.string(),
+  availableSeats:        z.number().int().positive().max(500),
+  // Phase 2 Option B — override pricing; both new and legacy accepted.
+  baseOverrideAmount:    z.number().positive().optional(),
+  baseOverrideCurrency:  z.enum(['MNT', 'USD']).optional(),
+  priceOverride:         z.number().positive().optional(),
+  currency:              z.string().length(3).optional(),
 })
 
 export const updateDepartureSchema = z.object({
-  startDate:      z.string().optional(),
-  endDate:        z.string().optional(),
-  availableSeats: z.number().int().positive().max(500).optional(),
-  priceOverride:  z.number().positive().nullable().optional(),
-  currency:       z.string().length(3).optional(),
-  status:         z.enum(['scheduled', 'cancelled']).optional(),
+  startDate:             z.string().optional(),
+  endDate:               z.string().optional(),
+  availableSeats:        z.number().int().positive().max(500).optional(),
+  baseOverrideAmount:    z.number().positive().nullable().optional(),
+  baseOverrideCurrency:  z.enum(['MNT', 'USD']).optional(),
+  priceOverride:         z.number().positive().nullable().optional(),
+  currency:              z.string().length(3).optional(),
+  status:                z.enum(['scheduled', 'cancelled']).optional(),
 })
 
 // ─── Handlers ─────────────────────────────────────────────────────────────

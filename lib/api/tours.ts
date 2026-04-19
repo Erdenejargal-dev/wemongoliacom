@@ -5,6 +5,7 @@
  */
 
 import { apiClient, type Paginated } from './client'
+import type { Pricing } from '../pricing'
 
 // ── Backend response shapes ───────────────────────────────────────────────
 
@@ -27,6 +28,8 @@ export interface BackendTour {
   images: { imageUrl: string }[]
   provider?: { id: string; name: string; slug: string }
   destination?: { id: string; name: string; slug: string }
+  /** Phase 2 Option B — canonical pricing. Prefer this over basePrice/currency. */
+  pricing?: Pricing | null
 }
 
 /** GET /search?type=tour response item (slightly different shape) */
@@ -44,6 +47,7 @@ export interface BackendSearchTour {
   images: { imageUrl: string }[]
   provider?: { id: string; name: string; slug: string }
   destination?: { id: string; name: string; slug: string; country?: string; region?: string | null }
+  pricing?: Pricing | null
 }
 
 export interface BackendTourDetail extends BackendTour {
@@ -73,6 +77,8 @@ export interface BackendDeparture {
   priceOverride?: number | null
   currency?: string
   status: string
+  /** Phase 2 Option B — per-departure Pricing DTO when overridden. */
+  pricing?: Pricing | null
 }
 
 // ── Mapper: BackendTour → frontend Tour (lib/search/types.ts) ─────────────
@@ -88,6 +94,7 @@ export function mapTour(t: BackendTour) {
     region: t.destination?.name ?? '',
     regionSlug: t.destination?.slug ?? '',
     price: t.basePrice,
+    currency: t.currency ?? 'USD',
     duration: t.durationDays ? `${t.durationDays} day${t.durationDays > 1 ? 's' : ''}` : '',
     durationDays: t.durationDays ?? 0,
     rating: t.ratingAverage,
@@ -117,6 +124,7 @@ export function mapSearchTourToFrontend(t: BackendSearchTour) {
     region: dest?.region ?? dest?.name ?? '',
     regionSlug: dest?.slug ?? '',
     price: t.basePrice,
+    currency: t.currency ?? 'USD',
     duration: t.durationDays ? `${t.durationDays} day${t.durationDays > 1 ? 's' : ''}` : '',
     durationDays: t.durationDays ?? 0,
     rating: t.ratingAverage,

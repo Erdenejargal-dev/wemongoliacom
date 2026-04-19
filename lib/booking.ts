@@ -11,6 +11,13 @@ export interface Booking {
   subtotal: number
   serviceFee: number
   total: number
+  /**
+   * Currency of subtotal / serviceFee / total.
+   * Phase 1 (Stabilization): persisted from the backend booking response so
+   * the success page can render the same currency the user was charged in.
+   * Defaults to 'USD' for older session-storage payloads without the field.
+   */
+  currency: string
   travelerName: string
   email: string
   phone: string
@@ -39,7 +46,11 @@ export function getLastBooking(): Booking | null {
   return raw ? (JSON.parse(raw) as Booking) : null
 }
 
-/** Calculate service fee (5% of subtotal, min $5) */
-export function calcServiceFee(subtotal: number): number {
-  return Math.max(5, Math.round(subtotal * 0.05))
-}
+/**
+ * Phase 1 note: calcServiceFee has been intentionally removed.
+ *
+ * Service fee and total are computed exclusively by the backend in
+ * backend/src/utils/booking.ts::calcPricing. The frontend must fetch these
+ * values via POST /bookings/quote (lib/api/quotes.ts) or read them from
+ * the BackendBooking response after POST /bookings — never re-derive them.
+ */

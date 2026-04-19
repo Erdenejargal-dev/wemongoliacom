@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { CalendarDays, Users, ExternalLink, Compass } from 'lucide-react'
 import type { UserTrip, TripStatus } from '@/lib/mock-data/account'
 import { useTravelerLocale } from '@/lib/i18n/traveler/context'
+import { formatMoney } from '@/lib/money'
 
 interface TripsSectionProps {
   trips: UserTrip[]
@@ -76,7 +77,7 @@ export function TripsSection({ trips }: TripsSectionProps) {
                       {tt.bookingId} <span className="font-bold text-gray-700">{trip.bookingId}</span>
                     </p>
                     <p className="text-xs text-gray-400">
-                      {tt.totalLabel} <span className="font-bold text-gray-700">${trip.price.toLocaleString()}</span>
+                      {tt.totalLabel} <span className="font-bold text-gray-700">{formatMoney(trip.price, trip.currency ?? 'USD')}</span>
                     </p>
                   </div>
                   <Link href={`/tours/${trip.tourSlug}`}

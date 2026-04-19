@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
@@ -84,6 +84,19 @@ enum BookingStatus {
   completed
 }
 
+/// Phase 6 — BookingRequest is a lightweight lead created when a listing is
+/// not directly payable today (e.g. USD-priced listing before Visa launches).
+/// It is NOT a booking: no inventory is held, no money is calculated, no FX
+/// snapshot is taken. The provider contacts the traveler to arrange payment
+/// and, once agreed, creates a real Booking through the normal flow.
+enum BookingRequestStatus {
+  new         // just submitted, provider has not reviewed yet
+  in_review   // provider opened it / is contacting the traveler
+  accepted    // provider agreed; a real Booking should follow
+  declined    // provider could not accommodate
+  expired     // auto-closed after inactivity (operational hygiene)
+}
+
 enum PaymentStatus {
   unpaid
   authorized
@@ -156,24 +169,31 @@ enum PlanType {
 // ─────────────────────────────────────────────
 
 model User {
-  id              String   @id @default(cuid())
-  firstName       String
-  lastName        String
-  email           String   @unique
-  passwordHash    String
-  phone           String?
-  country         String?
-  avatarUrl       String?
-  avatarPublicId  String?
-  bio             String?
-  role          UserRole @default(traveler)
-  isVerified    Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                String   @id @default(cuid())
+  firstName         String
+  lastName          String
+  email             String   @unique
+  passwordHash      String
+  phone             String?
+  country           String?
+  avatarUrl         String?
+  avatarPublicId    String?
+  bio               String?
+  role              UserRole @default(traveler)
+  isVerified        Boolean  @default(false)
+  // Phase 2 Option B: optional user preferences for currency/language.
+  // Null = auto-detect from country (handled in app/frontend).
+  // Only values in SUPPORTED_CURRENCIES / ('mn'|'en') are accepted at
+  // service boundaries.
+  preferredCurrency String?
+  preferredLanguage String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   provider            Provider?
   providerOnboarding  ProviderOnboarding?
   bookings            Booking[]
+  bookingRequests     BookingRequest[]
   conversations       Conversation[]
   messages            Message[]
   reviews             Review[]
@@ -209,20 +229,20 @@ model PasswordResetToken {
 // ─────────────────────────────────────────────
 
 model ProviderOnboarding {
-  id              String           @id @default(cuid())
-  ownerUserId     String           @unique
-  businessName    String?
-  description     String?
-  location        String?
-  phone           String?
-  email           String?
-  website         String?
-  languages       String[]
-  providerTypes   ProviderType[]
-  logoUrl         String?
-  logoPublicId    String?
-  coverImageUrl   String?
-  coverPublicId   String?
+  id            String           @id @default(cuid())
+  ownerUserId   String           @unique
+  businessName  String?
+  description   String?
+  location      String?
+  phone         String?
+  email         String?
+  website       String?
+  languages     String[]
+  providerTypes ProviderType[]
+  logoUrl       String?
+  logoPublicId  String?
+  coverImageUrl String?
+  coverPublicId String?
   stepCompleted Int              @default(0)
   status        OnboardingStatus @default(draft)
   createdAt     DateTime         @default(now())
@@ -239,41 +259,42 @@ model ProviderOnboarding {
 // ─────────────────────────────────────────────
 
 model Provider {
-  id                String         @id @default(cuid())
-  ownerUserId       String         @unique
-  name              String
-  slug              String         @unique
-  description       String?
-  logoUrl           String?
-  logoPublicId      String?
-  coverImageUrl     String?
-  coverPublicId     String?
-  email             String?
-  phone             String?
-  website           String?
-  city              String?
-  region            String?
-  country           String         @default("Mongolia")
-  address           String?
-  languages         String[]
-  providerTypes     ProviderType[]
-  ratingAverage     Float          @default(0)
-  reviewsCount      Int            @default(0)
-  totalGuestsHosted Int            @default(0)
-  isVerified          Boolean            @default(false)
-  verificationStatus  VerificationStatus @default(unverified)
-  rejectionReason     String?
-  reviewedAt          DateTime?
-  plan                PlanType           @default(FREE)
-  status              ListingStatus      @default(draft)
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
+  id                 String             @id @default(cuid())
+  ownerUserId        String             @unique
+  name               String
+  slug               String             @unique
+  description        String?
+  logoUrl            String?
+  logoPublicId       String?
+  coverImageUrl      String?
+  coverPublicId      String?
+  email              String?
+  phone              String?
+  website            String?
+  city               String?
+  region             String?
+  country            String             @default("Mongolia")
+  address            String?
+  languages          String[]
+  providerTypes      ProviderType[]
+  ratingAverage      Float              @default(0)
+  reviewsCount       Int                @default(0)
+  totalGuestsHosted  Int                @default(0)
+  isVerified         Boolean            @default(false)
+  verificationStatus VerificationStatus @default(unverified)
+  rejectionReason    String?
+  reviewedAt         DateTime?
+  plan               PlanType           @default(FREE)
+  status             ListingStatus      @default(draft)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
   owner          User            @relation(fields: [ownerUserId], references: [id], onDelete: Restrict)
   tours          Tour[]
   vehicles       Vehicle[]
   accommodations Accommodation[]
   bookings       Booking[]
+  bookingRequests BookingRequest[]
   conversations  Conversation[]
   payouts        Payout[]
 
@@ -287,24 +308,24 @@ model Provider {
 // ─────────────────────────────────────────────
 
 model Destination {
-  id               String   @id @default(cuid())
-  name             String
-  slug             String   @unique
-  country          String   @default("Mongolia")
-  region           String?
-  shortDescription String?
-  description      String?
-  heroImageUrl       String?
-  heroImagePublicId  String?
-  gallery            String[]
-  highlights       String[]
-  activities       String[]
-  tips             String[]
-  bestTimeToVisit  String?
-  weatherInfo      String?
-  featured         Boolean  @default(false)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                String   @id @default(cuid())
+  name              String
+  slug              String   @unique
+  country           String   @default("Mongolia")
+  region            String?
+  shortDescription  String?
+  description       String?
+  heroImageUrl      String?
+  heroImagePublicId String?
+  gallery           String[]
+  highlights        String[]
+  activities        String[]
+  tips              String[]
+  bestTimeToVisit   String?
+  weatherInfo       String?
+  featured          Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   tours          Tour[]
   vehicles       Vehicle[]
@@ -320,10 +341,10 @@ model Destination {
 // ─────────────────────────────────────────────
 
 model Tour {
-  id                 String        @id @default(cuid())
+  id                 String      @id @default(cuid())
   providerId         String
   destinationId      String?
-  slug               String        @unique
+  slug               String      @unique
   title              String
   shortDescription   String?
   description        String?
@@ -333,21 +354,34 @@ model Tour {
   durationNights     Int?
   difficulty         Difficulty?
   meetingPoint       String?
-  pickupIncluded     Boolean       @default(false)
+  pickupIncluded     Boolean     @default(false)
   cancellationPolicy String?
   languages          String[]
-  maxGuests          Int           @default(12)
-  minGuests          Int           @default(1)
+  maxGuests          Int         @default(12)
+  minGuests          Int         @default(1)
   ageRestrictions    String?
-  priceType          PriceType     @default(per_person)
+  priceType          PriceType   @default(per_person)
   basePrice          Float
-  currency           String        @default("USD")
-  ratingAverage      Float         @default(0)
-  reviewsCount       Int           @default(0)
-  status             ListingStatus @default(draft)
-  featured           Boolean       @default(false)
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+  currency           String      @default("USD")
+
+  // Phase 2 Option B — multi-currency canonical pricing.
+  // `baseAmount`/`baseCurrency` are the source of truth for new writes.
+  // Legacy `basePrice`/`currency` are dual-written for one release cycle,
+  // then dropped in a follow-up migration.
+  // `normalizedAmountMnt` is a cached conversion used by search/sort/filter
+  // so we never compare raw numbers across different currencies.
+  baseAmount          Float?
+  baseCurrency        String?
+  normalizedAmountMnt Float?
+  normalizedFxRate    Float?
+  normalizedFxRateAt  DateTime?
+
+  ratingAverage Float         @default(0)
+  reviewsCount  Int           @default(0)
+  status        ListingStatus @default(draft)
+  featured      Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   provider    Provider     @relation(fields: [providerId], references: [id], onDelete: Cascade)
   destination Destination? @relation(fields: [destinationId], references: [id], onDelete: SetNull)
@@ -363,6 +397,7 @@ model Tour {
   @@index([status])
   @@index([featured])
   @@index([basePrice])
+  @@index([normalizedAmountMnt])
   @@index([ratingAverage])
   @@map("tours")
 }
@@ -426,17 +461,23 @@ model TourExcludedItem {
 // ─────────────────────────────────────────────
 
 model TourDeparture {
-  id             String          @id @default(cuid())
-  tourId         String
-  startDate      DateTime
-  endDate        DateTime
-  availableSeats Int
-  bookedSeats    Int             @default(0)
-  priceOverride  Float?
-  currency       String          @default("USD")
-  status         DepartureStatus @default(scheduled)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id                   String          @id @default(cuid())
+  tourId               String
+  startDate            DateTime
+  endDate              DateTime
+  availableSeats       Int
+  bookedSeats          Int             @default(0)
+  priceOverride        Float?
+  currency             String          @default("USD")
+  // Phase 2 Option B — currency-aware override. baseOverrideAmount is the
+  // canonical override price in baseOverrideCurrency. Legacy priceOverride
+  // is dual-written (same value when override currency matches legacy
+  // currency field) until the drop-legacy migration ships.
+  baseOverrideAmount   Float?
+  baseOverrideCurrency String?
+  status               DepartureStatus @default(scheduled)
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
 
   tour     Tour      @relation(fields: [tourId], references: [id], onDelete: Cascade)
   bookings Booking[]
@@ -471,11 +512,21 @@ model Vehicle {
   features           String[]
   pricePerDay        Float
   currency           String        @default("USD")
-  ratingAverage      Float         @default(0)
-  reviewsCount       Int           @default(0)
-  status             VehicleStatus @default(draft)
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+
+  // Phase 2 Option B — see Tour for semantics. baseAmount/baseCurrency
+  // replaces pricePerDay/currency as source of truth; normalizedAmountMnt
+  // powers search/sort.
+  baseAmount          Float?
+  baseCurrency        String?
+  normalizedAmountMnt Float?
+  normalizedFxRate    Float?
+  normalizedFxRateAt  DateTime?
+
+  ratingAverage Float         @default(0)
+  reviewsCount  Int           @default(0)
+  status        VehicleStatus @default(draft)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   provider    Provider     @relation(fields: [providerId], references: [id], onDelete: Cascade)
   destination Destination? @relation(fields: [destinationId], references: [id], onDelete: SetNull)
@@ -486,6 +537,7 @@ model Vehicle {
   @@index([providerId])
   @@index([destinationId])
   @@index([status])
+  @@index([normalizedAmountMnt])
   @@map("vehicles")
 }
 
@@ -512,15 +564,20 @@ model VehicleImage {
 // ─────────────────────────────────────────────
 
 model VehicleAvailability {
-  id            String      @id @default(cuid())
-  vehicleId     String
-  startDate     DateTime
-  endDate       DateTime
-  status        BlockStatus @default(available)
-  priceOverride Float?
-  note          String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id                   String      @id @default(cuid())
+  vehicleId            String
+  startDate            DateTime
+  endDate              DateTime
+  status               BlockStatus @default(available)
+  priceOverride        Float?
+  // Phase 2 Option B — currency-aware override. priceOverride alone is
+  // ambiguous (no currency side car on VehicleAvailability in Phase 1);
+  // baseOverrideAmount/baseOverrideCurrency now carry the full semantic.
+  baseOverrideAmount   Float?
+  baseOverrideCurrency String?
+  note                 String?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
 
   vehicle  Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   bookings Booking[]
@@ -593,25 +650,36 @@ model AccommodationImage {
 // ─────────────────────────────────────────────
 
 model RoomType {
-  id                String   @id @default(cuid())
+  id                String  @id @default(cuid())
   accommodationId   String
   name              String
   description       String?
-  maxGuests         Int      @default(2)
+  maxGuests         Int     @default(2)
   bedType           String?
-  quantity          Int      @default(1)
+  quantity          Int     @default(1)
   basePricePerNight Float
-  currency          String   @default("USD")
-  amenities         String[]
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  currency          String  @default("USD")
 
-  accommodation Accommodation     @relation(fields: [accommodationId], references: [id], onDelete: Cascade)
+  // Phase 2 Option B — see Tour for semantics. baseAmount/baseCurrency
+  // replaces basePricePerNight/currency as source of truth;
+  // normalizedAmountMnt powers search/sort.
+  baseAmount          Float?
+  baseCurrency        String?
+  normalizedAmountMnt Float?
+  normalizedFxRate    Float?
+  normalizedFxRateAt  DateTime?
+
+  amenities String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accommodation Accommodation      @relation(fields: [accommodationId], references: [id], onDelete: Cascade)
   availability  RoomAvailability[]
   bookings      Booking[]
   images        RoomTypeImage[]
 
   @@index([accommodationId])
+  @@index([normalizedAmountMnt])
   @@map("room_types")
 }
 
@@ -645,15 +713,20 @@ model RoomTypeImage {
 // ─────────────────────────────────────────────
 
 model RoomAvailability {
-  id             String                 @id @default(cuid())
-  roomTypeId     String
-  date           DateTime               @db.Date
-  availableUnits Int
-  bookedUnits    Int                    @default(0)
-  priceOverride  Float?
-  status         RoomAvailabilityStatus @default(available)
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
+  id                   String                 @id @default(cuid())
+  roomTypeId           String
+  date                 DateTime               @db.Date
+  availableUnits       Int
+  bookedUnits          Int                    @default(0)
+  priceOverride        Float?
+  // Phase 2 Option B — currency-aware override. priceOverride alone has
+  // no currency sidecar on Phase 1 (inherits the parent roomType currency);
+  // baseOverrideAmount/baseOverrideCurrency now carry the full semantic.
+  baseOverrideAmount   Float?
+  baseOverrideCurrency String?
+  status               RoomAvailabilityStatus @default(available)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
 
   roomType RoomType  @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
   bookings Booking[]
@@ -694,13 +767,36 @@ model Booking {
   children  Int       @default(0)
   quantity  Int       @default(1)
 
-  // Pricing
+  // Pricing — charge-currency view (what the payment gateway sees).
+  // For MNT Bonum bookings, `currency` is 'MNT' and all amounts are in MNT.
   subtotal       Float
   serviceFee     Float
   taxes          Float  @default(0)
   discountAmount Float  @default(0)
   totalAmount    Float
   currency       String @default("USD")
+
+  // ── Phase 2 Option B — FX + base-currency snapshot ─────────────────────
+  // A booking row must be fully reproducible from its own columns even if
+  // exchange rates change tomorrow. `listingSnapshot` JSON is supplemental
+  // for display metadata only — it is NOT authoritative for money.
+  //
+  // `pricePerUnitAmount`/`units` are first-class mirrors of what was used
+  // to compute subtotal (price per seat/night/day × count).
+  //
+  // `baseCurrency` is the listing's native currency at booking time, which
+  // may differ from `currency` (charge currency). `fxRate` converts
+  // 1 baseCurrency → fxRate · chargeCurrency. For same-currency bookings
+  // fxRate = 1 and `fxRateSource` = 'same_currency'.
+  pricePerUnitAmount Float?
+  units              Int?
+  baseCurrency       String?
+  baseSubtotal       Float?
+  baseServiceFee     Float?
+  baseTotalAmount    Float?
+  fxRate             Float?
+  fxRateCapturedAt   DateTime?
+  fxRateSource       String?
 
   // Statuses
   bookingStatus BookingStatus @default(pending)
@@ -720,8 +816,8 @@ model Booking {
 
   listingSnapshot Json
 
-  holdExpiresAt DateTime?
-  maxHoldUntil  DateTime?
+  holdExpiresAt        DateTime?
+  maxHoldUntil         DateTime?
   lastPaymentAttemptAt DateTime?
 
   createdAt DateTime @default(now())
@@ -736,9 +832,9 @@ model Booking {
 
   roomAvailabilityId String?
 
-  payment      Payment?
-  review       Review?
-  conversation Conversation?
+  payment       Payment?
+  review        Review?
+  conversation  Conversation?
   webhookEvents WebhookEvent[]
 
   @@index([userId])
@@ -748,6 +844,72 @@ model Booking {
   @@index([startDate])
   @@index([holdExpiresAt])
   @@map("bookings")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: BookingRequest (Phase 6 — UX + Growth)
+//
+// A lead for listings that cannot be paid through current processors
+// (today: any non-MNT listing, because Bonum is MNT-only). The traveler
+// submits their contact details + preferred dates; the provider follows
+// up out-of-band and, if accepted, creates a real Booking through the
+// normal flow.
+//
+// This model is INTENTIONALLY SEPARATE from Booking. It does not touch
+// pricing, FX, or inventory. See `backend/src/services/booking-request.service.ts`.
+// ─────────────────────────────────────────────
+
+model BookingRequest {
+  id         String @id @default(cuid())
+
+  // Who is requesting. Auth is optional: we allow unauthenticated leads so
+  // that first-time foreign visitors can submit interest without signing up,
+  // but we keep the user link when present for later linking into a real Booking.
+  userId     String?
+  providerId String
+
+  // What they want
+  listingType ListingType
+  listingId   String
+
+  // Traveler-supplied contact info (captured even when logged in, because a
+  // request can be submitted from the booking card before auth).
+  name    String
+  email   String
+  phone   String?
+  message String?
+
+  // Requested dates / party size — free-form numbers because this is a lead,
+  // not a booking. `endDate` is optional (single-day activities).
+  startDate  DateTime?
+  endDate    DateTime?
+  guests     Int?
+  quantity   Int?
+
+  // Currency the listing is priced in (MNT or USD today). Stored so the
+  // provider sees the currency the traveler was quoted in, even after the
+  // listing is re-priced later.
+  listingCurrency String?
+
+  status     BookingRequestStatus @default(new)
+  providerNote String?
+
+  // Minimal audit metadata
+  ipAddress  String?
+  userAgent  String?
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  reviewedAt DateTime?
+
+  user     User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId, status])
+  @@index([userId])
+  @@index([listingType, listingId])
+  @@index([createdAt])
+  @@map("booking_requests")
 }
 
 // ─────────────────────────────────────────────
@@ -770,8 +932,8 @@ model Payment {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  providerOrderId    String? @unique
-  bonumTransactionId String? @unique
+  providerOrderId    String?   @unique
+  bonumTransactionId String?   @unique
   sessionExpiresAt   DateTime?
   followUpUrl        String?
   idempotencyKey     String?   @unique
@@ -784,7 +946,7 @@ model Payment {
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Restrict)
 
-  attempts PaymentAttempt[]
+  attempts      PaymentAttempt[]
   webhookEvents WebhookEvent[]
 
   @@index([bookingId])
@@ -801,7 +963,7 @@ model PaymentAttempt {
   id              String               @id @default(cuid())
   paymentId       String
   attemptNumber   Int
-  status          PaymentAttemptStatus   @default(initiated)
+  status          PaymentAttemptStatus @default(initiated)
   idempotencyKey  String               @unique
   providerOrderId String?
   followUpUrl     String?
@@ -821,17 +983,17 @@ model PaymentAttempt {
 // ─────────────────────────────────────────────
 
 model WebhookEvent {
-  id              String   @id @default(cuid())
-  provider        String   @default("bonum")
-  eventId         String   @unique
-  bookingId       String?
-  paymentId       String?
-  rawPayload      Json
-  signatureValid  Boolean  @default(false)
-  processed       Boolean  @default(false)
-  processedAt     DateTime?
-  error           String?
-  createdAt       DateTime @default(now())
+  id             String    @id @default(cuid())
+  provider       String    @default("bonum")
+  eventId        String    @unique
+  bookingId      String?
+  paymentId      String?
+  rawPayload     Json
+  signatureValid Boolean   @default(false)
+  processed      Boolean   @default(false)
+  processedAt    DateTime?
+  error          String?
+  createdAt      DateTime  @default(now())
 
   booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
@@ -883,9 +1045,9 @@ model Conversation {
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
 
-  traveler User     @relation(fields: [travelerId], references: [id], onDelete: Cascade)
-  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  booking  Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  traveler User      @relation(fields: [travelerId], references: [id], onDelete: Cascade)
+  provider Provider  @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  booking  Booking?  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   messages Message[]
 
   @@unique([travelerId, providerId])
@@ -986,4 +1148,56 @@ model Notification {
   @@index([userId])
   @@index([isRead])
   @@map("notifications")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: FxRate (Phase 2 Option B)
+//
+// Admin-managed exchange rate table. Rates are IMMUTABLE once written —
+// corrections create a new row with a later effectiveFrom. `getActiveRate`
+// (backend/src/utils/fx.ts) reads the latest row with effectiveFrom <= now
+// for the requested (fromCurrency, toCurrency) pair.
+//
+// Same-currency conversions never hit this table — they short-circuit with
+// rate=1, source='same_currency'.
+// ─────────────────────────────────────────────
+
+model FxRate {
+  id            String   @id @default(cuid())
+  fromCurrency  String
+  toCurrency    String
+  rate          Float
+  effectiveFrom DateTime
+  source        String
+  note          String?
+  createdById   String?
+  createdAt     DateTime @default(now())
+
+  @@index([fromCurrency, toCurrency, effectiveFrom])
+  @@map("fx_rates")
+}
+
+// ─────────────────────────────────────────────
+// MODEL: FxBackfillReport (Phase 2 Option B)
+//
+// Data-quality log written by the backfill migration. One row per record
+// that could not be automatically classified (unknown currency, mismatch
+// between booking.currency and listing.baseCurrency, override without a
+// currency parent, etc). Admins resolve these manually before the
+// drop-legacy migration ships.
+// ─────────────────────────────────────────────
+
+model FxBackfillReport {
+  id         String    @id @default(cuid())
+  entityType String
+  entityId   String
+  issue      String
+  context    Json?
+  resolvedAt DateTime?
+  resolvedBy String?
+  createdAt  DateTime  @default(now())
+
+  @@index([entityType, entityId])
+  @@index([resolvedAt])
+  @@map("fx_backfill_reports")
 }

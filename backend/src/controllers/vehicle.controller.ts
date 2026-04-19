@@ -11,6 +11,7 @@ export const listQuerySchema = z.object({
   minSeats:      z.coerce.number().int().positive().optional(),
   minPrice:      z.coerce.number().nonnegative().optional(),
   maxPrice:      z.coerce.number().nonnegative().optional(),
+  priceCurrency: z.enum(['MNT', 'USD']).optional(),
   startDate:     z.string().optional(),
   endDate:       z.string().optional(),
   page:          z.coerce.number().int().positive().optional(),

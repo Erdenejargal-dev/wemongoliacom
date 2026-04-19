@@ -5,11 +5,33 @@ import { useSession, signOut } from 'next-auth/react'
 import { Loader2, BookOpen, DollarSign, Star, TrendingUp, BarChart2 } from 'lucide-react'
 import { PageHeader } from '@/components/dashboard/ui/PageHeader'
 import { StatCard } from '@/components/dashboard/ui/StatCard'
-import { fetchProviderAnalytics, type ProviderAnalytics } from '@/lib/api/provider'
+import { fetchProviderAnalytics, type ProviderAnalytics, type ProviderRevenueBucket } from '@/lib/api/provider'
 import { getFreshAccessToken } from '@/lib/auth-utils'
 import { ApiError } from '@/lib/api/client'
 import { useRouter } from 'next/navigation'
 import { useProviderLocale } from '@/lib/i18n/provider/context'
+import { formatMoney, isSupportedCurrency, type Currency } from '@/lib/money'
+
+/**
+ * Phase 3 — analytics honesty. Never flatten a multi-currency bucket into
+ * a single USD/MNT number. Mirrors the helper in `DashboardOverview.tsx`
+ * so both provider screens tell the same story about revenue.
+ */
+function formatProviderRevenueHeadline(bucket?: ProviderRevenueBucket): string {
+  if (!bucket) return '—'
+  const entries = Object.entries(bucket.byCurrency).filter(([, v]) => v > 0)
+  if (entries.length === 0) return formatMoney(0, 'MNT')
+  if (entries.length === 1) {
+    const [cur, amt] = entries[0]
+    return formatMoney(amt, (isSupportedCurrency(cur) ? cur : 'MNT') as Currency)
+  }
+  if (bucket.normalizationStatus === 'ok' && bucket.normalizedMnt != null) {
+    return `≈ ${formatMoney(bucket.normalizedMnt, 'MNT')}`
+  }
+  return entries
+    .map(([cur, amt]) => formatMoney(amt, (isSupportedCurrency(cur) ? cur : 'MNT') as Currency))
+    .join(' + ')
+}
 
 export default function AnalyticsPage() {
   const router        = useRouter()
@@ -65,8 +87,8 @@ export default function AnalyticsPage() {
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard title={at.totalBookings} value={analytics.bookings?.total ?? 0}  icon={BookOpen}   iconColor="text-blue-600"   iconBg="bg-blue-50"   />
-            <StatCard title={at.totalRevenue}  value={analytics.revenue?.total  != null ? `$${analytics.revenue.total.toLocaleString()}`  : '—'} icon={DollarSign} iconColor="text-brand-600" iconBg="bg-brand-50" />
-            <StatCard title={at.thisMonth}     value={analytics.revenue?.thisMonth != null ? `$${analytics.revenue.thisMonth.toLocaleString()}` : '—'} icon={TrendingUp} iconColor="text-purple-600" iconBg="bg-purple-50" />
+            <StatCard title={at.totalRevenue}  value={formatProviderRevenueHeadline(analytics.revenue?.total)}     icon={DollarSign} iconColor="text-brand-600"  iconBg="bg-brand-50"  />
+            <StatCard title={at.thisMonth}     value={formatProviderRevenueHeadline(analytics.revenue?.thisMonth)} icon={TrendingUp} iconColor="text-purple-600" iconBg="bg-purple-50" />
             <StatCard
               title={at.reviews}
               value={analytics.reviews?.total != null

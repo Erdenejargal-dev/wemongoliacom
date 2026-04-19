@@ -17,12 +17,23 @@ import {
   Star, Users, Minus, Plus, ChevronRight, Shield, Clock, AlertCircle,
 } from 'lucide-react'
 import type { BackendStayDetail, BackendStayRoomType } from '@/lib/api/stays'
+import { formatMoney, type Currency, isSupportedCurrency } from '@/lib/money'
+import { readPricing, formatPricing, formatSecondaryPricing } from '@/lib/pricing'
+import { useMntToUsdHint } from '@/lib/fx-hint'
+import { usePreferences } from '@/components/providers/PreferencesProvider'
+import { useDisplayCurrency } from '@/components/providers/DisplayCurrencyProvider'
+import { describeListingPaymentCapability } from '@/lib/payment-capability'
+import { PaymentCapabilityNotice } from '@/components/payments/PaymentCapabilityNotice'
+import { RequestBookingModal } from '@/components/booking-requests/RequestBookingModal'
+import { useEffect } from 'react'
+import { track } from '@/lib/analytics'
 
 interface StayBookingCardProps {
   stay: Pick<
     BackendStayDetail,
     | 'id'
     | 'slug'
+    | 'name'
     | 'ratingAverage'
     | 'reviewsCount'
     | 'accommodationType'
@@ -48,6 +59,10 @@ function nightsBetween(a: string, b: string): number {
 
 export function StayBookingCard({ stay }: StayBookingCardProps) {
   const router = useRouter()
+  // Phase 6 — see TourBookingCard for why both are read; preferences wins.
+  const { currency: preferredCurrency } = usePreferences()
+  const { displayCurrency: dcLegacy } = useDisplayCurrency()
+  const displayCurrency = preferredCurrency ?? dcLegacy
 
   const today     = toInputDate(new Date())
   const tomorrow  = toInputDate(new Date(Date.now() + 86_400_000))
@@ -63,11 +78,31 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
   const selectedRoom: BackendStayRoomType | undefined =
     stay.roomTypes.find((r) => r.id === selectedRoomId) ?? stay.roomTypes[0]
 
-  const nights      = nightsBetween(checkIn, checkOut)
-  const pricePerNight = selectedRoom?.basePricePerNight ?? 0
-  const total       = nights * pricePerNight
-  const maxGuests   = selectedRoom?.maxGuests ?? 1
-  const canReserve  = !!selectedRoom && nights > 0 && guests >= 1 && guests <= maxGuests
+  // Phase 3 — Pricing DTO preferred. The legacy `basePricePerNight`/`currency`
+  // branch is retained as fallback for rooms that predate the Phase 2 backfill.
+  const roomPricing = selectedRoom
+    ? (selectedRoom.pricing ?? readPricing({
+        pricing:           null,
+        basePricePerNight: selectedRoom.basePricePerNight,
+        currency:          selectedRoom.currency,
+      }))
+    : null
+
+  const nights        = nightsBetween(checkIn, checkOut)
+  const pricePerNight = roomPricing?.base.amount ?? selectedRoom?.basePricePerNight ?? 0
+  const currency: Currency = roomPricing?.base.currency
+    ?? (isSupportedCurrency(selectedRoom?.currency) ? (selectedRoom!.currency as Currency) : 'MNT')
+  const maxGuests     = selectedRoom?.maxGuests ?? 1
+  const canReserve    = !!selectedRoom && nights > 0 && guests >= 1 && guests <= maxGuests
+
+  const fxHint         = useMntToUsdHint(currency === 'MNT' && displayCurrency === 'USD')
+  const primaryPrice   = formatPricing(roomPricing, displayCurrency) || formatMoney(pricePerNight, currency)
+  const secondaryPrice = formatSecondaryPricing(
+    roomPricing,
+    displayCurrency,
+    fxHint ? { fromMnt: fxHint.fromMnt ?? 0 } : null,
+  )
+  const capability     = describeListingPaymentCapability(currency)
 
   const handleCheckInChange = (val: string) => {
     setCheckIn(val)
@@ -84,8 +119,28 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
     setGuests((g) => Math.min(g, room.maxGuests))
   }
 
+  const [requestOpen, setRequestOpen] = useState(false)
+
+  // Phase 6 — USD listings can't be charged today; branch into the lead flow.
+  const mustRequest = !!selectedRoom && !capability.payable
+
+  useEffect(() => {
+    if (!mustRequest) return
+    track('view_listing_unpayable', {
+      listingType:  'accommodation',
+      listingId:    stay.id,
+      baseCurrency: currency,
+    })
+  }, [mustRequest, stay.id, currency])
+
   const handleReserve = () => {
+    if (mustRequest) {
+      setRequestOpen(true)
+      return
+    }
     if (!selectedRoom || !canReserve) return
+    // Phase 1: no locally-computed "total" is passed forward. The checkout
+    // page fetches the authoritative total via POST /bookings/quote.
     const params = new URLSearchParams({
       slug:       stay.slug,
       accId:      stay.id,
@@ -93,7 +148,6 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
       checkIn,
       checkOut,
       guests:     String(guests),
-      total:      String(total),
     })
     router.push(`/checkout/stay?${params.toString()}`)
   }
@@ -103,14 +157,18 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-xl p-6">
 
-      {/* Price headline */}
+      {/* Price headline — Pricing DTO preferred; secondary shows conversion
+          only when the backend provided a normalized figure. */}
       {selectedRoom && (
-        <div className="flex items-baseline gap-1 mb-1">
-          <span className="text-2xl font-bold text-gray-900">
-            ${selectedRoom.basePricePerNight.toLocaleString()}
-          </span>
-          <span className="text-sm text-gray-500">/ night</span>
-        </div>
+        <>
+          <div className="flex items-baseline gap-1 mb-1">
+            <span className="text-2xl font-bold text-gray-900">{primaryPrice}</span>
+            <span className="text-sm text-gray-500">/ night</span>
+          </div>
+          {secondaryPrice && (
+            <p className="text-xs text-gray-500 mb-1">≈ {secondaryPrice}</p>
+          )}
+        </>
       )}
 
       {/* Rating */}
@@ -165,7 +223,10 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
                     </p>
                   </div>
                   <span className="text-sm font-bold text-gray-900 shrink-0">
-                    ${room.basePricePerNight}/night
+                    {formatMoney(
+                      room.pricing?.base.amount ?? room.basePricePerNight,
+                      (room.pricing?.base.currency ?? (isSupportedCurrency(room.currency) ? room.currency : 'MNT')) as Currency,
+                    )}/night
                   </span>
                 </button>
               )
@@ -254,38 +315,65 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
         </div>
       )}
 
-      {/* Price breakdown */}
+      {/* No price breakdown here — Phase 1 moved all total/fee math to the
+          backend. The checkout page fetches an authoritative quote via POST
+          /bookings/quote and displays the real subtotal/serviceFee/total. */}
       {nights > 0 && selectedRoom && (
-        <div className="border-t border-gray-100 pt-4 mb-4 space-y-2">
-          <div className="flex justify-between text-sm text-gray-600">
-            <span>
-              ${pricePerNight.toLocaleString()} × {nights} night{nights !== 1 ? 's' : ''}
-            </span>
-            <span>${total.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between text-sm font-bold text-gray-900 pt-1 border-t border-gray-100">
-            <span>Total before taxes</span>
-            <span>${total.toLocaleString()}</span>
-          </div>
+        <div className="border-t border-gray-100 pt-4 mb-4">
+          <p className="text-xs text-gray-500">
+            {formatMoney(pricePerNight, currency)} per night · {nights} night{nights !== 1 ? 's' : ''}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">Service fee and final total shown at checkout</p>
         </div>
       )}
 
-      {/* Reserve button */}
-      <button
-        onClick={handleReserve}
-        disabled={!canReserve}
-        className="w-full py-3.5 bg-brand-500 hover:bg-brand-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold text-sm rounded-xl transition-colors shadow-sm shadow-brand-200 flex items-center justify-center gap-2 active:scale-[0.98]"
-      >
-        {canReserve ? (
-          <>Reserve Stay <ChevronRight className="w-4 h-4" /></>
-        ) : !hasRooms ? (
-          'No rooms available'
-        ) : nights === 0 ? (
-          'Select your dates'
-        ) : (
-          'Unable to reserve'
-        )}
-      </button>
+      {/* Phase 3 — payment currency capability notice, shown before the CTA. */}
+      {mustRequest && (
+        <PaymentCapabilityNotice capability={capability} className="mb-4" />
+      )}
+
+      {/* Phase 6 — Reserve (MNT) vs Request Booking (non-MNT) */}
+      {mustRequest ? (
+        <>
+          <button
+            onClick={handleReserve}
+            className="w-full py-3.5 bg-gray-900 hover:bg-gray-800 text-white font-bold text-sm rounded-xl transition-colors flex items-center justify-center gap-2 active:scale-[0.98]"
+          >
+            Request Booking <ChevronRight className="w-4 h-4" />
+          </button>
+          <p className="text-center text-xs text-gray-400 mt-2">
+            Pay later with international options (coming soon)
+          </p>
+        </>
+      ) : (
+        <button
+          onClick={handleReserve}
+          disabled={!canReserve}
+          className="w-full py-3.5 bg-brand-500 hover:bg-brand-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold text-sm rounded-xl transition-colors shadow-sm shadow-brand-200 flex items-center justify-center gap-2 active:scale-[0.98]"
+        >
+          {canReserve ? (
+            <>Reserve Stay <ChevronRight className="w-4 h-4" /></>
+          ) : !hasRooms ? (
+            'No rooms available'
+          ) : nights === 0 ? (
+            'Select your dates'
+          ) : (
+            'Unable to reserve'
+          )}
+        </button>
+      )}
+
+      <RequestBookingModal
+        open={requestOpen}
+        onClose={() => setRequestOpen(false)}
+        listingType="accommodation"
+        listingId={stay.id}
+        listingTitle={stay.name}
+        listingCurrency={currency}
+        initialStartDate={checkIn}
+        initialEndDate={checkOut}
+        initialGuests={guests}
+      />
 
       {/* Trust info */}
       <div className="mt-4 space-y-2">

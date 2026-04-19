@@ -10,11 +10,10 @@ import { BookingSummary } from '@/components/checkout/BookingSummary'
 import { fetchTourBySlug, type BackendTourDetail, type BackendDeparture } from '@/lib/api/tours'
 import {
   type Booking,
-  generateBookingId,
   saveBooking,
-  calcServiceFee,
 } from '@/lib/booking'
 import { createBooking } from '@/lib/api/bookings'
+import { getBookingQuote, type BookingQuote } from '@/lib/api/quotes'
 import { getFreshAccessToken } from '@/lib/auth-utils'
 import { ApiError } from '@/lib/api/client'
 
@@ -28,16 +27,15 @@ function CheckoutContent() {
   const { data: session } = useSession()
 
   const slug      = params.get('slug')     ?? ''
-  const tourId    = params.get('tourId')   ?? ''
   const depId     = params.get('depId')    ?? ''
   const guests    = Math.max(1, Number(params.get('guests') ?? 1))
   const date      = params.get('date')     ?? ''
-  const urlTotal  = params.get('total')    ?? ''
 
   const [tour, setTour]         = useState<BackendTourDetail | null>(null)
   const [departure, setDeparture] = useState<BackendDeparture | null>(null)
   const [loading, setLoading]   = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [quote, setQuote]         = useState<BookingQuote | null>(null)
 
   const [traveler,    setTraveler]    = useState<TravelerData>(EMPTY_TRAVELER)
   const [errors,      setErrors]      = useState<Partial<Record<keyof TravelerData, string>>>({})
@@ -76,11 +74,36 @@ function CheckoutContent() {
     return () => { alive = false }
   }, [slug, depId, date])
 
-  // Computed pricing
+  // Displayed pricing — all totals come from the backend quote (single source
+  // of truth). The frontend never computes subtotal/serviceFee/total itself.
   const pricePerPerson = departure?.priceOverride ?? tour?.basePrice ?? 0
-  const subtotal   = pricePerPerson * guests
-  const serviceFee = calcServiceFee(subtotal)
-  const total      = subtotal + serviceFee
+  const listingCurrency = tour?.currency ?? 'USD'
+
+  // Fetch authoritative quote from backend whenever selection changes.
+  useEffect(() => {
+    let alive = true
+    async function loadQuote() {
+      if (!session || !tour || !departure) { setQuote(null); return }
+      const token = await getFreshAccessToken()
+      if (!alive || !token) return
+      try {
+        const q = await getBookingQuote(
+          {
+            listingType: 'tour',
+            listingId: tour.id,
+            tourDepartureId: departure.id,
+            guests,
+          },
+          token,
+        )
+        if (alive) setQuote(q)
+      } catch {
+        if (alive) setQuote(null)
+      }
+    }
+    void loadQuote()
+    return () => { alive = false }
+  }, [session, tour, departure, guests])
 
   const tourTitle    = tour?.title ?? 'Mongolia Tour'
   const tourLocation = tour?.destination?.name ?? 'Mongolia'
@@ -147,6 +170,7 @@ function CheckoutContent() {
           subtotal:       backendBooking.subtotal,
           serviceFee:     backendBooking.serviceFee,
           total:          backendBooking.totalAmount,
+          currency:       backendBooking.currency,
           travelerName:   traveler.name,
           email:          traveler.email,
           phone:          traveler.phone,
@@ -353,6 +377,13 @@ function CheckoutContent() {
                   date={departure ? departure.startDate.slice(0, 10) : date}
                   guests={guests}
                   pricePerPerson={pricePerPerson}
+                  currency={listingCurrency}
+                  quote={quote ? {
+                    subtotal:    quote.subtotal,
+                    serviceFee:  quote.serviceFee,
+                    totalAmount: quote.totalAmount,
+                    currency:    quote.currency,
+                  } : null}
                   slug={slug}
                 />
               </div>

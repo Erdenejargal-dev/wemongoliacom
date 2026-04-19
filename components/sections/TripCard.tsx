@@ -2,6 +2,7 @@
 
 import { Eye, Heart, Map } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatMoney } from "@/lib/money";
 
 export interface TripCardProps {
   id: string;
@@ -10,6 +11,8 @@ export interface TripCardProps {
   days: number;
   places: number;
   price: number;
+  /** Currency for `price` (MNT | USD). Defaults to USD for legacy callers. */
+  currency?: string;
   author: string;
   timeAgo: string;
   views: string;
@@ -21,7 +24,7 @@ export interface TripCardProps {
 }
 
 export function TripCard({
-  id, image, title, days, places, price, author, timeAgo, views, likes, 
+  id, image, title, days, places, price, currency, author, timeAgo, views, likes, 
   isBookmarked, isFavorited, onBookmark, onFavorite 
 }: TripCardProps) {
   return (
@@ -50,7 +53,7 @@ export function TripCard({
             </div>
             <div className="text-right text-white">
               <div className="text-[10px] opacity-60 uppercase font-bold">From</div>
-              <div className="text-xl font-black">${price}</div>
+              <div className="text-xl font-black">{formatMoney(price, currency ?? 'USD')}</div>
             </div>
           </div>
           <div className="h-px bg-white/10 my-3" />

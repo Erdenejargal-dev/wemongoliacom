@@ -1,7 +1,21 @@
 'use client'
 
+/**
+ * components/checkout/BookingSummary.tsx
+ *
+ * Phase 1 (Stabilization) — displays authoritative pricing from the backend.
+ *
+ * All amounts (subtotal, serviceFee, total) MUST be provided by the caller,
+ * which is expected to fetch them from POST /bookings/quote. The component
+ * never recomputes a total from pricePerPerson × guests — that would re-
+ * introduce the same frontend/backend drift Phase 1 fixed.
+ *
+ * If pricing is not yet available (loading state) it renders placeholder
+ * dashes instead of a fabricated number.
+ */
+
 import { CalendarDays, Users, Clock, MapPin, Shield, Tag } from 'lucide-react'
-import { calcServiceFee } from '@/lib/booking'
+import { formatMoney } from '@/lib/money'
 
 interface BookingSummaryProps {
   tourTitle: string
@@ -11,6 +25,14 @@ interface BookingSummaryProps {
   date: string
   guests: number
   pricePerPerson: number
+  currency: string
+  /** Optional — when provided, rendered as-is. Omit to show a loading state. */
+  quote?: {
+    subtotal:    number
+    serviceFee:  number
+    totalAmount: number
+    currency:    string
+  } | null
   slug: string
 }
 
@@ -21,11 +43,9 @@ function formatDate(dateStr: string) {
 }
 
 export function BookingSummary({
-  tourTitle, tourLocation, tourDuration, tourImage, date, guests, pricePerPerson, slug,
+  tourTitle, tourLocation, tourDuration, tourImage, date, guests, pricePerPerson, currency, quote,
 }: BookingSummaryProps) {
-  const subtotal = pricePerPerson * guests
-  const serviceFee = calcServiceFee(subtotal)
-  const total = subtotal + serviceFee
+  const quoteCurrency = quote?.currency ?? currency
 
   return (
     <div className="space-y-4">
@@ -67,23 +87,23 @@ export function BookingSummary({
           <div className="flex justify-between text-sm text-gray-600">
             <span className="flex items-center gap-1.5">
               <Tag className="w-3.5 h-3.5 text-gray-400" />
-              ${pricePerPerson} × {guests} guest{guests !== 1 ? 's' : ''}
+              {formatMoney(pricePerPerson, currency)} × {guests} guest{guests !== 1 ? 's' : ''}
             </span>
-            <span>${subtotal.toLocaleString()}</span>
+            <span>{quote ? formatMoney(quote.subtotal, quoteCurrency) : '—'}</span>
           </div>
           <div className="flex justify-between text-sm text-gray-600">
             <span className="flex items-center gap-1.5">
               <Shield className="w-3.5 h-3.5 text-gray-400" />
               Service fee
             </span>
-            <span>${serviceFee}</span>
+            <span>{quote ? formatMoney(quote.serviceFee, quoteCurrency) : '—'}</span>
           </div>
           <div className="border-t border-gray-100 pt-3 flex justify-between font-bold text-gray-900">
             <span>Total</span>
-            <span className="text-lg">${total.toLocaleString()}</span>
+            <span className="text-lg">{quote ? formatMoney(quote.totalAmount, quoteCurrency) : '—'}</span>
           </div>
         </div>
-        <p className="text-xs text-gray-400 mt-3">All prices in USD · Taxes may apply at destination</p>
+        <p className="text-xs text-gray-400 mt-3">Totals in {quoteCurrency} · Taxes may apply at destination</p>
       </div>
 
       {/* Trust badges */}

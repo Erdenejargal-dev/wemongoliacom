@@ -10,6 +10,7 @@ import {
 import { getLastBooking, type Booking } from '@/lib/booking'
 import { fetchBookingByCode } from '@/lib/api/bookings'
 import { getFreshAccessToken } from '@/lib/auth-utils'
+import { formatMoney } from '@/lib/money'
 
 function formatDate(dateStr: string) {
   if (!dateStr) return 'To be confirmed'
@@ -150,6 +151,7 @@ function SuccessInner() {
   const subtotal = backend?.subtotal ?? booking?.subtotal ?? 0
   const serviceFee = backend?.serviceFee ?? booking?.serviceFee ?? 0
   const total = backend?.totalAmount ?? booking?.total ?? 0
+  const currency = backend?.currency ?? booking?.currency ?? 'USD'
   const guests = backend?.guests ?? booking?.guests ?? 1
 
   return (
@@ -198,15 +200,15 @@ function SuccessInner() {
           <div className="space-y-2 text-sm text-gray-600">
             <div className="flex justify-between">
               <span>Subtotal</span>
-              <span>${Number(subtotal).toLocaleString()}</span>
+              <span>{formatMoney(Number(subtotal), currency)}</span>
             </div>
             <div className="flex justify-between">
               <span>Service fee</span>
-              <span>${Number(serviceFee).toLocaleString()}</span>
+              <span>{formatMoney(Number(serviceFee), currency)}</span>
             </div>
             <div className="flex justify-between font-bold text-gray-900 border-t border-gray-100 pt-2 mt-2">
               <span>Total paid</span>
-              <span className="text-base">${Number(total).toLocaleString()}</span>
+              <span className="text-base">{formatMoney(Number(total), currency)}</span>
             </div>
           </div>
         </div>

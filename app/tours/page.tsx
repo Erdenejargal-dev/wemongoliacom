@@ -11,6 +11,7 @@ import { queryToSearchParams, searchParamsToQuery } from '@/lib/search/urlSync'
 import type { SearchQuery } from '@/lib/search/types'
 import { DEFAULT_QUERY } from '@/lib/search/types'
 import { cn } from '@/lib/utils'
+import { formatMoney } from '@/lib/money'
 
 const SORT_OPTIONS: { label: string; value: SearchQuery['sortBy'] }[] = [
   { label: 'Most popular', value: 'popular' },
@@ -180,7 +181,7 @@ function ToursContent() {
             {activeFilters > 0 && (
               <div className="flex flex-wrap gap-2 mb-4">
                 {query.priceRange[1] < 2000 && (
-                  <FilterChip label={`Under $${query.priceRange[1]}`} onRemove={() => updateQueryAndUrl({ priceRange: [0, 2000] })} />
+                  <FilterChip label={`Under ${formatMoney(query.priceRange[1], 'USD')}`} onRemove={() => updateQueryAndUrl({ priceRange: [0, 2000] })} />
                 )}
                 {query.durationFilter !== 'any' && (
                   <FilterChip label={DURATIONS_MAP[query.durationFilter] ?? query.durationFilter} onRemove={() => updateQueryAndUrl({ durationFilter: 'any' })} />

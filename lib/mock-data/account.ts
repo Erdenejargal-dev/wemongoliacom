@@ -20,6 +20,8 @@ export interface UserTrip {
   date: string
   guests: number
   price: number
+  /** Currency for `price` (MNT | USD). Optional for legacy mocks. */
+  currency?: string
   bookingId: string
   status: TripStatus
 }

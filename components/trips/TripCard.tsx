@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { CalendarDays, Users, ChevronDown } from 'lucide-react'
 import type { Trip } from '@/lib/mock-data/trips'
+import { formatMoney } from '@/lib/money'
 import { TripStatusBadge } from './TripStatusBadge'
 import { BookingDetails } from './BookingDetails'
 import { CancelBookingButton } from './CancelBookingButton'
@@ -50,7 +51,7 @@ export function TripCard({ trip, onCancel }: TripCardProps) {
               <Users className="w-3.5 h-3.5 text-brand-500" />
               {trip.guests} guest{trip.guests !== 1 ? 's' : ''}
             </span>
-            <span className="font-bold text-gray-800">${trip.price.toLocaleString()}</span>
+            <span className="font-bold text-gray-800">{formatMoney(trip.price, trip.currency)}</span>
           </div>
 
           {/* Actions */}

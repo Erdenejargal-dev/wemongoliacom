@@ -57,6 +57,7 @@ export function mapBackendBookingToTripCard(booking: BackendBooking): Trip | nul
       durationUnit: 'day',
       guests: booking.guests,
       price: booking.totalAmount,
+      currency: booking.currency ?? 'USD',
       status,
       cancelReason: (booking as { cancelReason?: string | null }).cancelReason,
     }
@@ -88,6 +89,7 @@ export function mapBackendBookingToTripCard(booking: BackendBooking): Trip | nul
       durationUnit: 'day',
       guests: booking.guests,
       price: booking.totalAmount,
+      currency: booking.currency ?? 'USD',
       status,
       cancelReason: (booking as { cancelReason?: string | null }).cancelReason,
     }
@@ -119,6 +121,7 @@ export function mapBackendBookingToTripCard(booking: BackendBooking): Trip | nul
     durationUnit: 'night',
     guests: booking.guests,
     price: booking.totalAmount,
+    currency: booking.currency ?? 'USD',
     status,
     cancelReason: (booking as { cancelReason?: string | null }).cancelReason,
   }
@@ -138,6 +141,7 @@ export function mapBackendBookingToUserTrip(booking: BackendBooking): UserTrip |
     date: mappedTrip.date,
     guests: mappedTrip.guests,
     price: mappedTrip.price,
+    currency: mappedTrip.currency,
     bookingId: mappedTrip.bookingId,
     status: mappedTrip.status as UserTripStatus,
   }

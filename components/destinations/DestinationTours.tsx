@@ -9,6 +9,7 @@
 import Link from 'next/link'
 import { Star, Clock, ArrowRight } from 'lucide-react'
 import type { BackendTourInDestination } from '@/lib/api/destinations'
+import { formatMoney } from '@/lib/money'
 
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1569949381669-ecf31ae8e613?q=80&w=800&auto=format&fit=crop'
@@ -109,7 +110,7 @@ function TourMiniCard({ tour }: { tour: BackendTourInDestination }) {
           {/* Price */}
           <div>
             <span className="text-base font-bold text-gray-900">
-              ${tour.basePrice.toLocaleString()}
+              {formatMoney(tour.basePrice, tour.currency ?? 'USD')}
             </span>
             <span className="text-xs text-gray-400">/person</span>
           </div>

@@ -76,6 +76,8 @@ export interface BackendStayRoomType {
   quantity: number
   basePricePerNight: number
   currency: string
+  /** Phase 2 Option B — canonical Pricing DTO. Prefer over legacy fields. */
+  pricing?: import('../pricing').Pricing | null
   amenities: string[]
   /**
    * Room-level photos (ger interior, suite view, etc.).

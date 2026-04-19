@@ -11,6 +11,8 @@ import {
   requestRefund,
   refundSchema,
   paginationSchema,
+  getPaymentCapability,
+  getPaymentProcessors,
 } from '../controllers/payment.controller'
 
 const router = Router()
@@ -18,6 +20,10 @@ const router = Router()
 router.use(authenticate)
 
 router.get('/my', validate(paginationSchema, 'query'), listMyPayments)
+
+// Phase 3: pre-flight capability + processor registry (non-mutating)
+router.get('/capability',  getPaymentCapability)
+router.get('/processors',  getPaymentProcessors)
 
 router.post('/initiate/:bookingId', initiatePayment)
 

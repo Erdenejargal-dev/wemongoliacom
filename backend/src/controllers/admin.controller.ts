@@ -1,7 +1,10 @@
 import { Request, Response, NextFunction } from 'express'
 import { z } from 'zod'
 import * as adminService from '../services/admin.service'
+import * as fx from '../utils/fx'
+import * as pricingHealth from '../services/pricing-health.service'
 import { ok } from '../utils/response'
+import { SUPPORTED_CURRENCIES } from '../utils/currency'
 
 // ─── Schemas ──────────────────────────────────────────────────────────────
 
@@ -238,6 +241,160 @@ export async function adminToggleDestinationFeatured(req: Request, res: Response
   try {
     const result = await destinationService.adminToggleDestinationFeatured(String(req.params.id))
     return ok(res, result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ─── FX Rate schemas (Phase 2 Option B) ──────────────────────────────────
+
+const currencyEnum = z.enum(SUPPORTED_CURRENCIES)
+
+export const fxRateListQuerySchema = z.object({
+  fromCurrency: currencyEnum.optional(),
+  toCurrency:   currencyEnum.optional(),
+  page:         z.coerce.number().int().positive().optional(),
+  limit:        z.coerce.number().int().positive().max(200).optional(),
+})
+
+export const fxRateCreateSchema = z.object({
+  fromCurrency:  currencyEnum,
+  toCurrency:    currencyEnum,
+  rate:          z.number().positive().finite(),
+  effectiveFrom: z.string().datetime().optional(),
+  source:        z.string().trim().min(1).max(80).optional(),
+  note:          z.string().trim().max(500).nullable().optional(),
+}).superRefine((d, ctx) => {
+  if (d.fromCurrency === d.toCurrency) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'fromCurrency and toCurrency must differ.',
+      path: ['toCurrency'],
+    })
+  }
+})
+
+// ─── FX Rate handlers ────────────────────────────────────────────────────
+
+export async function adminListFxRates(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await fx.listFxRates(req.query as fx.ListFxRatesQuery)
+    return ok(res, result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function adminCreateFxRate(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await fx.createFxRate(req.body, req.user!.userId)
+    res.status(201)
+    return ok(res, result, 'Exchange rate recorded.')
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ─── Pricing health (Phase 3) ────────────────────────────────────────────
+//
+// Read-only ops surface: FX freshness, currency distribution, listings
+// missing normalization, backfill reports, and payment-blocked bookings.
+// All diagnostics are non-mutating; repair flows are explicit elsewhere.
+
+export const backfillReportQuerySchema = z.object({
+  resolved:   z.coerce.boolean().optional(),
+  entityType: z.string().max(50).optional(),
+  issue:      z.string().max(200).optional(),
+  page:       z.coerce.number().int().positive().optional(),
+  limit:      z.coerce.number().int().positive().max(200).optional(),
+})
+
+export async function adminGetPricingHealth(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await pricingHealth.getPricingHealthOverview()
+    return ok(res, result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function adminGetFxRateHealth(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await pricingHealth.getFxRateHealth()
+    return ok(res, { rates: result })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function adminGetCurrencyDistribution(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await pricingHealth.getCurrencyDistribution()
+    return ok(res, result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function adminGetListingsMissingNormalization(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await pricingHealth.getListingsMissingNormalization()
+    return ok(res, result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function adminListBackfillReports(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await pricingHealth.listBackfillReports(req.query as any)
+    return ok(res, result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function adminGetPaymentBlockedBookings(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await pricingHealth.getPaymentBlockedBookings(100)
+    return ok(res, { bookings: result })
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ─── Backfill inspect / resolve (Phase 3, Task 7) ──────────────────────
+
+/**
+ * Inspect one backfill report. Read-only: returns the report plus the live
+ * state of the flagged entity so ops can decide what to do next. NEVER
+ * mutates the flagged entity.
+ */
+export async function adminGetBackfillReport(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = String(req.params.reportId)
+    const result = await pricingHealth.getBackfillReportDetail(id)
+    if (!result) return res.status(404).json({ success: false, error: 'Backfill report not found.' })
+    return ok(res, result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+/**
+ * Close a backfill report by marking it resolved. Deliberately scoped: the
+ * admin can only change the REPORT state here — any fix to the underlying
+ * data must be a separate, explicit action. This keeps the audit surface
+ * safe ("inspect, don't blindly mutate") while still letting ops clear a
+ * reviewed ticket.
+ */
+export async function adminResolveBackfillReport(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = String(req.params.reportId)
+    const userId = (req as any).user?.userId ?? 'unknown-admin'
+    const result = await pricingHealth.markBackfillReportResolved(id, { resolvedBy: String(userId) })
+    if (!result) return res.status(404).json({ success: false, error: 'Backfill report not found.' })
+    return ok(res, { report: result })
   } catch (err) {
     next(err)
   }

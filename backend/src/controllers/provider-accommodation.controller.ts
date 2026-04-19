@@ -61,10 +61,16 @@ export const createRoomTypeSchema = z.object({
   maxGuests:         z.number().int().positive().max(20).optional(),
   bedType:           z.string().max(50).optional(),
   quantity:          z.number().int().positive().max(500).optional(),
-  basePricePerNight: z.number().positive(),
+  // Phase 2 Option B — preferred pricing inputs.
+  baseAmount:        z.number().positive().optional(),
+  baseCurrency:      z.enum(['MNT', 'USD']).optional(),
+  basePricePerNight: z.number().positive().optional(),
   currency:          z.string().length(3).optional(),
   amenities:         z.array(z.string().max(100)).max(20).optional(),
-})
+}).refine(
+  (v) => v.baseAmount !== undefined || v.basePricePerNight !== undefined,
+  { message: 'Room type requires either baseAmount or basePricePerNight.' },
+)
 
 export const updateRoomTypeSchema = z.object({
   name:              z.string().trim().min(1).max(200).optional(),
@@ -72,6 +78,8 @@ export const updateRoomTypeSchema = z.object({
   maxGuests:         z.number().int().positive().max(20).optional(),
   bedType:           z.string().max(50).optional(),
   quantity:          z.number().int().positive().max(500).optional(),
+  baseAmount:        z.number().positive().optional(),
+  baseCurrency:      z.enum(['MNT', 'USD']).optional(),
   basePricePerNight: z.number().positive().optional(),
   currency:          z.string().length(3).optional(),
   amenities:         z.array(z.string().max(100)).max(20).optional(),

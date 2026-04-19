@@ -8,15 +8,55 @@ import {
   Clock, ArrowRight, CheckCircle2, XCircle, AlertCircle,
 } from 'lucide-react'
 import { fetchAdminAnalytics, fetchAdminProviders, fetchAdminBookings } from '@/lib/api/admin'
-import type { AdminAnalytics, AdminProvider, AdminBooking } from '@/lib/api/admin'
+import type { AdminAnalytics, AdminProvider, AdminBooking, RevenueBucket } from '@/lib/api/admin'
 import { useAdminLocale } from '@/lib/i18n/admin/context'
+import { formatMoney, type Currency, isSupportedCurrency } from '@/lib/money'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function fmt(n: number) {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000)     return `$${(n / 1_000).toFixed(1)}K`
-  return `$${n.toFixed(0)}`
+/**
+ * Format a RevenueBucket for the headline KPI card.
+ *
+ * Phase 3 — analytics honesty. The previous `fmt` helper prefixed every
+ * number with "$", silently treating all revenue as USD even when the
+ * booking was in MNT. That's the exact misleading total this phase
+ * eliminates. Instead we:
+ *   - show the MNT-normalized total when available
+ *   - append "≈" when the number is an FX-converted figure rather than a
+ *     same-currency sum
+ *   - when no FX rate is available, show "Per currency" and list the
+ *     top bucket(s) instead of a single fake total
+ */
+function formatRevenueHeadline(bucket?: RevenueBucket): { primary: string; note: string | null } {
+  if (!bucket) return { primary: '—', note: null }
+  const entries = Object.entries(bucket.byCurrency).filter(([, v]) => v > 0)
+
+  if (entries.length === 0) {
+    return { primary: formatMoney(0, 'MNT'), note: null }
+  }
+
+  // Single-currency bookings → no FX needed, show authoritative total.
+  if (entries.length === 1) {
+    const [cur, amt] = entries[0]
+    const c: Currency = isSupportedCurrency(cur) ? cur : 'MNT'
+    return { primary: formatMoney(amt, c), note: null }
+  }
+
+  if (bucket.normalizationStatus === 'ok' && bucket.normalizedMnt != null) {
+    return {
+      primary: `≈ ${formatMoney(bucket.normalizedMnt, 'MNT')}`,
+      note:    'Mixed currencies, converted to MNT at current rates.',
+    }
+  }
+
+  // FX missing and >1 currency → do NOT invent a total.
+  const parts = entries.map(([cur, amt]) =>
+    formatMoney(amt, (isSupportedCurrency(cur) ? cur : 'MNT') as Currency),
+  )
+  return {
+    primary: parts.join(' + '),
+    note:    'FX rate unavailable — totals shown per currency.',
+  }
 }
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
@@ -141,6 +181,8 @@ export default function AdminOverviewPage() {
     { href: '/admin/users',     ...t.overview.quickActions.users,     icon: Users },
     { href: '/admin/providers', ...t.overview.quickActions.providers, icon: Building2 },
     { href: '/admin/bookings',  ...t.overview.quickActions.bookings,  icon: BookOpen },
+    // Phase 3 — ops surface for FX/pricing integrity.
+    { href: '/admin/pricing-health', label: 'Pricing & FX Health', desc: 'FX freshness, backfill, blocked bookings', icon: TrendingUp },
   ]
 
   return (
@@ -177,13 +219,23 @@ export default function AdminOverviewPage() {
           icon={BookOpen}
           accent="green"
         />
-        <StatCard
-          label={t.overview.stats.revenue}
-          value={fmt(analytics?.revenue.total ?? 0)}
-          sub={t.overview.stats.revenueThisMonth(fmt(analytics?.revenue.thisMonth ?? 0))}
-          icon={TrendingUp}
-          accent="green"
-        />
+        {(() => {
+          const totalRev = formatRevenueHeadline(analytics?.revenue.total)
+          const monthRev = formatRevenueHeadline(analytics?.revenue.thisMonth)
+          const subCore  = t.overview.stats.revenueThisMonth(monthRev.primary)
+          const sub      = totalRev.note
+            ? `${subCore} — ${totalRev.note}`
+            : subCore
+          return (
+            <StatCard
+              label={t.overview.stats.revenue}
+              value={totalRev.primary}
+              sub={sub}
+              icon={TrendingUp}
+              accent={totalRev.note && totalRev.note.startsWith('FX rate unavailable') ? 'amber' : 'green'}
+            />
+          )
+        })()}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -274,7 +326,7 @@ export default function AdminOverviewPage() {
                       <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${sc.cls}`}>
                         {sc.label}
                       </span>
-                      <span className="text-xs font-semibold text-gray-900">${b.totalAmount}</span>
+                      <span className="text-xs font-semibold text-gray-900">{formatMoney(b.totalAmount, b.currency)}</span>
                     </div>
                   </li>
                 )

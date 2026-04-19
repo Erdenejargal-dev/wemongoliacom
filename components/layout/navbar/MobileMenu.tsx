@@ -31,6 +31,7 @@ import type { Session } from 'next-auth'
 import { AuthModal } from '@/components/AuthModal'
 import { Button } from '@/components/ui/button'
 import { showBecomeAHost } from '@/lib/navigation'
+import { PreferenceSwitcher } from './PreferenceSwitcher'
 
 // ── Featured destinations (max 4 in accordion) ───────────────────────────────
 
@@ -189,6 +190,15 @@ export function MobileMenu({ session, onClose }: MobileMenuProps) {
      * The old md:hidden caused the drawer to be invisible on tablet (768–1023px).
      */
     <div className="lg:hidden border-t border-gray-100 bg-white max-h-[92vh] overflow-y-auto">
+
+      {/* Phase 6 — language + currency switcher surfaced on mobile so users
+          without a desktop view can still set their preference. */}
+      <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50">
+        <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+          Language & Currency
+        </span>
+        <PreferenceSwitcher compact />
+      </div>
 
       {/* ══════════════════════════════════════════
           SIGNED-IN
