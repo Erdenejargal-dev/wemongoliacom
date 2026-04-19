@@ -77,7 +77,8 @@ export async function getActiveRate(
   if (!row) {
     throw new AppError(
       `FX rate unavailable for ${from}→${to} at ${at.toISOString()}. ` +
-      'An administrator must seed a rate (see backend/prisma/seed-fx.ts).',
+      'An administrator must add an active rate from the admin dashboard ' +
+      '(Admin → Pricing & FX → FX rates).',
       503,
     )
   }

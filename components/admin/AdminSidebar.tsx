@@ -9,6 +9,8 @@ import {
   BookOpen,
   MapPin,
   ShieldCheck,
+  Activity,
+  ArrowLeftRight,
   X,
   ChevronRight,
 } from 'lucide-react'
@@ -34,6 +36,8 @@ export function AdminSidebar({ open = true, onClose, userName, userEmail }: Admi
     { href: '/admin/providers',      label: t.sidebar.providers,     icon: Building2 },
     { href: '/admin/bookings',       label: t.sidebar.bookings,      icon: BookOpen },
     { href: '/admin/destinations',   label: 'Destinations',          icon: MapPin },
+    { href: '/admin/pricing-health', label: 'Pricing health',        icon: Activity },
+    { href: '/admin/fx-rates',       label: 'FX rates',              icon: ArrowLeftRight },
   ]
 
   return (

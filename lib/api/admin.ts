@@ -447,3 +447,81 @@ export async function resolveAdminBackfillReport(
     token,
   )
 }
+
+// ─── FX rates (Phase 6 MVP — admin-managed) ──────────────────────────────
+//
+// MVP ops model: the admin dashboard is the primary way to manage FX rates.
+// CLI seeding remains available for emergency bootstrap but the UI below
+// is what operators use day-to-day.
+//
+// Rows are IMMUTABLE: POST creates a new row with a later `effectiveFrom`;
+// the existing FX lookup (`getActiveRate` in the backend) reads the most
+// recent row for (fromCurrency, toCurrency) whose `effectiveFrom <= now`.
+// Corrections therefore never overwrite history — they always append.
+
+export interface AdminFxRate {
+  id:            string
+  fromCurrency:  'MNT' | 'USD'
+  toCurrency:    'MNT' | 'USD'
+  rate:          number
+  source:        string
+  effectiveFrom: string
+  createdAt:     string
+  note:          string | null
+  createdById:   string | null
+}
+
+export interface AdminFxRateListResponse {
+  data:       AdminFxRate[]
+  pagination: { page: number; limit: number; total: number; pages: number }
+}
+
+export interface FxRateListParams {
+  fromCurrency?: 'MNT' | 'USD'
+  toCurrency?:   'MNT' | 'USD'
+  page?:         number
+  limit?:        number
+}
+
+export async function fetchAdminFxRates(
+  params: FxRateListParams,
+  token:  string,
+): Promise<AdminFxRateListResponse> {
+  const qs = new URLSearchParams()
+  if (params.fromCurrency) qs.set('fromCurrency', params.fromCurrency)
+  if (params.toCurrency)   qs.set('toCurrency',   params.toCurrency)
+  if (params.page)         qs.set('page',         String(params.page))
+  if (params.limit)        qs.set('limit',        String(params.limit))
+  const query = qs.toString()
+  return apiClient.get<AdminFxRateListResponse>(
+    `/admin/fx-rates${query ? `?${query}` : ''}`,
+    token,
+  )
+}
+
+export interface CreateFxRateBody {
+  fromCurrency:   'MNT' | 'USD'
+  toCurrency:     'MNT' | 'USD'
+  rate:           number
+  source?:        string
+  note?:          string | null
+  effectiveFrom?: string
+}
+
+export async function createAdminFxRate(
+  body:  CreateFxRateBody,
+  token: string,
+): Promise<AdminFxRate> {
+  return apiClient.post<AdminFxRate>('/admin/fx-rates', body, token)
+}
+
+/**
+ * Convenience: FX health for the supported pairs (same shape as the
+ * pricing-health overview uses, but this endpoint can be fetched on its
+ * own so the /admin/fx-rates page stays lightweight).
+ */
+export async function fetchAdminFxRateHealth(
+  token: string,
+): Promise<{ rates: FxRateHealth[] }> {
+  return apiClient.get<{ rates: FxRateHealth[] }>('/admin/pricing-health/fx-rates', token)
+}

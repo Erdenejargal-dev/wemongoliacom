@@ -18,6 +18,7 @@
  */
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import {
   fetchAdminPricingHealth,
@@ -26,7 +27,7 @@ import {
   type PricingHealthOverview,
   type BackfillReport,
 } from '@/lib/api/admin'
-import { AlertTriangle, CheckCircle2, Clock, CircleDot } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Clock, CircleDot, ArrowLeftRight } from 'lucide-react'
 import { formatMoney, isSupportedCurrency, type Currency } from '@/lib/money'
 
 function Badge({ children, tone }: { children: React.ReactNode; tone: 'ok' | 'warn' | 'err' | 'info' }) {
@@ -125,6 +126,13 @@ export default function AdminPricingHealthPage() {
 
   const staleRates = data.fxRates.filter((r) => r.status === 'stale').length
   const missingRates = data.fxRates.filter((r) => r.status === 'missing').length
+  const usdToMnt = data.fxRates.find((r) => r.fromCurrency === 'USD' && r.toCurrency === 'MNT')
+  const usdToMntTone: 'ok' | 'warn' | 'err' =
+    !usdToMnt || usdToMnt.status === 'missing'
+      ? 'err'
+      : usdToMnt.status === 'stale'
+        ? 'warn'
+        : 'ok'
   const anyListingMissing =
     data.missingNormalization.tours + data.missingNormalization.rooms + data.missingNormalization.vehicles
 
@@ -180,6 +188,36 @@ export default function AdminPricingHealthPage() {
           ))}
         </ul>
       </section>
+
+      {/* FX summary → link into the admin-managed FX page */}
+      <Link
+        href="/admin/fx-rates"
+        className="block rounded-xl border border-gray-100 bg-white p-4 hover:border-amber-200 hover:bg-amber-50/40 transition-colors"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0">
+              <ArrowLeftRight className="w-4 h-4 text-amber-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-900">Active USD → MNT rate</p>
+              <p className="text-xs text-gray-500 truncate">
+                {usdToMnt?.rate != null ? `${usdToMnt.rate}` : '—'}
+                {' · '}
+                {usdToMnt?.source ?? 'no source'}
+                {' · '}
+                updated {fmtAge(usdToMnt?.ageSeconds ?? null)}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {usdToMntTone === 'ok'   && <Badge tone="ok"><CheckCircle2 className="w-3 h-3" /> fresh</Badge>}
+            {usdToMntTone === 'warn' && <Badge tone="warn"><Clock className="w-3 h-3" /> stale</Badge>}
+            {usdToMntTone === 'err'  && <Badge tone="err"><AlertTriangle className="w-3 h-3" /> missing</Badge>}
+            <span className="text-xs text-amber-700 font-medium">Manage →</span>
+          </div>
+        </div>
+      </Link>
 
       {/* FX rates */}
       <section className="rounded-xl border border-gray-100 bg-white p-5">
