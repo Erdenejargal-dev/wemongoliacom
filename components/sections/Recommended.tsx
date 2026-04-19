@@ -12,7 +12,8 @@ import {
   Users,
 } from "lucide-react";
 import { fetchTours, type BackendTour } from "@/lib/api/tours";
-import { formatMoney } from "@/lib/money";
+import { formatPricing, readPricing, type Pricing } from "@/lib/pricing";
+import { usePreferences } from "@/components/providers/PreferencesProvider";
 import {
   Carousel,
   CarouselContent,
@@ -29,8 +30,13 @@ interface RecommendedTourCardModel {
   title: string;
   category: string;
   destinationName: string;
-  priceFrom: number;
-  priceCurrency: string;
+  /**
+   * Phase 6.2 — the card reads `pricing` instead of a raw number so it
+   * can switch between MNT / USD when the user flips the currency
+   * preference. `null` means the backend had no seeded price or FX rate
+   * for this tour; the card renders a "Custom" badge in that case.
+   */
+  pricing: Pricing | null;
   imageUrl: string;
   durationDays: number;
   durationNights: number;
@@ -69,11 +75,11 @@ function mapBackendTourToCard(t: BackendTour): RecommendedTourCardModel {
     title: t.title ?? "Untitled Tour",
     category: t.category ?? "Tour",
     destinationName: t.destination?.name ?? "Mongolia",
-    priceFrom:
-      typeof t.basePrice === "number" && Number.isFinite(t.basePrice)
-        ? t.basePrice
-        : 0,
-    priceCurrency: t.currency ?? "USD",
+    pricing: readPricing({
+      pricing: t.pricing,
+      basePrice: t.basePrice,
+      currency: t.currency,
+    }),
     imageUrl:
       t.images?.find((image) => Boolean(image?.imageUrl))?.imageUrl ??
       FALLBACK_IMAGE,
@@ -96,9 +102,11 @@ function mapBackendTourToCard(t: BackendTour): RecommendedTourCardModel {
   };
 }
 
-function formatPrice(value: number, currency: string): string {
-  if (!Number.isFinite(value) || value <= 0) return "Custom";
-  return formatMoney(value, currency);
+function formatPrice(pricing: Pricing | null, displayCurrency: 'MNT' | 'USD'): string {
+  if (!pricing || !Number.isFinite(pricing.base.amount) || pricing.base.amount <= 0) {
+    return "Custom";
+  }
+  return formatPricing(pricing, displayCurrency);
 }
 
 function MetaPill({
@@ -118,6 +126,7 @@ function MetaPill({
 
 function TourCard({ tour }: { tour: RecommendedTourCardModel }) {
   const [imageError, setImageError] = useState(false);
+  const { currency: displayCurrency } = usePreferences();
 
   return (
     <Link
@@ -169,7 +178,7 @@ function TourCard({ tour }: { tour: RecommendedTourCardModel }) {
 
                 <div className="shrink-0 text-right">
                   <p className="text-base font-bold leading-none text-white sm:text-lg">
-                    {formatPrice(tour.priceFrom, tour.priceCurrency)}
+                    {formatPrice(tour.pricing, displayCurrency)}
                   </p>
                 </div>
               </div>

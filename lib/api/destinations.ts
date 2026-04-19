@@ -68,6 +68,14 @@ export interface BackendTourInDestination {
   featured:         boolean
   images:           { imageUrl: string }[]
   provider:         { name: string; slug: string; logoUrl: string | null }
+  /**
+   * Phase 6.2 — when the backend projects a normalized Pricing DTO
+   * (same shape as tours/stays listings), the card renders from it so
+   * the user's currency preference is honoured. Legacy responses that
+   * still only expose `basePrice`+`currency` are synthesised into a
+   * minimal Pricing by `readPricing()` on the client.
+   */
+  pricing?:         import('../pricing').Pricing | null
 }
 
 /** Shape of GET /destinations/:slug response */

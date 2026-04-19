@@ -17,7 +17,8 @@ import {
   type AccommodationType,
   ACCOMMODATION_TYPE_LABELS,
 } from "@/lib/api/stays";
-import { formatMoney } from "@/lib/money";
+import { formatPricing, readPricing, type Pricing } from "@/lib/pricing";
+import { usePreferences } from "@/components/providers/PreferencesProvider";
 import {
   Carousel,
   CarouselContent,
@@ -39,8 +40,14 @@ interface StayCardModel {
   ratingAverage: number;
   reviewsCount: number;
   imageUrl: string;
-  priceFrom: number | null;
-  currency: string;
+  /**
+   * Phase 6.2 — cheapest room's Pricing DTO. Null when the stay has
+   * no seeded room prices yet (we render "Price on request" in that
+   * case). Switching currency on the navbar flips this without a
+   * refetch because `formatPricing` reads the normalized MNT amount
+   * from the same DTO.
+   */
+  pricing: Pricing | null;
 }
 
 const FALLBACK_IMAGE =
@@ -57,11 +64,21 @@ const TYPE_BADGE_STYLES: Record<AccommodationType, string> = {
 };
 
 function mapBackendStayToCard(stay: BackendStay): StayCardModel {
-  const validRoomPrices = (stay.roomTypes ?? [])
-    .map((room) => room.basePricePerNight)
-    .filter((price): price is number => typeof price === "number" && Number.isFinite(price));
+  // Pick the cheapest room by native price (the only field guaranteed
+  // on every room type). Once picked, we hand its Pricing DTO — not the
+  // raw number — to the card so currency switching is lossless.
+  const cheapestRoom = (stay.roomTypes ?? [])
+    .filter((r) => typeof r.basePricePerNight === "number" && Number.isFinite(r.basePricePerNight))
+    .sort((a, b) => a.basePricePerNight - b.basePricePerNight)[0]
+    ?? null;
 
-  const priceFrom = validRoomPrices.length > 0 ? Math.min(...validRoomPrices) : null;
+  const pricing = cheapestRoom
+    ? readPricing({
+        pricing: cheapestRoom.pricing,
+        basePricePerNight: cheapestRoom.basePricePerNight,
+        currency: cheapestRoom.currency,
+      })
+    : null;
 
   return {
     id: stay.id,
@@ -86,16 +103,15 @@ function mapBackendStayToCard(stay: BackendStay): StayCardModel {
     imageUrl:
       stay.images?.find((image) => Boolean(image?.imageUrl))?.imageUrl ??
       FALLBACK_IMAGE,
-    priceFrom,
-    currency: stay.roomTypes?.[0]?.currency ?? "USD",
+    pricing,
   };
 }
 
-function formatPrice(value: number | null, currency: string): string {
-  if (value === null || !Number.isFinite(value) || value <= 0) {
+function formatPrice(pricing: Pricing | null, displayCurrency: 'MNT' | 'USD'): string {
+  if (!pricing || !Number.isFinite(pricing.base.amount) || pricing.base.amount <= 0) {
     return "Price on request";
   }
-  return formatMoney(value, currency);
+  return formatPricing(pricing, displayCurrency);
 }
 
 function MetaPill({
@@ -115,6 +131,7 @@ function MetaPill({
 
 function StayCard({ stay }: { stay: StayCardModel }) {
   const [imageError, setImageError] = useState(false);
+  const { currency: displayCurrency } = usePreferences();
   const badgeColor =
     TYPE_BADGE_STYLES[stay.accommodationType] ?? "bg-gray-700";
 
@@ -169,9 +186,9 @@ function StayCard({ stay }: { stay: StayCardModel }) {
 
       <div className="shrink-0 text-right">
         <p className="text-xl font-bold leading-none text-white">
-          {formatPrice(stay.priceFrom, stay.currency)}
+          {formatPrice(stay.pricing, displayCurrency)}
         </p>
-        {stay.priceFrom !== null ? (
+        {stay.pricing ? (
           <p className="mt-1 text-[11px] text-white/60">/night</p>
         ) : null}
       </div>

@@ -181,9 +181,12 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
             {departures.map(dep => {
               const seats = dep.availableSeats - (dep.bookedSeats ?? 0)
               const isSelected = dep.id === selectedDepId
-              const depAmount  = dep.pricing?.base.amount ?? dep.priceOverride
-              const depCur     = (dep.pricing?.base.currency
-                ?? (isSupportedCurrency(dep.currency) ? dep.currency : baseCurrency)) as Currency
+              const depPricing = readPricing({
+                pricing:   dep.pricing,
+                basePrice: dep.priceOverride,
+                currency:  dep.currency,
+              })
+              const depAmount  = depPricing?.base.amount ?? dep.priceOverride
               const hasOverride = depAmount != null && depAmount !== pricePerPerson
               return (
                 <button
@@ -204,9 +207,9 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
                     <p className="text-[11px] text-gray-500">
                       {t.tourCard.seatsRemaining(seats)}
                       {seats <= 4 && seats > 0 && <span className="text-amber-600 ml-1">· {t.tourCard.sellingFast}</span>}
-                      {hasOverride && depAmount != null && (
+                      {hasOverride && depPricing && (
                         <span className="text-brand-600 ml-1">
-                          · {formatMoney(depAmount, depCur)}{t.tourCard.perPerson}
+                          · {formatPricing(depPricing, displayCurrency)}{t.tourCard.perPerson}
                         </span>
                       )}
                     </p>
@@ -276,7 +279,7 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
           /bookings/quote and displays the real subtotal/serviceFee/total. */}
       <div className="border-t border-gray-100 pt-4 mb-4">
         <p className="text-xs text-gray-500">
-          {t.tourCard.pricePerPerson(formatMoney(pricePerPerson, baseCurrency), guests)}
+          {t.tourCard.pricePerPerson(primaryPrice || formatMoney(pricePerPerson, baseCurrency), guests)}
         </p>
         <p className="text-xs text-gray-400 mt-1">{t.tourCard.serviceFeeAtCheckout}</p>
       </div>

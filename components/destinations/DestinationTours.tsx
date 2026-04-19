@@ -1,15 +1,23 @@
+'use client'
+
 /**
  * components/destinations/DestinationTours.tsx
  *
  * Shows real tours linked to a destination.
  * Data comes from the backend's getDestinationBySlug endpoint which returns
  * up to 6 active tours linked via destinationId — no mock data.
+ *
+ * Phase 6.2: client component so price labels react to the user's
+ * currency preference via `usePreferences()`. The parent destination
+ * page stays a server component — it passes the plain `tours` array
+ * down through the client boundary.
  */
 
 import Link from 'next/link'
 import { Star, Clock, ArrowRight } from 'lucide-react'
 import type { BackendTourInDestination } from '@/lib/api/destinations'
-import { formatMoney } from '@/lib/money'
+import { formatPricing, readPricing } from '@/lib/pricing'
+import { usePreferences } from '@/components/providers/PreferencesProvider'
 
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1569949381669-ecf31ae8e613?q=80&w=800&auto=format&fit=crop'
@@ -52,6 +60,13 @@ export function DestinationTours({ tours, destinationName }: DestinationToursPro
 
 function TourMiniCard({ tour }: { tour: BackendTourInDestination }) {
   const imageUrl = tour.images[0]?.imageUrl ?? FALLBACK_IMAGE
+  const { currency: displayCurrency } = usePreferences()
+  const pricing = readPricing({
+    pricing:   tour.pricing,
+    basePrice: tour.basePrice,
+    currency:  tour.currency,
+  })
+  const priceLabel = formatPricing(pricing, displayCurrency)
 
   return (
     <Link
@@ -109,9 +124,7 @@ function TourMiniCard({ tour }: { tour: BackendTourInDestination }) {
 
           {/* Price */}
           <div>
-            <span className="text-base font-bold text-gray-900">
-              {formatMoney(tour.basePrice, tour.currency ?? 'USD')}
-            </span>
+            <span className="text-base font-bold text-gray-900">{priceLabel}</span>
             <span className="text-xs text-gray-400">/person</span>
           </div>
         </div>

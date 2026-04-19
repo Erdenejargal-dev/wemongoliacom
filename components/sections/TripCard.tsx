@@ -2,7 +2,8 @@
 
 import { Eye, Heart, Map } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatMoney } from "@/lib/money";
+import { formatPricing, readPricing } from "@/lib/pricing";
+import { usePreferences } from "@/components/providers/PreferencesProvider";
 
 export interface TripCardProps {
   id: string;
@@ -27,6 +28,10 @@ export function TripCard({
   id, image, title, days, places, price, currency, author, timeAgo, views, likes, 
   isBookmarked, isFavorited, onBookmark, onFavorite 
 }: TripCardProps) {
+  const { currency: displayCurrency } = usePreferences();
+  // Route the legacy `price`+`currency` pair through the Pricing DTO so
+  // the label re-renders when the user flips the currency preference.
+  const pricing = readPricing({ basePrice: price, currency: currency ?? 'USD' });
   return (
     <div className="relative w-[300px] h-[400px] rounded-[32px] overflow-hidden group shadow-lg hover:shadow-2xl transition-all duration-500">
       <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" 
@@ -53,7 +58,7 @@ export function TripCard({
             </div>
             <div className="text-right text-white">
               <div className="text-[10px] opacity-60 uppercase font-bold">From</div>
-              <div className="text-xl font-black">{formatMoney(price, currency ?? 'USD')}</div>
+              <div className="text-xl font-black">{formatPricing(pricing, displayCurrency)}</div>
             </div>
           </div>
           <div className="h-px bg-white/10 my-3" />

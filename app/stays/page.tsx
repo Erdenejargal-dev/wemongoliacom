@@ -18,7 +18,6 @@ import {
   type AccommodationType,
   ACCOMMODATION_TYPE_LABELS,
 } from '@/lib/api/stays'
-import { formatMoney } from '@/lib/money'
 import { usePreferences } from '@/components/providers/PreferencesProvider'
 import { readPricing, formatPricing } from '@/lib/pricing'
 
@@ -58,12 +57,18 @@ function StayCard({ stay }: { stay: BackendStay }) {
   const cheapestRoom = stay.roomTypes.length > 0
     ? stay.roomTypes.reduce((a, b) => (a.basePricePerNight <= b.basePricePerNight ? a : b))
     : null
-  // Prefer the Phase 2 Pricing DTO when the room carries it so the card
-  // reflects the user's display currency (MNT↔USD) via `formatPricing`.
-  // Falls back to legacy per-night + native currency otherwise.
-  const pricing = cheapestRoom ? readPricing(cheapestRoom as unknown as Parameters<typeof readPricing>[0]) : null
-  const priceFrom  = cheapestRoom?.basePricePerNight ?? null
-  const priceCurrency = cheapestRoom?.currency ?? 'USD'
+  // Always build a Pricing DTO — from the room's own `pricing` field when
+  // the backend supplies it, or synthesised from the legacy per-night +
+  // currency fields otherwise. Either way we render through a single
+  // `formatPricing` path so switching currency flips the label without
+  // a refetch.
+  const pricing = cheapestRoom
+    ? readPricing({
+        pricing: cheapestRoom.pricing,
+        basePricePerNight: cheapestRoom.basePricePerNight,
+        currency: cheapestRoom.currency,
+      })
+    : null
 
   return (
     <Link
@@ -115,14 +120,12 @@ function StayCard({ stay }: { stay: BackendStay }) {
 
         {/* Price */}
         <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-          {priceFrom !== null ? (
+          {pricing ? (
             <div>
               <span className="text-[10px] text-gray-400 uppercase tracking-wide block">From</span>
               <div className="flex items-baseline gap-0.5">
                 <span className="text-base font-bold text-gray-900">
-                  {pricing
-                    ? formatPricing(pricing, displayCurrency)
-                    : formatMoney(priceFrom, priceCurrency)}
+                  {formatPricing(pricing, displayCurrency)}
                 </span>
                 <span className="text-[10px] text-gray-400">/night</span>
               </div>

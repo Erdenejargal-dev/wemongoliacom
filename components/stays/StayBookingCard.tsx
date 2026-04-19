@@ -223,9 +223,13 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
                     </p>
                   </div>
                   <span className="text-sm font-bold text-gray-900 shrink-0">
-                    {formatMoney(
-                      room.pricing?.base.amount ?? room.basePricePerNight,
-                      (room.pricing?.base.currency ?? (isSupportedCurrency(room.currency) ? room.currency : 'MNT')) as Currency,
+                    {formatPricing(
+                      readPricing({
+                        pricing: room.pricing,
+                        basePricePerNight: room.basePricePerNight,
+                        currency: room.currency,
+                      }),
+                      displayCurrency,
                     )}{t.stayCard.perNight}
                   </span>
                 </button>
@@ -317,7 +321,7 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
       {nights > 0 && selectedRoom && (
         <div className="border-t border-gray-100 pt-4 mb-4">
           <p className="text-xs text-gray-500">
-            {t.stayCard.perNightLabel(formatMoney(pricePerNight, currency), nights)}
+            {t.stayCard.perNightLabel(primaryPrice || formatMoney(pricePerNight, currency), nights)}
           </p>
           <p className="text-xs text-gray-400 mt-1">{t.stayCard.serviceFeeAtCheckout}</p>
         </div>

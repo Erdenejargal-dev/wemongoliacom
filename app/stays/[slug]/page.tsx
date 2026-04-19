@@ -10,7 +10,8 @@ import { StayBookingCard } from '@/components/stays/StayBookingCard'
 import { PropertyMap } from '@/components/stays/PropertyMap'
 import { ContactProviderButton } from '@/components/ui/ContactProviderButton'
 import { fetchStayBySlug, ACCOMMODATION_TYPE_LABELS } from '@/lib/api/stays'
-import { formatMoney } from '@/lib/money'
+import { formatPricing, readPricing } from '@/lib/pricing'
+import { readPreferredCurrencyServer } from '@/lib/preferences-storage.server'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -18,8 +19,15 @@ interface Props {
 
 export default async function StayDetailPage({ params }: Props) {
   const { slug } = await params
-  const stay = await fetchStayBySlug(slug)
+  // Read the preferred display currency from the cookie so server-rendered
+  // prices agree with the navbar switcher. `router.refresh()` fired from
+  // the switcher re-runs this page, so the value stays current.
+  const [stay, displayCurrency] = await Promise.all([
+    fetchStayBySlug(slug),
+    readPreferredCurrencyServer(),
+  ])
   if (!stay) notFound()
+  const effectiveDisplayCurrency = displayCurrency ?? 'USD'
 
   const images = (stay.images ?? []).map((i) => i.imageUrl).filter(Boolean)
   const typeLabel = ACCOMMODATION_TYPE_LABELS[stay.accommodationType] ?? stay.accommodationType
@@ -104,7 +112,14 @@ export default async function StayDetailPage({ params }: Props) {
                 {cheapestRoom && (
                   <div className="flex items-center gap-1.5">
                     <BedDouble className="w-4 h-4 text-gray-400" />
-                    From {formatMoney(cheapestRoom.basePricePerNight, cheapestRoom.currency ?? 'USD')}/night
+                    From {formatPricing(
+                      readPricing({
+                        pricing: cheapestRoom.pricing,
+                        basePricePerNight: cheapestRoom.basePricePerNight,
+                        currency: cheapestRoom.currency,
+                      }),
+                      effectiveDisplayCurrency,
+                    )}/night
                   </div>
                 )}
               </div>
@@ -203,7 +218,14 @@ export default async function StayDetailPage({ params }: Props) {
                           </div>
                           <div className="text-right shrink-0">
                             <p className="text-xl font-bold text-orange-600">
-                              {formatMoney(room.basePricePerNight, room.currency ?? 'USD')}
+                              {formatPricing(
+                                readPricing({
+                                  pricing: room.pricing,
+                                  basePricePerNight: room.basePricePerNight,
+                                  currency: room.currency,
+                                }),
+                                effectiveDisplayCurrency,
+                              )}
                             </p>
                             <p className="text-xs text-gray-500">per night</p>
                           </div>

@@ -4,8 +4,7 @@ import Link from 'next/link'
 import { Star, Clock, Users, MapPin, Heart } from 'lucide-react'
 import { useState } from 'react'
 import type { Tour } from '@/lib/search/types'
-import { formatMoney } from '@/lib/money'
-import { formatPricing } from '@/lib/pricing'
+import { formatPricing, readPricing } from '@/lib/pricing'
 import { usePreferences } from '@/components/providers/PreferencesProvider'
 
 interface TourCardProps {
@@ -26,12 +25,13 @@ export function TourCard({ tour }: TourCardProps) {
   const [saved, setSaved] = useState(false)
   const { currency: displayCurrency } = usePreferences()
   const hasRealStyle = tour.style && tour.style !== 'adventure' && STYLE_COLORS[tour.style]
-  // Prefer the normalized Pricing DTO so the card flips between MNT and USD
-  // when the user switches currency. Falls back to the legacy (price, currency)
-  // pair for listings the backend hasn't normalized yet.
-  const priceLabel = tour.pricing
-    ? formatPricing(tour.pricing, displayCurrency)
-    : formatMoney(tour.price, tour.currency)
+  // Always route through the Pricing DTO so the card flips between MNT and
+  // USD when the user switches currency. When the backend didn't provide
+  // a `pricing` field we synthesise one from the legacy (price, currency)
+  // fields — the output is identical to the old `formatMoney` path, but
+  // the formatting goes through a single code path.
+  const pricing    = readPricing({ pricing: tour.pricing, basePrice: tour.price, currency: tour.currency })
+  const priceLabel = formatPricing(pricing, displayCurrency)
 
   return (
     <Link href={`/tours/${tour.slug}`} className="group block bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden">
