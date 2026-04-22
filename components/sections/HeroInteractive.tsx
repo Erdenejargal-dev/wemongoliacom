@@ -71,7 +71,7 @@ export default function HeroInteractive() {
         className="absolute inset-0 bg-cover bg-center"
         style={{
           backgroundImage:
-            "url('https://res.cloudinary.com/drpexegxg/image/upload/f_auto,q_auto/usukhbayar-gankhuyag-fjCihZthrAo-unsplash_ggpu7u')",
+            "url('https://res.cloudinary.com/dyqvc31tb/image/upload/v1776868938/Omni_gobi_Irmuun_Agency_daplep.jpg')",
         }}
         aria-hidden="true"
       />
