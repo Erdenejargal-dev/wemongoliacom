@@ -11,12 +11,13 @@
  * Priority (strict):
  *   1. Authenticated user profile fields (when passed in as `userLanguage` / `userCurrency`)
  *   2. Saved cookies (wm_lang / wm_currency) — manual selection persists here
- *   3. Cloudflare `CF-IPCountry` (MN → mn + MNT; all other real countries → en + USD)
+ *   3. Geo from request headers (MN → mn + MNT; other known countries → en + USD):
+ *      `CF-IPCountry` (Cloudflare) or `x-vercel-ip-country` (Vercel; there is no CF header on Vercel-only hosts)
  *   4. Fallback: en + USD
  *
- * Cloudflare sends `XX` (unknown) and `T1` (Tor) — we treat them like “no
+ * CDNs send `XX` (unknown) and `T1` (Tor) — we treat them like “no
  * country”, same as a missing header → step 4 for any field not already
- * decided by 1–2.
+ * decided by 1–2. Local `next dev` usually has **no** geo headers.
  */
 
 import { SUPPORTED_CURRENCIES, type Currency } from '@/lib/money'
@@ -40,7 +41,10 @@ function isValidCurrency(v: string | null | undefined): v is Currency {
 }
 
 /**
- * Read `CF-IPCountry` from a Web `Headers` or similar (case-insensitive).
+ * Read a two-letter country code from CDN / platform headers (same strategy
+ * as `backend/src/routes/geo.routes.ts`). `Headers#get` is case-insensitive.
+ *
+ * Order: Cloudflare first, then Vercel (typical stacks have at most one).
  */
 export function readCfIpCountryFromHeaders(
   h: { get(name: string): string | null } | null | undefined,
@@ -48,8 +52,9 @@ export function readCfIpCountryFromHeaders(
   if (!h) return null
   const v =
     h.get('cf-ipcountry') ||
-    h.get('CF-IPCountry') ||
-    h.get('Cf-Ipcountry')
+    h.get('x-vercel-ip-country') ||
+    h.get('x-country') ||
+    null
   if (!v) return null
   const t = v.trim()
   return t ? t : null
@@ -96,7 +101,7 @@ export type ResolveLocaleCurrencyInput = {
   cookieLanguage?:  string | null
   cookieCurrency?: string | null
   /**
-   * Raw `CF-IPCountry` value (e.g. from `headers()` or middleware `request.headers`).
+   * Raw country code from geo headers (see `readCfIpCountryFromHeaders`).
    * If omitted, geo step is skipped for fields that need it.
    */
   cfIpCountry?: string | null

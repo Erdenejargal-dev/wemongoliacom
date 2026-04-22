@@ -89,7 +89,7 @@ export const authOptions: NextAuthConfig = {
           avatar:      user.avatarUrl ?? undefined,
           accessToken,
           refreshToken,
-          /** Account prefs — used by `resolveLocaleCurrency` (middleware + RSC). */
+          /** Account prefs — used by `resolveLocaleCurrency` (proxy + RSC). */
           preferredLanguage: (user as { preferredLanguage?: 'mn' | 'en' }).preferredLanguage,
           preferredCurrency: (user as { preferredCurrency?: 'MNT' | 'USD' }).preferredCurrency,
         };

@@ -12,11 +12,11 @@
  * RESOLUTION ORDER (Phase 6.4 — Cloudflare):
  *   1. Logged-in user profile      (session.user.preferredCurrency / preferredLanguage)
  *   2. Cookie                      (wm_currency / wm_lang — also readable by server)
- *   3. Cloudflare `CF-IPCountry`   (MN → mn + MNT; other countries → en + USD; XX / T1 → fallback)
+ *   3. Geo headers (CF-IPCountry, x-vercel-ip-country, …) (MN → mn + MNT; …)
  *   4. Fallback                    (en + USD)
  *
  * The **same** rules are implemented in `lib/locale-currency-resolver.ts` and
- * run in Edge `middleware.ts` (cookie seed) + `getResolvedLocaleCurrencyForRequest`
+ * run in Edge `proxy.ts` (cookie seed) + `getResolvedLocaleCurrencyForRequest`
  * (RSC). The server passes `initialResolved` into this provider so the first
  * client render matches SSR and `lang` on `<html>` — no hydration mismatch.
  *

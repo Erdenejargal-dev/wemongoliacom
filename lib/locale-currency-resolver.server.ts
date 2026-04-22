@@ -7,8 +7,9 @@
  *
  * On the *first* request, `Set-Cookie` from middleware is not yet visible to
  * `cookies()` in the RSC pass — the incoming request has no `wm_lang`/
- * `wm_currency`. This helper therefore MUST read `CF-IPCountry` from
- * `headers()` (step 3) when cookies are absent; the middleware in parallel
+ * `wm_currency`. This helper therefore MUST read geo headers (`CF-IPCountry`,
+ * `x-vercel-ip-country`, … — see `readCfIpCountryFromHeaders`) from
+ * `headers()` (step 3) when cookies are absent; the proxy in parallel
  * seeds cookies for the *next* request and for `document.cookie` on
  * `document.load`.
  */

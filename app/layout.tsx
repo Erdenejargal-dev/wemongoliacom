@@ -43,7 +43,7 @@ export default async function RootLayout({
     <html lang={initialResolved.language} className={`${manrope.variable} ${geistMono.variable}`}>
       <body className="antialiased">
         <SessionProvider>
-          {/* Phase 6.4 — Resolver + middleware agree on CF-IPCountry defaults. */}
+          {/* Phase 6.4 — Resolver + proxy share CDN/Vercel geo header defaults. */}
           <PreferencesProvider initialResolved={initialResolved}>
             <DisplayCurrencyProvider initialCurrency={initialResolved.currency}>
               <PublicLocaleProvider>

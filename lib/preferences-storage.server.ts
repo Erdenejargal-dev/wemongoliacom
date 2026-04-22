@@ -25,8 +25,8 @@ import type { DashboardLang } from './i18n/config'
  *
  * Returns `null` when no cookie is set — the caller should apply the
  * same resolution as `getResolvedLocaleCurrencyForRequest()` (user →
- * cookie → `CF-IPCountry` → en+USD) so server fetches stay aligned with
- * middleware and `<html lang>`.
+ * cookie → geo headers → en+USD) so server fetches stay aligned with
+ * proxy and `<html lang>`.
  *
  * Next 15 exposes `cookies()` as an async API while Next 14 is sync;
  * we handle both shapes so the same helper works across versions.

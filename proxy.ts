@@ -12,7 +12,7 @@ const ONE_YEAR_S = 60 * 60 * 24 * 365
  * Edge proxy: locale/currency cookies + provider route guard.
  *
  * 1) Seeds `wm_lang` + `wm_currency` when the pair is missing or invalid
- *    (same resolver as RSC; CF-IPCountry when present).
+ *    (same resolver as RSC; Cloudflare and/or Vercel geo headers when present).
  * 2) Redirects `provider_owner` away from traveler-only /dashboard and /account
  *    to /dashboard/business. Admin: full access. Unauthenticated: pass through.
  */
