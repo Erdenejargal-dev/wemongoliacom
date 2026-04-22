@@ -1,7 +1,8 @@
 /**
- * WeMongolia i18n — unified entry.
+ * WeMongolia i18n — unified entry (client-safe + shared).
  *
- * - `getTranslations()` — async, Server Components
+ * - Server: import `getTranslations` from `@/lib/i18n/server` (uses `next/headers` — do not
+ *   re-export it here, or client bundles that import `@/lib/i18n` will fail under Turbopack).
  * - `useTranslations()` — client components (uses PreferencesProvider language)
  * - `getAppMessages(lang)` — direct access when you already have `en` | `mn`
  *
@@ -10,7 +11,6 @@
  * `resetPassword`, `toursSearch`.
  */
 
-export { getTranslations } from './server'
 export { useTranslations } from './hooks'
 export { getAppMessages, toAppLang, type AppMessages, type AppLang } from './messages/registry'
 export {

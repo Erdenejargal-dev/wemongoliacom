@@ -1,4 +1,5 @@
 import { getToken } from "next-auth/jwt"
+import type { NextAuthRequest } from "next-auth"
 import { auth } from "@/lib/auth"
 import { CURRENCY_COOKIE, LANGUAGE_COOKIE } from "@/lib/preferences-storage"
 import { readCfIpCountryFromHeaders, resolveLocaleCurrency } from "@/lib/locale-currency-resolver"
@@ -21,7 +22,7 @@ function cookiePairValid(req: NextRequest): boolean {
   return (l === "mn" || l === "en") && (c === "MNT" || c === "USD")
 }
 
-export default auth(async function proxy(request: NextRequest) {
+export default auth(async function proxy(request: NextAuthRequest) {
   const path = request.nextUrl.pathname
   const role = request.auth?.user?.role
 
