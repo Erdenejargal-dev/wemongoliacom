@@ -192,7 +192,7 @@ export default function StaysPage() {
       {/* ── Hero ────────────────────────────────── */}
       <section className="relative bg-gray-950 overflow-hidden">
         <img
-          src="https://images.unsplash.com/photo-1567191327852-25f4e5c1d0c4?q=80&w=1600"
+          src="https://images.unsplash.com/photo-1707669904577-2ebc6f95a826?q=80&w=1025&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D://images.unsplash.com/photo-1567191327852-25f4e5c1d0c4?q=80&w=1600"
           alt="Mongolia stays"
           className="absolute inset-0 w-full h-full object-cover opacity-45"
         />

@@ -51,7 +51,7 @@ export default function DestinationsPage() {
       {/* ── Hero ──────────────────────────────── */}
       <section className="relative bg-gray-950 overflow-hidden">
         <img
-          src="https://images.unsplash.com/photo-1516912481808-3406841bd33c?w=1600"
+          src="https://images.https://images.unsplash.com/photo-1706901549707-908e73f91f66?q=80&w=1025&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D.com/photo-1516912481808-3406841bd33c?w=1600"
           alt="Mongolia destinations"
           className="absolute inset-0 w-full h-full object-cover opacity-50"
         />
