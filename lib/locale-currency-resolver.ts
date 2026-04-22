@@ -4,7 +4,7 @@
  * Single source of truth for how we resolve the visitor's public-site
  * language and display currency. Pure functions only — no `next/headers`
  * or React — so the same rules run in:
- *   - `middleware.ts` (Edge)
+ *   - `proxy.ts` (Edge)
  *   - `app/layout.tsx` (RSC) via the `.server` helper
  *   - unit tests
  *
