@@ -10,6 +10,7 @@
 
 import Link from 'next/link'
 import { useTravelerLocale } from '@/lib/i18n/traveler/context'
+import { useTranslations } from '@/lib/i18n'
 
 interface Props {
   role?: string | null
@@ -17,6 +18,7 @@ interface Props {
 
 export function TravelerDashboardContent({ role }: Props) {
   const { t, lang, setLang } = useTravelerLocale()
+  const { t: appT } = useTranslations()
   const dt = t.dashboard
 
   return (
@@ -31,7 +33,7 @@ export function TravelerDashboardContent({ role }: Props) {
         <button
           onClick={() => setLang(lang === 'mn' ? 'en' : 'mn')}
           className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100 border border-gray-200 hover:border-gray-300 rounded-lg transition-colors"
-          title={lang === 'mn' ? 'Switch to English' : 'Монгол хэл рүү шилжих'}
+          title={lang === 'mn' ? appT.common.switchToEnglish : appT.common.switchToMongolian}
         >
           {t.langToggleLabel}
         </button>

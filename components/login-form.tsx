@@ -22,58 +22,7 @@ import {
   buildRegisterUrl,
 } from "@/lib/navigation";
 import { WeMongoliaLogo } from "@/components/brand/WeMongoliaLogo";
-
-/* ── Locale-aware copy ──────────────────────────────────────────────────── */
-
-const COPY = {
-  default: {
-    heading: "Welcome back",
-    subtitle: "Sign in to explore and book authentic Mongolian experiences.",
-    emailLabel: "Email address",
-    emailPlaceholder: "you@example.com",
-    passwordLabel: "Password",
-    forgotPassword: "Forgot password?",
-    submit: "Sign in",
-    submitting: "Signing in…",
-    noAccount: "Don\u2019t have an account?",
-    createAccount: "Create one",
-    errorInvalid: "Invalid email or password. Please try again.",
-    errorGeneric: "Something went wrong. Please try again.",
-    panelBadge: "Trusted by travelers worldwide",
-    panelHeading: "Discover authentic Mongolia",
-    panelSubtitle:
-      "Connect with local guides, book unique experiences, and explore one of the world\u2019s last great frontiers.",
-    trustItems: [
-      "Curated tours by local Mongolian providers",
-      "Verified experiences with secure booking",
-      "Join a community of adventurous travelers",
-    ],
-  },
-  host: {
-    heading: "Тавтай морил",
-    subtitle:
-      "Таны бизнесийн цахим хөтөч",
-    emailLabel: "Имэйл хаяг",
-    emailPlaceholder: "you@example.com",
-    passwordLabel: "Нууц үг",
-    forgotPassword: "Нууц үг мартсан?",
-    submit: "Нэвтрэх",
-    submitting: "Нэвтэрч байна…",
-    noAccount: "Бүртгэл үүсгээгүй юу?",
-    createAccount: "Бүртгүүлэх",
-    errorInvalid: "Имэйл эсвэл нууц үг буруу байна. Дахин оролдоно уу.",
-    errorGeneric: "Алдаа гарлаа. Дахин оролдоно уу.",
-    panelBadge: "Итгэлтэй түншлэл",
-    panelHeading: "Хамтдаа Дэлхийд гарцгаая",
-    panelSubtitle:
-      "Эх орноо олон улсад сурталчилж борлуулалтын сувгаа тэлээрэй.",
-    trustItems: [
-      "Бизнесээ хялбар бүртгэж, удирдах боломж",
-      "Баталгаатай төлбөр, найдвартай систем",
-      "Олон улсын аялагчдад хүрэх боломж",
-    ],
-  },
-} as const;
+import { useTranslations } from "@/lib/i18n";
 
 const TRUST_ICONS = [MapPin, Shield, Users];
 
@@ -87,7 +36,10 @@ export function LoginForm({
   const searchParams = useSearchParams();
   const callbackUrl = sanitizeCallbackUrl(searchParams.get("callbackUrl"));
   const isHostIntent = callbackUrl?.includes("/onboarding");
-  const t = isHostIntent ? COPY.host : COPY.default;
+
+  const { t: appT } = useTranslations();
+  const t = isHostIntent ? appT.auth.host : appT.auth.traveler;
+  const c = appT.common;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -133,8 +85,6 @@ export function LoginForm({
       {/* ── Form Panel ─────────────────────────────────────────────── */}
       <div className="flex min-h-svh flex-col bg-white lg:relative">
         <div className="h-1 bg-gradient-to-r from-[#0285C9] to-[#4466b0] lg:hidden" />
-
-       
 
         {/* Form — vertically centered in the full panel */}
         <div className="flex flex-1 flex-col justify-center px-6 py-10 sm:px-10 lg:px-16 xl:px-20">
@@ -210,7 +160,9 @@ export function LoginForm({
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600"
                     tabIndex={-1}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-label={
+                      showPassword ? c.hidePassword : c.showPassword
+                    }
                   >
                     {showPassword ? (
                       <EyeOff className="h-[18px] w-[18px]" />
@@ -247,31 +199,23 @@ export function LoginForm({
               </Link>
             </p>
 
-            {isHostIntent ? (
-              <p className="mt-8 text-center text-xs leading-relaxed text-gray-400">
-                Үргэлжлүүлснээр та манай{" "}
-                <a href="#" className="underline underline-offset-2 transition-colors hover:text-gray-600">
-                  Үйлчилгээний нөхцөл
-                </a>{" "}
-                болон{" "}
-                <a href="#" className="underline underline-offset-2 transition-colors hover:text-gray-600">
-                  Нууцлалын бодлого
-                </a>
-                -ыг зөвшөөрч байна.
-              </p>
-            ) : (
-              <p className="mt-8 text-center text-xs leading-relaxed text-gray-400">
-                By continuing, you agree to our{" "}
-                <a href="#" className="underline underline-offset-2 transition-colors hover:text-gray-600">
-                  Terms of Service
-                </a>{" "}
-                and{" "}
-                <a href="#" className="underline underline-offset-2 transition-colors hover:text-gray-600">
-                  Privacy Policy
-                </a>
-                .
-              </p>
-            )}
+            <p className="mt-8 text-center text-xs leading-relaxed text-gray-400">
+              {t.legalBeforeTerms}
+              <a
+                href="/terms"
+                className="underline underline-offset-2 transition-colors hover:text-gray-600"
+              >
+                {t.termsOfService}
+              </a>
+              {t.legalBetween}
+              <a
+                href="/privacy"
+                className="underline underline-offset-2 transition-colors hover:text-gray-600"
+              >
+                {t.privacyPolicy}
+              </a>
+              {t.legalAfter}
+            </p>
           </div>
         </div>
       </div>

@@ -5,12 +5,17 @@ import { Search, X, MapPin, Compass, Loader2 } from 'lucide-react'
 import { DestinationCard } from '@/components/destinations/DestinationCard'
 import { fetchDestinations, type BackendDestination } from '@/lib/api/destinations'
 import Link from 'next/link'
+import { useTranslations } from '@/lib/i18n'
+
+const ALL_REGIONS = 'All'
 
 export default function DestinationsPage() {
+  const { t } = useTranslations()
+  const bd = t.browse.destinations
   const [destinations, setDestinations] = useState<BackendDestination[]>([])
   const [loading, setLoading]           = useState(true)
   const [search,  setSearch]            = useState('')
-  const [region,  setRegion]            = useState('All')
+  const [region,  setRegion]            = useState(ALL_REGIONS)
 
   useEffect(() => {
     fetchDestinations({ limit: 50 })
@@ -21,28 +26,28 @@ export default function DestinationsPage() {
 
   // Build region list from real backend data only
   const regions = Array.from(
-    new Set(destinations.map(d => d.region).filter((r): r is string => Boolean(r))),
+    new Set(destinations.map((dest) => dest.region).filter((r): r is string => Boolean(r))),
   ).sort()
 
   // Only surface region filter when there are 2+ distinct regions
   const hasMultipleRegions = regions.length > 1
 
-  const featured   = destinations.filter(d => d.featured)
-  const hasFilters = Boolean(search) || region !== 'All'
+  const featured   = destinations.filter((dest) => dest.featured)
+  const hasFilters = Boolean(search) || region !== ALL_REGIONS
 
-  const filtered = destinations.filter(d => {
+  const filtered = destinations.filter((dest) => {
     const q           = search.toLowerCase()
     const matchSearch = !q
-      || d.name.toLowerCase().includes(q)
-      || (d.region ?? '').toLowerCase().includes(q)
-      || (d.shortDescription ?? '').toLowerCase().includes(q)
-    const matchRegion = region === 'All' || d.region === region
+      || dest.name.toLowerCase().includes(q)
+      || (dest.region ?? '').toLowerCase().includes(q)
+      || (dest.shortDescription ?? '').toLowerCase().includes(q)
+    const matchRegion = region === ALL_REGIONS || dest.region === region
     return matchSearch && matchRegion
   })
 
   function clearFilters() {
     setSearch('')
-    setRegion('All')
+    setRegion(ALL_REGIONS)
   }
 
   return (
@@ -51,22 +56,23 @@ export default function DestinationsPage() {
       {/* ── Hero ──────────────────────────────── */}
       <section className="relative bg-gray-950 overflow-hidden">
         <img
-          src="https://images.https://images.unsplash.com/photo-1706901549707-908e73f91f66?q=80&w=1025&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D.com/photo-1516912481808-3406841bd33c?w=1600"
-          alt="Mongolia destinations"
+          src="https://images.unsplash.com/photo-1706901549707-908e73f91f66?q=80&w=1025&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+          alt={bd.heroImageAlt}
           className="absolute inset-0 w-full h-full object-cover opacity-50"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/40 to-black/80" />
 
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32 text-center">
           <p className="text-orange-400 text-xs font-semibold uppercase tracking-[0.2em] mb-4">
-            Mongolia Awaits
+            {bd.heroEyebrow}
           </p>
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white mb-5 leading-[1.1] tracking-tight">
-            Explore Mongolia<br className="hidden sm:block" />
-            <span className="text-orange-400"> by Destination</span>
+            {bd.heroTitle}
+            <br className="hidden sm:block" />
+            <span className="text-orange-400">{bd.heroTitleAccent}</span>
           </h1>
           <p className="text-white/65 text-base sm:text-lg max-w-xl mx-auto mb-10 leading-relaxed">
-            From the Gobi Desert to the Altai Mountains — discover Mongolia&apos;s most remarkable landscapes.
+            {bd.heroLead}
           </p>
 
           {/* Search */}
@@ -76,13 +82,17 @@ export default function DestinationsPage() {
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search destinations…"
+              placeholder={bd.searchPlaceholder}
+              aria-label={bd.searchPlaceholder}
               className="w-full pl-11 pr-10 py-4 bg-white rounded-2xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400/30 shadow-2xl"
             />
             {search && (
               <button
+                type="button"
                 onClick={() => setSearch('')}
                 className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                title={t.common.close}
+                aria-label={t.common.close}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -109,13 +119,13 @@ export default function DestinationsPage() {
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-2">
                     <span className="w-1 h-5 rounded-full bg-orange-500 inline-block" />
-                    <h2 className="text-lg font-bold text-gray-900">Featured Destinations</h2>
+                    <h2 className="text-lg font-bold text-gray-900">{bd.featured}</h2>
                   </div>
                   <Link
                     href="/tours"
                     className="text-xs font-semibold text-orange-600 hover:text-orange-700 transition-colors"
                   >
-                    Browse Tours →
+                    {bd.browseTours}
                   </Link>
                 </div>
 
@@ -143,17 +153,19 @@ export default function DestinationsPage() {
                   {hasMultipleRegions && (
                     <>
                       <button
-                        onClick={() => setRegion('All')}
+                        type="button"
+                        onClick={() => setRegion(ALL_REGIONS)}
                         className={`text-xs font-semibold px-3.5 py-2 rounded-full transition-colors ${
-                          region === 'All'
+                          region === ALL_REGIONS
                             ? 'bg-gray-900 text-white'
                             : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
                         }`}
                       >
-                        All regions
+                        {bd.allRegions}
                       </button>
                       {regions.map(r => (
                         <button
+                          type="button"
                           key={r}
                           onClick={() => setRegion(r)}
                           className={`text-xs font-semibold px-3.5 py-2 rounded-full transition-colors ${
@@ -170,16 +182,17 @@ export default function DestinationsPage() {
 
                   {hasFilters && (
                     <button
+                      type="button"
                       onClick={clearFilters}
                       className="text-xs text-gray-500 hover:text-gray-800 underline transition-colors"
                     >
-                      Clear
+                      {bd.clear}
                     </button>
                   )}
                 </div>
 
                 <p className="text-sm text-gray-400 shrink-0">
-                  {filtered.length} destination{filtered.length !== 1 ? 's' : ''}
+                  {bd.count(filtered.length)}
                 </p>
               </div>
 
@@ -193,17 +206,16 @@ export default function DestinationsPage() {
               ) : (
                 <div className="text-center py-20">
                   <Compass className="w-10 h-10 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-700 font-semibold text-base mb-1">No destinations found</p>
+                  <p className="text-gray-700 font-semibold text-base mb-1">{bd.emptyTitle}</p>
                   <p className="text-gray-400 text-sm mb-5">
-                    {search
-                      ? `No results for "${search}"`
-                      : 'Try a different region or clear your filters'}
+                    {search ? bd.emptyNoResults(search) : bd.emptyHint}
                   </p>
                   <button
+                    type="button"
                     onClick={clearFilters}
                     className="text-sm font-semibold text-orange-600 hover:text-orange-700 underline transition-colors"
                   >
-                    Clear filters
+                    {bd.clearFilters}
                   </button>
                 </div>
               )}
@@ -218,10 +230,10 @@ export default function DestinationsPage() {
               />
               <div className="relative">
                 <h3 className="text-2xl font-bold text-white mb-2">
-                  Ready to book your adventure?
+                  {bd.ctaTitle}
                 </h3>
                 <p className="text-white/55 text-sm mb-7 max-w-md mx-auto">
-                  Browse tours and stays across Mongolia — filter by destination, style, and dates.
+                  {bd.ctaLead}
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                   <Link
@@ -229,13 +241,13 @@ export default function DestinationsPage() {
                     className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm px-7 py-3.5 rounded-xl transition-colors shadow-lg"
                   >
                     <Compass className="w-4 h-4" />
-                    Browse All Tours
+                    {bd.ctaTours}
                   </Link>
                   <Link
                     href="/stays"
                     className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-semibold text-sm px-7 py-3.5 rounded-xl transition-colors border border-white/20"
                   >
-                    Browse Stays
+                    {bd.ctaStays}
                   </Link>
                 </div>
               </div>

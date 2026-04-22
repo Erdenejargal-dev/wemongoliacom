@@ -10,6 +10,8 @@
  */
 
 import type { DashboardLang } from '../config'
+import type { ProviderTourEditorMessages } from '../messages/providerTourEditor'
+import { providerTourEditorEn, providerTourEditorMn } from '../messages/providerTourEditor'
 
 // ── Type ─────────────────────────────────────────────────────────────────────
 
@@ -203,6 +205,9 @@ export interface ProviderTranslations {
   statusLabels: Record<string, string>
   /** Shared payment status labels */
   paymentLabels: Record<string, string>
+
+  /** Tour create/edit page (`services/tours/[id]`) */
+  tourEditor: ProviderTourEditorMessages
 }
 
 // ── Mongolian ─────────────────────────────────────────────────────────────────
@@ -449,6 +454,8 @@ export const mn: ProviderTranslations = {
     failed:     'Амжилтгүй',
     partial:    'Хэсэгчлэн',
   },
+
+  tourEditor: providerTourEditorMn,
 }
 
 // ── English ───────────────────────────────────────────────────────────────────
@@ -695,6 +702,8 @@ export const en: ProviderTranslations = {
     failed:     'Failed',
     partial:    'Partial',
   },
+
+  tourEditor: providerTourEditorEn,
 }
 
 // ── Supported languages ───────────────────────────────────────────────────────

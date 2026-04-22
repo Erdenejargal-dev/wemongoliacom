@@ -7,6 +7,7 @@ import { DisplayCurrencyProvider } from "@/components/providers/DisplayCurrencyP
 import { PreferencesProvider } from "@/components/providers/PreferencesProvider";
 import { PublicLocaleProvider } from "@/lib/i18n/public/context";
 import { ConditionalShell } from "@/components/layout/ConditionalShell";
+import { getResolvedLocaleCurrencyForRequest } from "@/lib/locale-currency-resolver.server";
 
 // ✅ Manrope
 const manrope = Manrope({
@@ -31,21 +32,20 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const initialResolved = await getResolvedLocaleCurrencyForRequest();
+
   return (
-    <html lang="en" className={`${manrope.variable} ${geistMono.variable}`}>
+    <html lang={initialResolved.language} className={`${manrope.variable} ${geistMono.variable}`}>
       <body className="antialiased">
         <SessionProvider>
-          {/* Phase 6 — PreferencesProvider is the single source of truth for
-              currency + language, with geo defaults + user-pref resolution.
-              DisplayCurrencyProvider stays mounted for back-compat with
-              components that already call useDisplayCurrency(). */}
-          <PreferencesProvider>
-            <DisplayCurrencyProvider>
+          {/* Phase 6.4 — Resolver + middleware agree on CF-IPCountry defaults. */}
+          <PreferencesProvider initialResolved={initialResolved}>
+            <DisplayCurrencyProvider initialCurrency={initialResolved.currency}>
               <PublicLocaleProvider>
                 <ConditionalShell>{children}</ConditionalShell>
               </PublicLocaleProvider>

@@ -33,15 +33,8 @@ import { Button } from '@/components/ui/button'
 import { showBecomeAHost } from '@/lib/navigation'
 import { PreferenceSwitcher } from './PreferenceSwitcher'
 import { usePublicLocale } from '@/lib/i18n/public/context'
-
-// ── Featured destinations (max 4 in accordion) ───────────────────────────────
-
-const FEATURED_DESTINATIONS = [
-  { label: 'Gobi Desert',     href: '/destinations/gobi-desert'    },
-  { label: 'Lake Khövsgöl',   href: '/destinations/lake-khovsgol'  },
-  { label: 'Altai Mountains', href: '/destinations/altai-mountains' },
-  { label: 'Ulaanbaatar',     href: '/destinations/ulaanbaatar'    },
-]
+import type { PublicTranslations } from '@/lib/i18n/public/locales'
+import { POPULAR_DESTINATION_HREFS } from './mega-menu-data'
 
 // ── Discovery tile — Tours / Stays / Destinations ─────────────────────────────
 
@@ -106,8 +99,13 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 // ── Destinations accordion ────────────────────────────────────────────────────
 
-function DestinationsAccordion({ onClose }: { onClose: () => void }) {
+function DestinationsAccordion({ onClose, t }: { onClose: () => void; t: PublicTranslations }) {
   const [open, setOpen] = useState(false)
+  const featured = t.megaNav.popular.slice(0, 4).map((item, i) => ({
+    label: item.label,
+    href: POPULAR_DESTINATION_HREFS[i],
+  }))
+  const m = t.mobileNav
 
   return (
     <div>
@@ -117,13 +115,13 @@ function DestinationsAccordion({ onClose }: { onClose: () => void }) {
         aria-expanded={open}
       >
         <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
-        <span className="flex-1 text-left">Destinations</span>
+        <span className="flex-1 text-left">{t.megaNav.rootDestinations}</span>
         <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
         <div className="px-5 pb-2 space-y-0.5">
-          {FEATURED_DESTINATIONS.map(d => (
+          {featured.map((d) => (
             <Link
               key={d.href}
               href={d.href}
@@ -138,7 +136,7 @@ function DestinationsAccordion({ onClose }: { onClose: () => void }) {
             onClick={onClose}
             className="flex items-center gap-1.5 py-2.5 pl-7 text-sm font-semibold text-brand-600 hover:text-brand-700 transition-colors"
           >
-            All destinations <ArrowRight className="w-3.5 h-3.5" />
+            {m.allDestinations} <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
       )}
@@ -180,6 +178,8 @@ export function MobileMenu({ session, onClose }: MobileMenuProps) {
   const name       = session?.user?.name
   const email      = session?.user?.email
   const { t }      = usePublicLocale()
+  const m = t.mobileNav
+  const mega = t.megaNav
 
   const initials = name
     ? name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
@@ -219,12 +219,12 @@ export function MobileMenu({ session, onClose }: MobileMenuProps) {
                 <p className="text-sm font-bold text-gray-900 truncate">{name}</p>
                 {isAdmin && (
                   <span className="shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-200">
-                    ADMIN
+                    {m.badgeAdmin}
                   </span>
                 )}
                 {isProvider && (
                   <span className="shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold bg-brand-50 text-brand-700 border border-brand-200">
-                    HOST
+                    {m.badgeHost}
                   </span>
                 )}
               </div>
@@ -237,24 +237,23 @@ export function MobileMenu({ session, onClose }: MobileMenuProps) {
             <>
               {/* Primary actions: 2-column action grid */}
               <div className="px-4 pt-4 pb-2 grid grid-cols-2 gap-2">
-                <ActionTile href="/account/trips"    label="My Trips"  icon={CalendarCheck} onClick={onClose} variant="primary" />
-                <ActionTile href="/account/messages" label="Messages"  icon={MessageSquare} onClick={onClose} variant="primary" />
+                <ActionTile href="/account/trips"    label={m.myTrips}  icon={CalendarCheck} onClick={onClose} variant="primary" />
+                <ActionTile href="/account/messages" label={m.messages}  icon={MessageSquare} onClick={onClose} variant="primary" />
               </div>
 
-              {/* Discover */}
-              <SectionLabel>Discover</SectionLabel>
+              <SectionLabel>{m.discover}</SectionLabel>
               <div className="px-4 pb-2 grid grid-cols-3 gap-2">
-                <DiscoveryTile href="/tours" label="Tours" icon={Compass} onClick={onClose} />
-                <DiscoveryTile href="/stays" label="Stays" icon={BedDouble} onClick={onClose} />
-                <DiscoveryTile href="/destinations" label="Places" icon={MapPin} onClick={onClose} />
+                <DiscoveryTile href="/tours" label={mega.rootTours} icon={Compass} onClick={onClose} />
+                <DiscoveryTile href="/stays" label={mega.rootStays} icon={BedDouble} onClick={onClose} />
+                <DiscoveryTile href="/destinations" label={m.places} icon={MapPin} onClick={onClose} />
               </div>
-              <DestinationsAccordion onClose={onClose} />
+              <DestinationsAccordion onClose={onClose} t={t} />
 
               {/* Account */}
-              <SectionLabel>Account</SectionLabel>
-              <NavLink href="/account" label="My Account" icon={CircleUserRound} onClick={onClose} />
+              <SectionLabel>{m.account}</SectionLabel>
+              <NavLink href="/account" label={m.myAccount} icon={CircleUserRound} onClick={onClose} />
               {showBecomeAHost(role) && (
-                <NavLink href="/onboarding" label="Become a Host" icon={Sparkles} onClick={onClose} />
+                <NavLink href="/onboarding" label={t.nav.becomeHost} icon={Sparkles} onClick={onClose} />
               )}
             </>
           )}
@@ -264,23 +263,21 @@ export function MobileMenu({ session, onClose }: MobileMenuProps) {
             <>
               {/* Business grid */}
               <div className="px-4 pt-4 pb-2 grid grid-cols-2 gap-2">
-                <ActionTile href="/dashboard/business"          label="Portal"    icon={Building2}    onClick={onClose} variant="primary" />
-                <ActionTile href="/dashboard/business/messages" label="Messages"  icon={MessageSquare} onClick={onClose} variant="primary" />
-                <ActionTile href="/dashboard/business/bookings" label="Bookings"  icon={CalendarCheck} onClick={onClose} />
-                <ActionTile href="/dashboard/business/analytics" label="Analytics" icon={BarChart2}    onClick={onClose} />
+                <ActionTile href="/dashboard/business"          label={m.portal}    icon={Building2}    onClick={onClose} variant="primary" />
+                <ActionTile href="/dashboard/business/messages" label={m.messages}  icon={MessageSquare} onClick={onClose} variant="primary" />
+                <ActionTile href="/dashboard/business/bookings" label={m.bookings}  icon={CalendarCheck} onClick={onClose} />
+                <ActionTile href="/dashboard/business/analytics" label={m.analytics} icon={BarChart2}    onClick={onClose} />
               </div>
 
-              {/* Discover */}
-              <SectionLabel>Discover</SectionLabel>
+              <SectionLabel>{m.discover}</SectionLabel>
               <div className="px-4 pb-2 grid grid-cols-3 gap-2">
-                <DiscoveryTile href="/tours" label="Tours" icon={Compass} onClick={onClose} />
-                <DiscoveryTile href="/stays" label="Stays" icon={BedDouble} onClick={onClose} />
-                <DiscoveryTile href="/destinations" label="Places" icon={MapPin} onClick={onClose} />
+                <DiscoveryTile href="/tours" label={mega.rootTours} icon={Compass} onClick={onClose} />
+                <DiscoveryTile href="/stays" label={mega.rootStays} icon={BedDouble} onClick={onClose} />
+                <DiscoveryTile href="/destinations" label={m.places} icon={MapPin} onClick={onClose} />
               </div>
 
-              {/* Settings */}
-              <SectionLabel>Settings</SectionLabel>
-              <NavLink href="/dashboard/business/settings" label="Business Settings" icon={Settings} onClick={onClose} />
+              <SectionLabel>{m.settings}</SectionLabel>
+              <NavLink href="/dashboard/business/settings" label={m.businessSettings} icon={Settings} onClick={onClose} />
             </>
           )}
 
@@ -295,19 +292,18 @@ export function MobileMenu({ session, onClose }: MobileMenuProps) {
                   className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 font-semibold text-sm hover:bg-amber-100 transition-colors"
                 >
                   <ShieldCheck className="w-4 h-4 text-amber-500" />
-                  Admin Console
+                  {m.adminConsole}
                   <ArrowRight className="w-3.5 h-3.5 ml-auto text-amber-400" />
                 </Link>
               </div>
 
-              <NavLink href="/account" label="My Account" icon={CircleUserRound} onClick={onClose} />
+              <NavLink href="/account" label={m.myAccount} icon={CircleUserRound} onClick={onClose} />
 
-              {/* Discover */}
-              <SectionLabel>Discover</SectionLabel>
+              <SectionLabel>{m.discover}</SectionLabel>
               <div className="px-4 pb-2 grid grid-cols-3 gap-2">
-                <DiscoveryTile href="/tours" label="Tours" icon={Compass} onClick={onClose} />
-                <DiscoveryTile href="/stays" label="Stays" icon={BedDouble} onClick={onClose} />
-                <DiscoveryTile href="/destinations" label="Places" icon={MapPin} onClick={onClose} />
+                <DiscoveryTile href="/tours" label={mega.rootTours} icon={Compass} onClick={onClose} />
+                <DiscoveryTile href="/stays" label={mega.rootStays} icon={BedDouble} onClick={onClose} />
+                <DiscoveryTile href="/destinations" label={m.places} icon={MapPin} onClick={onClose} />
               </div>
             </>
           )}
@@ -319,7 +315,7 @@ export function MobileMenu({ session, onClose }: MobileMenuProps) {
               className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-red-500 transition-colors"
             >
               <LogOut className="w-4 h-4" />
-              Sign out
+              {m.signOut}
             </button>
           </div>
         </>
@@ -331,11 +327,11 @@ export function MobileMenu({ session, onClose }: MobileMenuProps) {
       {!session && (
         <>
           {/* Discovery tiles */}
-          <SectionLabel>Explore Mongolia</SectionLabel>
+          <SectionLabel>{m.exploreMongolia}</SectionLabel>
           <div className="px-4 pb-4 grid grid-cols-3 gap-2">
-            <DiscoveryTile href="/tours"        label="Tours"        icon={Compass}  onClick={onClose} />
-            <DiscoveryTile href="/stays"        label="Stays"        icon={BedDouble} onClick={onClose} />
-            <DiscoveryTile href="/destinations" label="Destinations" icon={MapPin}    onClick={onClose} />
+            <DiscoveryTile href="/tours"        label={mega.rootTours}        icon={Compass}  onClick={onClose} />
+            <DiscoveryTile href="/stays"        label={mega.rootStays}        icon={BedDouble} onClick={onClose} />
+            <DiscoveryTile href="/destinations" label={mega.rootDestinations} icon={MapPin}    onClick={onClose} />
           </div>
 
           {/* Auth CTAs

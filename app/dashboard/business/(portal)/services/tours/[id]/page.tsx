@@ -27,6 +27,10 @@ import {
 import { deleteMediaAsset } from '@/lib/api/media'
 import { getFreshAccessToken } from '@/lib/auth-utils'
 import { ApiError } from '@/lib/api/client'
+import { useProviderLocale } from '@/lib/i18n/provider/context'
+import { formatDateForLocaleString } from '@/lib/i18n/format-date'
+import type { ProviderTourEditorMessages } from '@/lib/i18n/messages/providerTourEditor'
+import { displayTourReadinessMissing } from '@/lib/i18n/tour-readiness-display'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -35,10 +39,6 @@ const inputClass =
 
 const labelClass = 'block text-sm font-medium text-gray-700 mb-1'
 const hintClass  = 'text-xs text-gray-400 mt-1'
-
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
 
 const TOUR_CATEGORIES = [
   'Adventure',
@@ -88,13 +88,21 @@ function Section({
 
 // ── Readiness banner ──────────────────────────────────────────────────────────
 
-function ReadinessBanner({ readiness }: { readiness: ProviderTourDetail['readiness'] }) {
+function ReadinessBanner({
+  readiness,
+  te,
+}: {
+  readiness: ProviderTourDetail['readiness']
+  te:        ProviderTourEditorMessages
+}) {
   if (readiness.ready) {
     return (
       <div className="flex items-center gap-3 px-4 py-3 bg-brand-50 border border-brand-200 rounded-xl text-brand-800">
-        <CheckCircle2 className="w-5 h-5 shrink-0 text-brand-500" />
+        <CheckCircle2 className="w-5 h-5 shrink-0 text-brand-500" aria-hidden />
         <p className="text-sm font-medium">
-          This tour meets all publish requirements. Set status to <strong>Active</strong> to make it visible to travelers.
+          {te.readiness.readyLine1}{' '}
+          <strong>{te.readiness.readyActive}</strong>{' '}
+          {te.readiness.readyLine2}
         </p>
       </div>
     )
@@ -102,11 +110,13 @@ function ReadinessBanner({ readiness }: { readiness: ProviderTourDetail['readine
   return (
     <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800">
       <div className="flex items-center gap-3 mb-2">
-        <AlertTriangle className="w-5 h-5 shrink-0 text-amber-500" />
-        <p className="text-sm font-semibold">Not ready to publish yet</p>
+        <AlertTriangle className="w-5 h-5 shrink-0 text-amber-500" aria-hidden />
+        <p className="text-sm font-semibold">{te.readiness.notReadyTitle}</p>
       </div>
       <ul className="ml-8 list-disc text-xs space-y-0.5">
-        {readiness.missing.map((m, i) => <li key={i}>{m}</li>)}
+        {readiness.missing.map((m, i) => (
+          <li key={i}>{displayTourReadinessMissing(m, te.readinessMissing)}</li>
+        ))}
       </ul>
     </div>
   )
@@ -119,12 +129,18 @@ function DepartureSection({
   departures,
   tourCurrency,
   onRefresh,
+  te,
 }: {
   tourId: string
   departures: TourDeparture[]
   tourCurrency: string
   onRefresh: () => void
+  te:        ProviderTourEditorMessages
 }) {
+  const { t: prov } = useProviderLocale()
+  const dep = te.departures
+  const fmtDate = (iso: string) =>
+    formatDateForLocaleString(iso, prov.dateLocale, { month: 'short', day: 'numeric', year: 'numeric' })
   const [showAdd,       setShowAdd]       = useState(false)
   const [startDate,     setStartDate]     = useState('')
   const [endDate,       setEndDate]       = useState('')
@@ -152,19 +168,19 @@ function DepartureSection({
       setStartDate(''); setEndDate(''); setSeats('12'); setPriceOverride('')
       onRefresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create departure.')
+      setError(err instanceof Error ? err.message : dep.errCreate)
     } finally {
       setSaving(false)
     }
   }
 
   async function handleDelete(depId: string) {
-    if (!confirm('Delete this departure? This cannot be undone.')) return
+    if (!confirm(dep.deleteConfirm)) return
     const freshToken = await getFreshAccessToken()
     if (!freshToken) return
     setDeleting(depId)
     try { await deleteTourDeparture(freshToken, tourId, depId); onRefresh() }
-    catch (err) { alert(err instanceof Error ? err.message : 'Failed to delete departure.') }
+    catch (err) { alert(err instanceof Error ? err.message : dep.errDeleteGeneric) }
     finally { setDeleting(null) }
   }
 
@@ -174,12 +190,13 @@ function DepartureSection({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-500">At least one upcoming departure is required to publish.</p>
+        <p className="text-xs text-gray-500">{dep.hintPublish}</p>
         <button
+          type="button"
           onClick={() => setShowAdd(v => !v)}
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700"
         >
-          <Plus className="w-3.5 h-3.5" /> Add Departure
+          <Plus className="w-3.5 h-3.5" aria-hidden />{dep.addDeparture}
         </button>
       </div>
 
@@ -188,25 +205,25 @@ function DepartureSection({
           {error && <p className="text-xs text-red-600">{error}</p>}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-gray-600 block mb-1">Start date <span className="text-red-500">*</span></label>
+              <label className="text-xs font-medium text-gray-600 block mb-1">{dep.startDate} <span className="text-red-500">*</span></label>
               <input type="date" required value={startDate} onChange={e => setStartDate(e.target.value)} className={inputClass} />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-600 block mb-1">End date <span className="text-red-500">*</span></label>
+              <label className="text-xs font-medium text-gray-600 block mb-1">{dep.endDate} <span className="text-red-500">*</span></label>
               <input type="date" required value={endDate} onChange={e => setEndDate(e.target.value)} className={inputClass} />
             </div>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-xs font-medium text-gray-600 block mb-1">Available seats <span className="text-red-500">*</span></label>
+              <label className="text-xs font-medium text-gray-600 block mb-1">{dep.availableSeats} <span className="text-red-500">*</span></label>
               <input type="number" min={1} max={500} required value={seats} onChange={e => setSeats(e.target.value)} className={inputClass} />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-600 block mb-1">Price override</label>
-              <input type="number" min={0} step={0.01} value={priceOverride} onChange={e => setPriceOverride(e.target.value)} className={inputClass} placeholder="Base price" />
+              <label className="text-xs font-medium text-gray-600 block mb-1">{dep.priceOverride}</label>
+              <input type="number" min={0} step={0.01} value={priceOverride} onChange={e => setPriceOverride(e.target.value)} className={inputClass} placeholder={dep.basePricePlaceholder} />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-600 block mb-1">Currency</label>
+              <label className="text-xs font-medium text-gray-600 block mb-1">{te.labels.currency}</label>
               <select value={currency} onChange={e => setCurrency(e.target.value)} className={inputClass}>
                 {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -214,10 +231,10 @@ function DepartureSection({
           </div>
           <div className="flex gap-2">
             <button type="submit" disabled={saving} className="px-4 py-2 text-xs font-semibold text-white bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 rounded-lg transition-colors">
-              {saving ? 'Saving…' : 'Add Departure'}
+              {saving ? te.actions.saving : dep.addSubmit}
             </button>
             <button type="button" onClick={() => setShowAdd(false)} className="px-4 py-2 text-xs font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
-              Cancel
+              {prov.bookings.cancelBtn}
             </button>
           </div>
         </form>
@@ -225,22 +242,24 @@ function DepartureSection({
 
       {upcoming.length > 0 && (
         <div className="bg-white border border-gray-100 rounded-xl divide-y divide-gray-50 overflow-hidden">
-          {upcoming.map(d => (
-            <div key={d.id} className="flex items-center gap-4 px-4 py-3">
+          {upcoming.map(row => (
+            <div key={row.id} className="flex items-center gap-4 px-4 py-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">{fmtDate(d.startDate)} — {fmtDate(d.endDate)}</p>
+                <p className="text-sm font-medium text-gray-900">{fmtDate(row.startDate)} — {fmtDate(row.endDate)}</p>
                 <p className="text-xs text-gray-500">
-                  {d.bookedSeats}/{d.availableSeats} seats booked
-                  {d.priceOverride != null && <> · {d.currency} {d.priceOverride}</>}
+                  {dep.seatsBooked(row.bookedSeats, row.availableSeats)}
+                  {row.priceOverride != null && <> · {row.currency} {row.priceOverride}</>}
                 </p>
               </div>
-              <span className="text-[10px] font-semibold text-brand-700 bg-brand-50 border border-brand-200 px-2 py-0.5 rounded-full">{d.status}</span>
+              <span className="text-[10px] font-semibold text-brand-700 bg-brand-50 border border-brand-200 px-2 py-0.5 rounded-full">{row.status}</span>
               <button
-                onClick={() => handleDelete(d.id)}
-                disabled={deleting === d.id}
+                type="button"
+                onClick={() => handleDelete(row.id)}
+                disabled={deleting === row.id}
                 className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                aria-label={dep.removeDepartureAria}
               >
-                {deleting === d.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                {deleting === row.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
               </button>
             </div>
           ))}
@@ -248,18 +267,18 @@ function DepartureSection({
       )}
 
       {upcoming.length === 0 && !showAdd && (
-        <p className="text-xs text-gray-400 py-2">No upcoming departures. Add one to make this tour bookable.</p>
+        <p className="text-xs text-gray-400 py-2">{dep.emptyUpcoming}</p>
       )}
 
       {past.length > 0 && (
         <details className="text-xs text-gray-400">
-          <summary className="cursor-pointer hover:text-gray-500">{past.length} past / cancelled departure{past.length !== 1 ? 's' : ''}</summary>
+          <summary className="cursor-pointer hover:text-gray-500">{dep.pastSummary(past.length)}</summary>
           <div className="mt-2 space-y-1">
-            {past.map(d => (
-              <div key={d.id} className="flex items-center gap-3 px-3 py-2 bg-gray-50 rounded-lg">
-                <span className="text-gray-500">{fmtDate(d.startDate)} — {fmtDate(d.endDate)}</span>
-                <span className="text-gray-400">{d.bookedSeats}/{d.availableSeats} seats</span>
-                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${d.status === 'cancelled' ? 'text-red-600 bg-red-50' : 'text-gray-500 bg-gray-100'}`}>{d.status}</span>
+            {past.map(row => (
+              <div key={row.id} className="flex items-center gap-3 px-3 py-2 bg-gray-50 rounded-lg">
+                <span className="text-gray-500">{fmtDate(row.startDate)} — {fmtDate(row.endDate)}</span>
+                <span className="text-gray-400">{dep.pastSeats(row.bookedSeats, row.availableSeats)}</span>
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${row.status === 'cancelled' ? 'text-red-600 bg-red-50' : 'text-gray-500 bg-gray-100'}`}>{row.status}</span>
               </div>
             ))}
           </div>
@@ -277,6 +296,10 @@ export default function TourDetailPage() {
   const tourId  = params.id as string
   const { data: session } = useSession()
   const token   = session?.user?.accessToken
+  const { t: prov } = useProviderLocale()
+  const te = prov.tourEditor
+  const fmtDate = (iso: string) =>
+    formatDateForLocaleString(iso, prov.dateLocale, { month: 'short', day: 'numeric', year: 'numeric' })
 
   const [tour,         setTour]         = useState<ProviderTourDetail | null>(null)
   const [departures,   setDepartures]   = useState<TourDeparture[]>([])
@@ -343,12 +366,12 @@ export default function TourDetailPage() {
       if (err instanceof ApiError && err.status === 401) {
         signOut({ redirect: false }); router.push('/auth/login')
       } else {
-        setError(err instanceof Error ? err.message : 'Failed to load tour.')
+        setError(err instanceof Error ? err.message : te.toasts.errLoad)
       }
     } finally {
       setLoading(false)
     }
-  }, [token, tourId, router])
+  }, [token, tourId, router, te])
 
   useEffect(() => { loadTour() }, [loadTour])
 
@@ -380,11 +403,11 @@ export default function TourDetailPage() {
         status,
       }
       await updateProviderTour(freshToken, tourId, input)
-      setSuccess('Changes saved.')
+      setSuccess(te.toasts.saved)
       setTimeout(() => setSuccess(null), 3000)
       loadTour()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save tour.')
+      setError(err instanceof Error ? err.message : te.toasts.errSave)
     } finally {
       setSaving(false)
     }
@@ -393,7 +416,7 @@ export default function TourDetailPage() {
   // ── Archive ─────────────────────────────────────────────────────────────────
 
   async function handleArchive() {
-    if (!confirm('Archive this tour? It will be hidden from travelers and cannot be re-activated from here.')) return
+    if (!confirm(te.confirmArchive)) return
     const freshToken = await getFreshAccessToken()
     if (!freshToken) return
     setArchiving(true)
@@ -401,7 +424,7 @@ export default function TourDetailPage() {
       await archiveProviderTour(freshToken, tourId)
       router.push('/dashboard/business/services/tours')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to archive tour.')
+      setError(err instanceof Error ? err.message : te.toasts.errArchive)
     } finally {
       setArchiving(false)
     }
@@ -415,7 +438,7 @@ export default function TourDetailPage() {
     const payload = items.filter(i => i.publicId).map(i => ({ imageUrl: i.url, publicId: i.publicId! }))
     if (payload.length === 0) return
     try { await addTourImages(freshToken, tourId, payload); loadTour() }
-    catch (err) { setError(err instanceof Error ? err.message : 'Failed to save images.') }
+    catch (err) { setError(err instanceof Error ? err.message : te.toasts.errImages) }
   }
 
   async function handleImageRemove(imageId: string) {
@@ -426,7 +449,7 @@ export default function TourDetailPage() {
       if (result.publicId) deleteMediaAsset(result.publicId, freshToken).catch(() => {})
       loadTour()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to remove image.')
+      setError(err instanceof Error ? err.message : te.toasts.errRemoveImage)
     }
   }
 
@@ -443,9 +466,9 @@ export default function TourDetailPage() {
   if (!tour) {
     return (
       <div className="text-center py-24">
-        <p className="text-sm text-gray-500 mb-4">{error ?? 'Tour not found.'}</p>
+        <p className="text-sm text-gray-500 mb-4">{error ?? te.tourNotFound}</p>
         <Link href="/dashboard/business/services/tours" className="text-sm font-semibold text-brand-600 hover:text-brand-700">
-          ← Back to tours
+          {te.actions.backToTours}
         </Link>
       </div>
     )
@@ -463,20 +486,21 @@ export default function TourDetailPage() {
         </Link>
         <div className="flex-1 min-w-0">
           <h1 className="text-lg font-bold text-gray-900 truncate">{tour.title}</h1>
-          <p className="text-xs text-gray-400">Last updated {fmtDate(tour.updatedAt)}</p>
+          <p className="text-xs text-gray-400">{te.actions.lastUpdated(fmtDate(tour.updatedAt))}</p>
         </div>
         <button
+          type="button"
           onClick={handleArchive}
           disabled={archiving}
           className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
-          title="Archive tour"
+          title={te.actions.archiveTooltip}
         >
           {archiving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
         </button>
       </div>
 
       {/* ── Readiness banner ── */}
-      <ReadinessBanner readiness={tour.readiness} />
+      <ReadinessBanner readiness={tour.readiness} te={te} />
 
       {/* ── Messages ── */}
       {error   && <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">{error}</div>}
@@ -484,15 +508,15 @@ export default function TourDetailPage() {
 
       {/* ── § 1: Photos ── shown first — required to publish ── */}
       <Section
-        title="Photos"
-        description={`${tour.images.length} uploaded — at least 1 required to publish`}
+        title={te.sections.photos}
+        description={te.sections.photosDesc(tour.images.length)}
         icon={<ImageIcon className="w-4 h-4" />}
       >
         {tour.images.length > 0 && (
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             {tour.images.map((img, idx) => (
               <div key={img.id} className="relative group aspect-square rounded-xl overflow-hidden border border-gray-200">
-                <img src={img.imageUrl} alt={img.altText ?? `Tour image ${idx + 1}`} className="w-full h-full object-cover" />
+                <img src={img.imageUrl} alt={img.altText ?? te.tourImage(idx + 1)} className="w-full h-full object-cover" />
                 <button
                   type="button"
                   onClick={() => handleImageRemove(img.id)}
@@ -501,7 +525,7 @@ export default function TourDetailPage() {
                   <X className="w-3 h-3 text-white" />
                 </button>
                 {idx === 0 && (
-                  <span className="absolute bottom-1 left-1 text-[10px] font-bold text-white bg-black/50 px-1.5 py-0.5 rounded">Cover</span>
+                  <span className="absolute bottom-1 left-1 text-[10px] font-bold text-white bg-black/50 px-1.5 py-0.5 rounded">{te.cover}</span>
                 )}
               </div>
             ))}
@@ -514,17 +538,17 @@ export default function TourDetailPage() {
             value={[]}
             onChange={handleImagesUploaded}
             maxImages={10 - tour.images.length}
-            hint={`Up to ${10 - tour.images.length} more photos. JPEG, PNG, WebP — max 10 MB each. First photo becomes the cover.`}
+            hint={te.photosUploadHint(String(10 - tour.images.length))}
           />
         ) : (
-          <p className="text-xs text-gray-400">Sign in to upload photos.</p>
+          <p className="text-xs text-gray-400">{te.signInUpload}</p>
         )}
       </Section>
 
       {/* ── § 2: Basic Info ── */}
-      <Section title="Basic Info" description="The title and description travelers see on listing cards and the tour detail page.">
+      <Section title={te.sections.basicInfo} description={te.sections.basicInfoDesc}>
         <div>
-          <label className={labelClass}>Title <span className="text-red-500">*</span></label>
+          <label className={labelClass}>{te.labels.title} <span className="text-red-500">*</span></label>
           <input
             required minLength={2} maxLength={300}
             value={title} onChange={e => setTitle(e.target.value)}
@@ -532,156 +556,158 @@ export default function TourDetailPage() {
           />
         </div>
         <div>
-          <label className={labelClass}>Short description</label>
+          <label className={labelClass}>{te.labels.shortDesc}</label>
           <input
             maxLength={500}
             value={shortDesc} onChange={e => setShortDesc(e.target.value)}
             className={inputClass}
-            placeholder="One-line summary shown on search and listing cards…"
+            placeholder={te.placeholders.shortDesc}
           />
-          <p className={hintClass}>Keep this under 100 characters for best display in search results.</p>
+          <p className={hintClass}>{te.hints.shortDesc}</p>
         </div>
         <div>
           <label className={labelClass}>
-            Full description
-            <span className="text-xs text-gray-400 font-normal ml-1">(min 50 chars to publish)</span>
+            {te.labels.fullDesc}
+            <span className="text-xs text-gray-400 font-normal ml-1">{te.labels.fullDescMin}</span>
           </label>
           <textarea
             rows={6} maxLength={10000}
             value={description} onChange={e => setDescription(e.target.value)}
             className={`${inputClass} resize-none`}
-            placeholder="Describe what makes this tour special — the experience, landscapes, culture, what's included…"
+            placeholder={te.placeholders.fullDesc}
           />
           <p className={hintClass}>
-            {description.length}/10 000 ·{' '}
+            {te.hints.charCount(description.length)}{' '}
             {description.length < 50
-              ? `${50 - description.length} more characters needed to publish`
-              : '✓ Long enough to publish'}
+              ? te.hints.needMore(50 - description.length)
+              : te.hints.longEnough}
           </p>
         </div>
       </Section>
 
       {/* ── § 3: Trip Details ── */}
-      <Section title="Trip Details" description="Helps travelers filter and compare your tour against others.">
+      <Section title={te.sections.tripDetails} description={te.sections.tripDetailsDesc}>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>Category</label>
+            <label className={labelClass}>{te.labels.category}</label>
             <select value={category} onChange={e => setCategory(e.target.value)} className={inputClass}>
-              <option value="">— Select —</option>
-              {TOUR_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              <option value="">{te.select.placeholder}</option>
+              {TOUR_CATEGORIES.map(c => (
+                <option key={c} value={c}>{te.categories[c] ?? c}</option>
+              ))}
             </select>
           </div>
           <div>
-            <label className={labelClass}>Difficulty</label>
+            <label className={labelClass}>{te.labels.difficulty}</label>
             <select value={difficulty} onChange={e => setDifficulty(e.target.value)} className={inputClass}>
-              <option value="">— Select —</option>
-              <option value="Easy">Easy</option>
-              <option value="Moderate">Moderate</option>
-              <option value="Challenging">Challenging</option>
+              <option value="">{te.select.placeholder}</option>
+              <option value="Easy">{te.difficulties.Easy}</option>
+              <option value="Moderate">{te.difficulties.Moderate}</option>
+              <option value="Challenging">{te.difficulties.Challenging}</option>
             </select>
             <p className={hintClass}>
-              {difficulty === 'Easy'        && 'Suitable for all fitness levels.'}
-              {difficulty === 'Moderate'    && 'Some physical activity required.'}
-              {difficulty === 'Challenging' && 'Good fitness level needed.'}
+              {difficulty === 'Easy'        && te.hints.diffEasy}
+              {difficulty === 'Moderate'    && te.hints.diffModerate}
+              {difficulty === 'Challenging' && te.hints.diffChallenging}
             </p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>Duration (days)</label>
+            <label className={labelClass}>{te.labels.durationDays}</label>
             <input
               type="number" min={1} max={365}
               value={durationDays} onChange={e => setDurationDays(e.target.value)}
-              className={inputClass} placeholder="e.g. 3"
+              className={inputClass} placeholder={te.placeholders.duration}
             />
           </div>
           <div>
-            <label className={labelClass}>Max group size</label>
+            <label className={labelClass}>{te.labels.maxGuests}</label>
             <input
               type="number" min={1} max={500}
               value={maxGuests} onChange={e => setMaxGuests(e.target.value)}
-              className={inputClass} placeholder="e.g. 12"
+              className={inputClass} placeholder={te.placeholders.maxGuests}
             />
-            <p className={hintClass}>Maximum travelers per departure.</p>
+            <p className={hintClass}>{te.hints.maxGroup}</p>
           </div>
         </div>
         <div>
-          <label className={labelClass}>Minimum group size</label>
+          <label className={labelClass}>{te.labels.minGuests}</label>
           <input
             type="number" min={1} max={500}
             value={minGuests} onChange={e => setMinGuests(e.target.value)}
-            className={inputClass} placeholder="e.g. 2"
+            className={inputClass} placeholder={te.placeholders.minGuests}
           />
-          <p className={hintClass}>Minimum travelers required to run this tour. Leave blank if any group size is fine.</p>
+          <p className={hintClass}>{te.hints.minGroup}</p>
         </div>
         <div>
-          <label className={labelClass}>Languages spoken by guides</label>
+          <label className={labelClass}>{te.labels.languages}</label>
           <input
             value={languages} onChange={e => setLanguages(e.target.value)}
             className={inputClass}
-            placeholder="e.g. English, Mongolian, Chinese"
+            placeholder={te.placeholders.languages}
           />
-          <p className={hintClass}>Separate with commas.</p>
+          <p className={hintClass}>{te.hints.langsComma}</p>
         </div>
       </Section>
 
       {/* ── § 4: Location ── */}
-      <Section title="Location" description="Where this tour takes place and where travelers should meet you.">
+      <Section title={te.sections.location} description={te.sections.locationDesc}>
         <div>
-          <label className={labelClass}>Destination</label>
+          <label className={labelClass}>{te.labels.destination}</label>
           <select value={destinationId} onChange={e => setDestinationId(e.target.value)} className={inputClass}>
-            <option value="">— None —</option>
+            <option value="">{te.select.none}</option>
             {destinations.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
-          <p className={hintClass}>Links your tour to a destination discovery page. Optional but recommended for discoverability.</p>
+          <p className={hintClass}>{te.hints.destLink}</p>
         </div>
         <div>
-          <label className={labelClass}>Meeting point</label>
+          <label className={labelClass}>{te.labels.meetingPoint}</label>
           <input
             maxLength={500}
             value={meetingPoint} onChange={e => setMeetingPoint(e.target.value)}
             className={inputClass}
-            placeholder="e.g. Chinggis Khaan International Airport, or hotel lobby in Ulaanbaatar"
+            placeholder={te.placeholders.meetingPoint}
           />
-          <p className={hintClass}>Where should travelers meet you on day 1?</p>
+          <p className={hintClass}>{te.hints.meetDay1}</p>
         </div>
       </Section>
 
       {/* ── § 5: Pricing & Policy ── */}
-      <Section title="Pricing & Policy" description="Set your per-person price and cancellation terms.">
+      <Section title={te.sections.pricing} description={te.sections.pricingDesc}>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>Base price <span className="text-red-500">*</span></label>
+            <label className={labelClass}>{te.labels.basePrice} <span className="text-red-500">*</span></label>
             <input
               required type="number" min={0.01} step={0.01}
               value={basePrice} onChange={e => setBasePrice(e.target.value)}
               className={inputClass}
             />
-            <p className={hintClass}>Price per person per departure.</p>
+            <p className={hintClass}>{te.hints.pricePerPerson}</p>
           </div>
           <div>
-            <label className={labelClass}>Currency</label>
+            <label className={labelClass}>{te.labels.currency}</label>
             <select value={currency} onChange={e => setCurrency(e.target.value)} className={inputClass}>
               {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
         </div>
         <div>
-          <label className={labelClass}>Cancellation policy</label>
+          <label className={labelClass}>{te.labels.cancellation}</label>
           <textarea
             rows={3} maxLength={5000}
             value={cancellationPolicy} onChange={e => setCancellationPolicy(e.target.value)}
             className={`${inputClass} resize-none`}
-            placeholder="e.g. Full refund if cancelled more than 14 days before departure. 50% refund within 14 days. No refund within 48 hours."
+            placeholder={te.placeholders.cancellation}
           />
-          <p className={hintClass}>Describe your refund and cancellation terms clearly so travelers know what to expect.</p>
+          <p className={hintClass}>{te.hints.cancelClear}</p>
         </div>
       </Section>
 
       {/* ── § 6: Schedule / Departures ── */}
       <Section
-        title="Schedule"
-        description="Upcoming departures travelers can book. At least one is required to publish."
+        title={te.sections.schedule}
+        description={te.sections.scheduleDesc}
         icon={<Calendar className="w-4 h-4" />}
       >
         <DepartureSection
@@ -689,11 +715,12 @@ export default function TourDetailPage() {
           departures={departures}
           tourCurrency={currency}
           onRefresh={loadTour}
+          te={te}
         />
       </Section>
 
       {/* ── § 7: Publish Status + Save ── always last ── */}
-      <Section title="Publish Status" description="Control whether this tour is visible to travelers.">
+      <Section title={te.sections.publish} description={te.sections.publishDesc}>
         <div className="space-y-2">
           {(['draft', 'active', 'paused'] as const).map(s => (
             <label
@@ -706,13 +733,13 @@ export default function TourDetailPage() {
                 className="mt-0.5 accent-brand-600 shrink-0"
               />
               <div>
-                <p className="text-sm font-semibold text-gray-900 capitalize">
-                  {s === 'active' ? 'Active' : s === 'paused' ? 'Paused' : 'Draft'}
+                <p className="text-sm font-semibold text-gray-900">
+                  {s === 'active' ? te.status.active : s === 'paused' ? te.status.paused : te.status.draft}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {s === 'draft'  && 'Hidden from travelers. Use this while setting up.'}
-                  {s === 'active' && 'Visible on WeMongolia. Travelers can discover and book.'}
-                  {s === 'paused' && 'Temporarily hidden. Existing bookings are not affected.'}
+                  {s === 'draft'  && te.status.draftDesc}
+                  {s === 'active' && te.status.activeDesc}
+                  {s === 'paused' && te.status.pausedDesc}
                 </p>
               </div>
             </label>
@@ -721,26 +748,28 @@ export default function TourDetailPage() {
 
         {status === 'active' && !tour.readiness.ready && (
           <p className="text-xs text-amber-600">
-            ⚠ This tour won&apos;t go live until all readiness requirements above are met.
+            ⚠ {te.status.notLiveWarning}
           </p>
         )}
 
         <div className="flex gap-3 pt-2">
           <button
+            type="button"
             onClick={handleSave}
             disabled={saving || !canSave}
             className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 rounded-xl transition-colors"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            {saving ? 'Saving…' : 'Save Changes'}
+            {saving ? te.actions.saving : te.actions.save}
           </button>
           <button
+            type="button"
             onClick={handleArchive}
             disabled={archiving}
             className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-500 border border-gray-200 hover:border-red-300 hover:text-red-600 rounded-xl transition-colors"
           >
             {archiving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-            Archive
+            {te.actions.archive}
           </button>
         </div>
       </Section>

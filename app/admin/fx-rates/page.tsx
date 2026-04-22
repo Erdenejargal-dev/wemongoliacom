@@ -39,6 +39,8 @@ import {
   type FxRateHealth,
 } from '@/lib/api/admin'
 import { AlertTriangle, CheckCircle2, Clock, ArrowLeftRight, Info } from 'lucide-react'
+import { useAdminLocale } from '@/lib/i18n/admin/context'
+import type { AdminFxRatesMessages } from '@/lib/i18n/messages/adminOperatorTools'
 
 type Pair = 'USD->MNT' | 'MNT->USD'
 
@@ -70,28 +72,30 @@ function Badge({
   )
 }
 
-function fmtAge(seconds: number | null): string {
-  if (seconds == null) return '—'
-  if (seconds < 60)    return `${seconds}s ago`
-  if (seconds < 3600)  return `${Math.round(seconds / 60)}m ago`
-  if (seconds < 86400) return `${Math.round(seconds / 3600)}h ago`
-  return `${Math.round(seconds / 86400)}d ago`
+function fmtAgeFx(seconds: number | null, a: AdminFxRatesMessages['ageFmt']): string {
+  if (seconds == null) return a.none
+  if (seconds < 60)    return a.sec(seconds)
+  if (seconds < 3600)  return a.min(Math.round(seconds / 60))
+  if (seconds < 86400) return a.hour(Math.round(seconds / 3600))
+  return a.day(Math.round(seconds / 86400))
 }
 
 /** Pick a health tone from freshness, with softer thresholds than the
  *  backend so the admin sees a warning before the payment system is at
  *  risk of a full outage. */
 function healthTone(h: FxRateHealth): 'ok' | 'warn' | 'err' {
-  if (h.status === 'missing')              return 'err'
-  if (h.ageSeconds == null)                return 'warn'
-  if (h.ageSeconds > STALE_ERR_SECONDS)    return 'err'
-  if (h.ageSeconds > STALE_WARN_SECONDS)   return 'warn'
+  if (h.status === 'missing')            return 'err'
+  if (h.ageSeconds == null)              return 'warn'
+  if (h.ageSeconds > STALE_ERR_SECONDS) return 'err'
+  if (h.ageSeconds > STALE_WARN_SECONDS) return 'warn'
   return 'ok'
 }
 
 export default function AdminFxRatesPage() {
   const { data: session } = useSession()
   const token = session?.user?.accessToken
+  const { t } = useAdminLocale()
+  const fx = t.fxRates
 
   const [history, setHistory] = useState<AdminFxRate[] | null>(null)
   const [health,  setHealth]  = useState<FxRateHealth[] | null>(null)
@@ -119,7 +123,7 @@ export default function AdminFxRatesPage() {
       setHistory(list.data)
       setHealth(hx.rates)
     } catch (e: any) {
-      setError(e?.message ?? 'Failed to load FX rates')
+      setError(e?.message ?? fx.errorLoad)
     } finally {
       setLoading(false)
     }
@@ -148,7 +152,7 @@ export default function AdminFxRatesPage() {
 
     const parsed = Number(rate)
     if (!Number.isFinite(parsed) || parsed <= 0) {
-      setFormError('Rate must be a positive number.')
+      setFormError(fx.form.rateInvalid)
       return
     }
     const pairDef = SUPPORTED_PAIRS.find((p) => p.label === pair)!
@@ -160,17 +164,11 @@ export default function AdminFxRatesPage() {
     if (sanity) {
       // Soft sanity check, not blocking: just warn via confirm so a real
       // typo doesn't silently break payments for everyone.
-      const ok = window.confirm(
-        `Rate ${parsed} for ${pair} looks unusual. Continue anyway?`,
-      )
+      const ok = window.confirm(fx.form.confirmUnusual(String(parsed), pair))
       if (!ok) return
     }
 
-    const warning =
-      'This affects NEW quotes and payments only. Existing bookings and ' +
-      'payments stay unchanged — their FX snapshot was recorded at the ' +
-      'time of booking/payment.\n\nContinue?'
-    if (!window.confirm(warning)) return
+    if (!window.confirm(fx.form.confirmNewRate)) return
 
     try {
       setSubmitting(true)
@@ -184,12 +182,12 @@ export default function AdminFxRatesPage() {
         },
         token,
       )
-      setFormOk(`Saved ${pair} = ${parsed}. It is now active for new payments.`)
+      setFormOk(fx.form.saved(pair, String(parsed)))
       setRate('')
       setNote('')
       await reload()
     } catch (e: any) {
-      setFormError(e?.message ?? 'Failed to save FX rate')
+      setFormError(e?.message ?? fx.form.saveFailed)
     } finally {
       setSubmitting(false)
     }
@@ -207,17 +205,16 @@ export default function AdminFxRatesPage() {
     <div className="space-y-8">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">FX rates</h1>
+          <h1 className="text-xl font-bold text-gray-900">{fx.title}</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            Manage USD↔MNT exchange rates used by the payment conversion layer.
-            Rows are append-only — corrections are a new entry, not an edit.
+            {fx.subtitle}
           </p>
         </div>
         <Link
           href="/admin/pricing-health"
           className="shrink-0 text-xs text-amber-700 hover:text-amber-800 underline"
         >
-          ← Pricing health
+          {fx.linkPricingHealth}
         </Link>
       </div>
 
@@ -229,8 +226,8 @@ export default function AdminFxRatesPage() {
 
       {/* Active-rate cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <ActiveRateCard title="USD → MNT (primary)" h={usdToMnt} emphasise />
-        <ActiveRateCard title="MNT → USD (reverse)" h={mntToUsd} />
+        <ActiveRateCard title={fx.cardUsdMnt} h={usdToMnt} emphasise fa={fx} />
+        <ActiveRateCard title={fx.cardMntUsd} h={mntToUsd} fa={fx} />
       </div>
 
       {/* Warnings */}
@@ -238,10 +235,9 @@ export default function AdminFxRatesPage() {
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
           <div className="text-sm text-red-800">
-            <p className="font-semibold">No USD→MNT rate is set.</p>
+            <p className="font-semibold">{fx.warnMissing.title}</p>
             <p className="mt-0.5">
-              Payments on USD listings will fail until you add a rate below.
-              Existing MNT bookings are unaffected.
+              {fx.warnMissing.body}
             </p>
           </div>
         </div>
@@ -250,10 +246,9 @@ export default function AdminFxRatesPage() {
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex items-start gap-3">
           <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div className="text-sm text-amber-800">
-            <p className="font-semibold">USD→MNT rate is stale.</p>
+            <p className="font-semibold">{fx.warnStale.title}</p>
             <p className="mt-0.5">
-              Last update {fmtAge(usdToMnt.ageSeconds)}. Payments still work,
-              but add a refreshed rate to keep conversions accurate.
+              {fx.warnStale.body(fmtAgeFx(usdToMnt.ageSeconds, fx.ageFmt))}
             </p>
           </div>
         </div>
@@ -261,16 +256,15 @@ export default function AdminFxRatesPage() {
 
       {/* Add-rate form */}
       <section className="rounded-xl border border-gray-100 bg-white p-5">
-        <h2 className="text-sm font-semibold text-gray-900 mb-1">Add / update rate</h2>
+        <h2 className="text-sm font-semibold text-gray-900 mb-1">{fx.form.title}</h2>
         <p className="text-xs text-gray-500 mb-4 flex items-start gap-1.5">
           <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-          This affects new quotes and payments only. Existing bookings and
-          payments stay unchanged.
+          {fx.form.hint}
         </p>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <label className="text-sm">
-            <span className="block text-xs font-medium text-gray-600 mb-1">Pair</span>
+            <span className="block text-xs font-medium text-gray-600 mb-1">{fx.form.pair}</span>
             <select
               value={pair}
               onChange={(e) => setPair(e.target.value as Pair)}
@@ -285,7 +279,7 @@ export default function AdminFxRatesPage() {
           </label>
 
           <label className="text-sm">
-            <span className="block text-xs font-medium text-gray-600 mb-1">Rate</span>
+            <span className="block text-xs font-medium text-gray-600 mb-1">{fx.form.rate}</span>
             <input
               type="number"
               inputMode="decimal"
@@ -294,13 +288,13 @@ export default function AdminFxRatesPage() {
               required
               value={rate}
               onChange={(e) => setRate(e.target.value)}
-              placeholder={pair === 'USD->MNT' ? 'e.g. 3450' : 'e.g. 0.000290'}
+              placeholder={pair === 'USD->MNT' ? fx.form.phUsdMnt : fx.form.phMntUsd}
               className="w-full h-9 px-2 rounded-lg border border-gray-200 bg-white text-sm"
             />
           </label>
 
           <label className="text-sm">
-            <span className="block text-xs font-medium text-gray-600 mb-1">Source</span>
+            <span className="block text-xs font-medium text-gray-600 mb-1">{fx.form.source}</span>
             <input
               type="text"
               value={source}
@@ -312,12 +306,12 @@ export default function AdminFxRatesPage() {
           </label>
 
           <label className="text-sm">
-            <span className="block text-xs font-medium text-gray-600 mb-1">Note (optional)</span>
+            <span className="block text-xs font-medium text-gray-600 mb-1">{fx.form.note}</span>
             <input
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Ref bank rate, manual update, …"
+              placeholder={fx.form.notePlaceholder}
               maxLength={500}
               className="w-full h-9 px-2 rounded-lg border border-gray-200 bg-white text-sm"
             />
@@ -334,7 +328,7 @@ export default function AdminFxRatesPage() {
               className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50"
             >
               <ArrowLeftRight className="w-4 h-4" />
-              {submitting ? 'Saving…' : 'Save new rate'}
+              {submitting ? fx.form.saving : fx.form.saveCta}
             </button>
           </div>
         </form>
@@ -343,23 +337,23 @@ export default function AdminFxRatesPage() {
       {/* History table */}
       <section className="rounded-xl border border-gray-100 bg-white p-5">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-900">Recent rates</h2>
+          <h2 className="text-sm font-semibold text-gray-900">{fx.history.title}</h2>
           <span className="text-[11px] text-gray-500">
-            Top row of each pair is what payments use.
+            {fx.history.hint}
           </span>
         </div>
         {!history || history.length === 0 ? (
-          <p className="text-sm text-gray-500">No FX rates have been recorded yet.</p>
+          <p className="text-sm text-gray-500">{fx.history.empty}</p>
         ) : (
           <table className="w-full text-sm">
             <thead className="text-xs text-gray-500 uppercase tracking-wide">
               <tr className="text-left">
-                <th className="py-2 pr-4">Pair</th>
-                <th className="py-2 pr-4">Rate</th>
-                <th className="py-2 pr-4">Source</th>
-                <th className="py-2 pr-4">Effective from</th>
-                <th className="py-2 pr-4">Note</th>
-                <th className="py-2 pr-4">Status</th>
+                <th className="py-2 pr-4">{fx.table.pair}</th>
+                <th className="py-2 pr-4">{fx.table.rate}</th>
+                <th className="py-2 pr-4">{fx.table.source}</th>
+                <th className="py-2 pr-4">{fx.history.table.effFrom}</th>
+                <th className="py-2 pr-4">{fx.history.table.note}</th>
+                <th className="py-2 pr-4">{fx.history.table.status}</th>
               </tr>
             </thead>
             <tbody>
@@ -375,15 +369,15 @@ export default function AdminFxRatesPage() {
                     <td className="py-2 pr-4 tabular-nums">{r.rate}</td>
                     <td className="py-2 pr-4 text-xs text-gray-500">{r.source}</td>
                     <td className="py-2 pr-4 text-xs text-gray-500">
-                      {new Date(r.effectiveFrom).toLocaleString()}
+                      {new Date(r.effectiveFrom).toLocaleString(t.dateLocale, { dateStyle: 'short', timeStyle: 'short' })}
                     </td>
                     <td className="py-2 pr-4 text-xs text-gray-500 max-w-[22ch] truncate" title={r.note ?? ''}>
-                      {r.note ?? '—'}
+                      {r.note ?? fx.sourceDash}
                     </td>
                     <td className="py-2 pr-4">
                       {isActive
-                        ? <Badge tone="ok"><CheckCircle2 className="w-3 h-3" /> active</Badge>
-                        : <Badge tone="info">history</Badge>}
+                        ? <Badge tone="ok"><CheckCircle2 className="w-3 h-3" />{fx.badge.active}</Badge>
+                        : <Badge tone="info">{fx.badge.history}</Badge>}
                     </td>
                   </tr>
                 )
@@ -400,10 +394,12 @@ function ActiveRateCard({
   title,
   h,
   emphasise = false,
+  fa,
 }: {
   title:      string
   h:          FxRateHealth | undefined
   emphasise?: boolean
+  fa:         AdminFxRatesMessages
 }) {
   const tone = h ? healthTone(h) : 'err'
   const ring = emphasise ? 'ring-1 ring-amber-200' : ''
@@ -412,20 +408,20 @@ function ActiveRateCard({
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium text-gray-500">{title}</p>
         {!h || h.status === 'missing' ? (
-          <Badge tone="err"><AlertTriangle className="w-3 h-3" /> missing</Badge>
+          <Badge tone="err"><AlertTriangle className="w-3 h-3" />{fa.badge.missing}</Badge>
         ) : tone === 'err' ? (
-          <Badge tone="err"><Clock className="w-3 h-3" /> very stale</Badge>
+          <Badge tone="err"><Clock className="w-3 h-3" />{fa.badge.veryStale}</Badge>
         ) : tone === 'warn' ? (
-          <Badge tone="warn"><Clock className="w-3 h-3" /> stale</Badge>
+          <Badge tone="warn"><Clock className="w-3 h-3" />{fa.badge.stale}</Badge>
         ) : (
-          <Badge tone="ok"><CheckCircle2 className="w-3 h-3" /> fresh</Badge>
+          <Badge tone="ok"><CheckCircle2 className="w-3 h-3" />{fa.badge.fresh}</Badge>
         )}
       </div>
       <p className="text-2xl font-bold text-gray-900 mt-1 tabular-nums">
-        {h?.rate != null ? h.rate : '—'}
+        {h?.rate != null ? h.rate : fa.sourceDash}
       </p>
       <p className="text-[11px] text-gray-500 mt-1">
-        {h?.source ?? '—'} · updated {fmtAge(h?.ageSeconds ?? null)}
+        {h?.source ?? fa.sourceDash} · {fa.updated(fmtAgeFx(h?.ageSeconds ?? null, fa.ageFmt))}
       </p>
     </div>
   )

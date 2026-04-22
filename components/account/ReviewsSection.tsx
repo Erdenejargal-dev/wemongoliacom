@@ -8,6 +8,8 @@ import { signOut } from 'next-auth/react'
 import type { UserReview } from '@/lib/mock-data/account'
 import { deleteMyTourReview, updateMyTourReview, type BackendMyTourReview, ApiError } from '@/lib/api/reviews'
 import { getFreshAccessToken } from '@/lib/auth-utils'
+import { useTravelerLocale } from '@/lib/i18n/traveler/context'
+import { formatDateForLocaleString } from '@/lib/i18n/format-date'
 
 interface ReviewsSectionProps {
   initialReviews: UserReview[]
@@ -26,6 +28,7 @@ function StarRow({ rating }: { rating: number }) {
 }
 
 export function ReviewsSection({ initialReviews, accessToken, onReviewsChange }: ReviewsSectionProps) {
+  const { t: dash } = useTravelerLocale()
   const [reviews, setReviews] = useState<UserReview[]>(initialReviews)
   const [editing, setEditing] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
@@ -158,7 +161,9 @@ export function ReviewsSection({ initialReviews, accessToken, onReviewsChange }:
               <p className="text-sm font-bold text-gray-900 leading-tight line-clamp-1">{review.tourTitle}</p>
               <div className="flex items-center gap-2 mt-0.5">
                 <StarRow rating={review.rating} />
-                <span className="text-xs text-gray-400">{new Date(review.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+                <span className="text-xs text-gray-400">
+                  {formatDateForLocaleString(review.date, dash.dateLocale, { month: 'short', year: 'numeric' })}
+                </span>
               </div>
             </div>
             <div className="flex items-start gap-1 shrink-0">

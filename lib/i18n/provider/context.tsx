@@ -1,33 +1,20 @@
 'use client'
 
 /**
- * lib/i18n/provider/context.tsx
- *
- * ProviderLocaleProvider — wraps the entire /dashboard/business/(portal) area.
- * useProviderLocale()    — returns { t, lang, setLang } in any provider client component.
- *
- * Default language: Mongolian ('mn') for provider_owner and admin roles.
- * Persisted in localStorage under the shared key 'wm_dashboard_lang'.
- * Language changes here are reflected in all other dashboard areas (and vice versa).
+ * ProviderLocaleProvider — /dashboard/business (portal) area.
+ * Language follows `PreferencesProvider` globally (no separate localStorage).
  */
 
 import React, {
   createContext,
   useContext,
-  useState,
-  useEffect,
+  useMemo,
   type ReactNode,
 } from 'react'
-import { useSession } from 'next-auth/react'
-import {
-  type DashboardLang,
-  defaultLangForRole,
-  getStoredLang,
-  setStoredLang,
-} from '../config'
-import { type ProviderTranslations, providerLocales } from './locales'
-
-// ── Context shape ─────────────────────────────────────────────────────────────
+import { usePreferences } from '@/components/providers/PreferencesProvider'
+import { getAppMessages, toAppLang } from '@/lib/i18n/messages/registry'
+import type { DashboardLang } from '../config'
+import { type ProviderTranslations } from './locales'
 
 interface ProviderLocaleContextValue {
   t:       ProviderTranslations
@@ -37,36 +24,24 @@ interface ProviderLocaleContextValue {
 
 const ProviderLocaleContext = createContext<ProviderLocaleContextValue | null>(null)
 
-// ── Provider ──────────────────────────────────────────────────────────────────
-
 export function ProviderLocaleProvider({ children }: { children: ReactNode }) {
-  const { data: session } = useSession()
+  const { language, setLanguage } = usePreferences()
 
-  // SSR-safe default: always 'mn' during server render (no hydration mismatch).
-  // useEffect corrects to stored preference or role-based default on client mount.
-  const [lang, setLangState] = useState<DashboardLang>('mn')
-
-  useEffect(() => {
-    const stored = getStoredLang()
-    if (stored) {
-      setLangState(stored)
-    } else {
-      // No stored preference: derive from role.
-      // Provider_owner and admin both default to Mongolian.
-      setLangState(defaultLangForRole(session?.user?.role))
-    }
-  }, [session?.user?.role])
+  const lang: DashboardLang = toAppLang(language) as DashboardLang
 
   const setLang = (next: DashboardLang) => {
-    setLangState(next)
-    setStoredLang(next)
+    if (next !== 'mn' && next !== 'en') return
+    setLanguage(next)
   }
 
-  const value: ProviderLocaleContextValue = {
-    t:    providerLocales[lang],
-    lang,
-    setLang,
-  }
+  const value = useMemo<ProviderLocaleContextValue>(
+    () => ({
+      t: getAppMessages(lang).provider,
+      lang,
+      setLang,
+    }),
+    [lang, setLanguage],
+  )
 
   return (
     <ProviderLocaleContext.Provider value={value}>
@@ -75,15 +50,6 @@ export function ProviderLocaleProvider({ children }: { children: ReactNode }) {
   )
 }
 
-// ── Hook ──────────────────────────────────────────────────────────────────────
-
-/**
- * Use inside any provider dashboard client component to access translations.
- *
- * @example
- * const { t, lang, setLang } = useProviderLocale()
- * <h1>{t.overview.recentBookings}</h1>
- */
 export function useProviderLocale(): ProviderLocaleContextValue {
   const ctx = useContext(ProviderLocaleContext)
   if (!ctx) {

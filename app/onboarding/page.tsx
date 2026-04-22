@@ -8,6 +8,7 @@ import { OnboardingLayout } from '@/components/onboarding/OnboardingLayout'
 import { DEFAULT_ONBOARDING, type OnboardingState, type ProviderType } from '@/lib/mock-data/provider'
 import { apiClient, ApiError } from '@/lib/api/client'
 import { getFreshAccessToken } from '@/lib/auth-utils'
+import { useTranslations } from '@/lib/i18n'
 
 // ── Shared field wrapper ────────────────────────────────────────────────────
 function Field({ label, required, children, hint }: { label: string; required?: boolean; hint?: string; children: React.ReactNode }) {
@@ -27,6 +28,8 @@ const INPUT =
 
 // ── Step 1: Business type ───────────────────────────────────────────────────
 function StepBusinessType({ data, onNext }: { data: OnboardingState; onNext: (p: Partial<OnboardingState>) => void }) {
+  const { t: appT } = useTranslations()
+  const o = appT.onboarding
   type ProviderCombo = 'hotel' | 'tour_operator' | 'car_rental' | 'multiple'
 
   const comboFromProviderTypes = (providerTypes: ProviderType[]): ProviderCombo | null => {
@@ -95,36 +98,36 @@ function StepBusinessType({ data, onNext }: { data: OnboardingState; onNext: (p:
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sm:p-8 space-y-6">
       <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-1">Ямар үйлчилгээ санал болгох вэ?</h2>
-        <p className="text-sm text-gray-600">Бизнестээ тохирох сонголтыг сонгоорой. Дараа нь нэмж болно.</p>
+        <h2 className="text-lg font-bold text-gray-900 mb-1">{o.serviceTitle}</h2>
+        <p className="text-sm text-gray-600">{o.serviceLead}</p>
       </div>
 
       <div className="space-y-3">
         <Card
           value="tour_operator"
-          title="Аялал, тур"
-          subtitle="Тур аялал, экскурс, адвенчер"
+          title={o.serviceCards.tour.title}
+          subtitle={o.serviceCards.tour.subtitle}
           badge="🗺️"
           colorClass="border-brand-400 bg-brand-50/50"
         />
         <Card
           value="hotel"
-          title="Байршил, буудал"
-          subtitle="Зочид буудал, гэр буудал, лодж"
+          title={o.serviceCards.hotel.title}
+          subtitle={o.serviceCards.hotel.subtitle}
           badge="🏨"
           colorClass="border-blue-400 bg-blue-50/50"
         />
         <Card
           value="car_rental"
-          title="Тээвэр, жолооч"
-          subtitle="Автомашин түрээс, жолоочийн үйлчилгээ"
+          title={o.serviceCards.carRental.title}
+          subtitle={o.serviceCards.carRental.subtitle}
           badge="🚐"
           colorClass="border-orange-400 bg-orange-50/50"
         />
         <Card
           value="multiple"
-          title="Бүгд"
-          subtitle="Аялал, байршил, тээвэр"
+          title={o.serviceCards.all.title}
+          subtitle={o.serviceCards.all.subtitle}
           badge="✨"
           colorClass="border-gray-800 bg-gray-50"
         />
@@ -137,7 +140,7 @@ function StepBusinessType({ data, onNext }: { data: OnboardingState; onNext: (p:
           onClick={() => combo && onNext({ providerTypes: toProviderTypes(combo) })}
           className="w-full flex items-center justify-center gap-2 py-3.5 px-6 bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold text-base rounded-xl transition-colors touch-manipulation"
         >
-          Дараагийн алхам <ArrowRight className="w-4 h-4" />
+          {o.nextStep} <ArrowRight className="w-4 h-4" />
         </button>
       </div>
     </div>
@@ -146,6 +149,9 @@ function StepBusinessType({ data, onNext }: { data: OnboardingState; onNext: (p:
 
 // ── Step 2: Basic info ───────────────────────────────────────────────────────
 function StepBasicInfo({ data, onNext, onBack }: { data: OnboardingState; onNext: (p: Partial<OnboardingState>) => void; onBack: () => void }) {
+  const { t: appT } = useTranslations()
+  const s = appT.onboarding.step2
+  const o = appT.onboarding
   const [form, setForm] = useState({
     name: data.name,
     description: data.description,
@@ -169,76 +175,76 @@ function StepBasicInfo({ data, onNext, onBack }: { data: OnboardingState; onNext
   return (
     <form onSubmit={handleNext} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sm:p-8 space-y-5">
       <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-1">Бизнесийнхээ талаар</h2>
-        <p className="text-sm text-gray-600">Аялагчид таны профайлыг харах болно. Хүссэн үедээ засварлах боломжтой.</p>
+        <h2 className="text-lg font-bold text-gray-900 mb-1">{s.title}</h2>
+        <p className="text-sm text-gray-600">{s.lead}</p>
       </div>
 
-      <Field label="Бизнесийн нэр" required>
+      <Field label={s.nameLabel} required>
         <input
           required
           minLength={2}
           value={form.name}
           onChange={(e) => patch({ name: e.target.value })}
           className={INPUT}
-          placeholder="жнь. Говийн Адвенчер Турс"
+          placeholder={s.namePlaceholder}
           autoComplete="organization"
         />
       </Field>
 
-      <Field label="Товч тайлбар" hint="Таны бизнесийг онцгой болгож буй зүйл юу вэ?">
+      <Field label={s.descLabel} hint={s.descHint}>
         <textarea
           rows={3}
           value={form.description}
           onChange={(e) => patch({ description: e.target.value })}
           className={`${INPUT} resize-none min-h-[80px]`}
-          placeholder="Бид Монголын жинхэнэ мэдрэмжийг санал болгодог..."
+          placeholder={s.descPlaceholder}
         />
       </Field>
 
-      <Field label="Хот, байршил" required>
+      <Field label={s.locationLabel} required>
         <input
           required
           value={form.location}
           onChange={(e) => patch({ location: e.target.value })}
           className={INPUT}
-          placeholder="жнь. Улаанбаатар"
+          placeholder={s.locationPlaceholder}
         />
       </Field>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field label="Имэйл" required>
+        <Field label={s.emailLabel} required>
           <input
             required
             type="email"
             value={form.email}
             onChange={(e) => patch({ email: e.target.value })}
             className={INPUT}
-            placeholder="info@taniibusiness.mn"
+            placeholder={s.emailPlaceholder}
           />
         </Field>
-        <Field label="Утас" required>
+        <Field label={s.phoneLabel} required>
           <input
             required
             type="tel"
             value={form.phone}
             onChange={(e) => patch({ phone: e.target.value })}
             className={INPUT}
-            placeholder="+976 9900 0000"
+            placeholder={s.phonePlaceholder}
           />
         </Field>
       </div>
 
-      <Field label="Вэбсайт" hint="Заавал биш — дараа нэмж болно">
+      <Field label={s.websiteLabel} hint={s.websiteHint}>
         <input
           type="url"
           value={form.website}
           onChange={(e) => patch({ website: e.target.value })}
           className={INPUT}
-          placeholder="https://taniibusiness.mn"
+          placeholder={s.websitePlaceholder}
         />
       </Field>
 
-      <p className="text-xs text-gray-500">Лого болон бусад мэдээллийг хяналтын самбараас нэмж болно.</p>
+      <p className="text-xs text-gray-500">{s.logoNote}</p>
 
       <div className="pt-2 flex flex-col-reverse sm:flex-row gap-3 sm:justify-between">
         <button
@@ -246,14 +252,14 @@ function StepBasicInfo({ data, onNext, onBack }: { data: OnboardingState; onNext
           onClick={onBack}
           className="flex items-center justify-center gap-2 py-3 px-4 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors touch-manipulation"
         >
-          <ArrowLeft className="w-4 h-4" /> Буцах
+          <ArrowLeft className="w-4 h-4" /> {o.back}
         </button>
         <button
           type="submit"
           disabled={!canProceed}
           className="w-full sm:w-auto flex items-center justify-center gap-2 py-3.5 px-6 bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold text-base rounded-xl transition-colors touch-manipulation"
         >
-          Дараагийн алхам <ArrowRight className="w-4 h-4" />
+          {o.nextStep} <ArrowRight className="w-4 h-4" />
         </button>
       </div>
     </form>
@@ -272,41 +278,44 @@ function StepReview({
   onBack: () => void
   saving: boolean
 }) {
+  const { t: appT } = useTranslations()
+  const s = appT.onboarding.step3
+  const o = appT.onboarding
   const typeLabel =
     data.providerTypes.length === 3
-      ? 'Аялал, байршил, тээвэр'
+      ? s.typeAll
       : data.providerTypes.includes('tour_operator')
-        ? 'Аялал, тур'
+        ? s.typeTour
         : data.providerTypes.includes('accommodation')
-          ? 'Байршил, буудал'
-          : 'Тээвэр, жолооч'
+          ? s.typeHotel
+          : s.typeCar
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sm:p-8 space-y-6">
       <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-1">Бэлэн боллоо</h2>
-        <p className="text-sm text-gray-600">Доорх мэдээллээр бүртгэл үүсгэнэ. Хүссэн үедээ засварлах боломжтой.</p>
+        <h2 className="text-lg font-bold text-gray-900 mb-1">{s.title}</h2>
+        <p className="text-sm text-gray-600">{s.lead}</p>
       </div>
 
       <div className="space-y-4 rounded-xl bg-gray-50 p-4">
         <div>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Бизнес</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{s.sectionBusiness}</p>
           <p className="font-semibold text-gray-900">{data.name || '—'}</p>
           <p className="text-sm text-gray-600 mt-0.5">{typeLabel}</p>
         </div>
         <div>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Байршил</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{s.sectionLocation}</p>
           <p className="text-gray-900">{data.location || '—'}</p>
         </div>
         <div>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Холбоо барих</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{s.sectionContact}</p>
           <p className="text-gray-900">{data.email || '—'}</p>
           <p className="text-gray-900">{data.phone || '—'}</p>
         </div>
       </div>
 
       <p className="text-sm text-gray-600">
-        Бид танд эхний үйлчлүүлэгчийг олоход тусална. Бүртгүүлсний дараа хяналтын самбараас тур, өрөө, тээврийн хэрэгсэл нэмж болно.
+        {s.helpParagraph}
       </p>
 
       <div className="pt-2 flex flex-col-reverse sm:flex-row gap-3 sm:justify-between">
@@ -316,7 +325,7 @@ function StepReview({
           disabled={saving}
           className="flex items-center justify-center gap-2 py-3 px-4 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors touch-manipulation disabled:opacity-50"
         >
-          <ArrowLeft className="w-4 h-4" /> Буцах
+          <ArrowLeft className="w-4 h-4" /> {o.back}
         </button>
         <button
           type="button"
@@ -326,10 +335,10 @@ function StepReview({
         >
           {saving ? (
             <>
-              <Loader2 className="w-5 h-5 animate-spin" /> Бүртгэж байна…
+              <Loader2 className="w-5 h-5 animate-spin" /> {s.saving}
             </>
           ) : (
-            <>Захиалга хүлээн авч эхлэх</>
+            <>{s.cta}</>
           )}
         </button>
       </div>
@@ -340,6 +349,8 @@ function StepReview({
 // ── Main wizard ─────────────────────────────────────────────────────────────
 export default function OnboardingPage() {
   const router = useRouter()
+  const { t: appT } = useTranslations()
+  const onbErr = appT.onboarding.errors
   const { data: session, status, update } = useSession()
   const token = session?.user?.accessToken
   const [step, setStep] = useState<1 | 2 | 3>(1)
@@ -399,7 +410,7 @@ export default function OnboardingPage() {
           if (alive) router.push('/auth/login')
           return
         }
-        if (alive) setSubmitError(err instanceof Error ? err.message : 'Профайл шалгахад алдаа гарлаа.')
+        if (alive) setSubmitError(err instanceof Error ? err.message : onbErr.profileCheckFailed)
       } finally {
         if (alive) setCheckingProvider(false)
       }
@@ -428,7 +439,7 @@ export default function OnboardingPage() {
 
     const freshToken = await getFreshAccessToken()
     if (!freshToken) {
-      setSubmitError('Нэвтрэлт дууссан. Дахин нэвтэрнэ үү.')
+      setSubmitError(onbErr.sessionExpired)
       setSaving(false)
       router.push('/auth/login')
       return
@@ -438,7 +449,7 @@ export default function OnboardingPage() {
     try {
       businessType = mapProviderTypes(final.providerTypes)
     } catch {
-      setSubmitError('Буцаж очоод үйлчилгээний төрлөө сонгоно уу.')
+      setSubmitError(onbErr.invalidSelection)
       setSaving(false)
       return
     }
@@ -459,12 +470,12 @@ export default function OnboardingPage() {
       )
       await update()
       router.push('/dashboard/business')
-    } catch (err: unknown) {
-      if (err instanceof ApiError && err.status === 401) {
-        setSubmitError('Нэвтрэлт дууссан. Дахин нэвтэрнэ үү.')
+    } catch (ex: unknown) {
+      if (ex instanceof ApiError && ex.status === 401) {
+        setSubmitError(onbErr.sessionExpired)
         router.push('/auth/login')
       } else {
-        setSubmitError(err instanceof Error ? err.message : 'Алдаа гарлаа. Дахин оролдоно уу.')
+        setSubmitError(ex instanceof Error ? ex.message : onbErr.submitFailed)
       }
     } finally {
       setSaving(false)

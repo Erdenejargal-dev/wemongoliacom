@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronRight, Star, Clock, Users } from 'lucide-react'
+import { Star, Clock, Users } from 'lucide-react'
 import { getHostBySlug, hosts } from '@/lib/mock-data/hosts'
 import { mockTours } from '@/lib/mock-data/tours'
 import { HostHero } from '@/components/hosts/HostHero'
@@ -9,6 +9,8 @@ import { HostReviews } from '@/components/hosts/HostReviews'
 import { ContactHost } from '@/components/hosts/ContactHost'
 import { formatPricing, readPricing } from '@/lib/pricing'
 import { readPreferredCurrencyServer } from '@/lib/preferences-storage.server'
+import { getTranslations } from '@/lib/i18n/server'
+import { DetailBreadcrumb } from '@/components/navigation/DetailBreadcrumb'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -16,15 +18,23 @@ interface Props {
 
 export default async function HostPage({ params }: Props) {
   const { slug } = await params
+  const { t } = await getTranslations()
+  const h = t.hostDetail
   const host = getHostBySlug(slug)
   if (!host) notFound()
 
-  const hostTours = mockTours.filter(t => t.hostSlug === slug && t.available)
+  const hostTours = mockTours.filter(tour => tour.hostSlug === slug && tour.available)
   // Phase 6.3 — honour the user's display-currency preference on this public
   // listing surface (host profile tour grid). Mock-data tours don't have a
   // real `pricing` DTO yet, so conversion is not possible and `formatPricing`
   // will render an explicit "(base)" fallback when displayCurrency differs.
   const displayCurrency = await readPreferredCurrencyServer()
+
+  const hostTypeLabel =
+    host.type === 'company'   ? h.typeCompany
+      : host.type === 'guide' ? h.typeGuide
+        : host.type === 'driver' ? h.typeDriver
+          : h.typeProvider
 
   const styleColors: Record<string, string> = {
     adventure:   'bg-orange-50 text-orange-600',
@@ -37,18 +47,16 @@ export default async function HostPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-gray-50/40">
-      {/* Breadcrumb strip */}
-      <div className="bg-white border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-10 flex items-center">
-          <nav className="flex items-center gap-1.5 text-xs text-gray-500">
-            <Link href="/" className="hover:text-gray-800 transition-colors">Home</Link>
-            <ChevronRight className="w-3 h-3" />
-            <Link href="/hosts" className="hover:text-gray-800 transition-colors">Hosts</Link>
-            <ChevronRight className="w-3 h-3" />
-            <span className="text-gray-800 font-medium">{host.name}</span>
-          </nav>
-        </div>
-      </div>
+      <DetailBreadcrumb
+        ariaLabel={t.common.breadcrumb}
+        bar
+        variant="chevron"
+        items={[
+          { href: '/', label: t.common.home },
+          { href: '/hosts', label: h.breadcrumbHosts },
+        ]}
+        currentTitle={host.name}
+      />
 
       {/* Hero (cover + profile card) */}
       <HostHero host={host} />
@@ -65,7 +73,7 @@ export default async function HostPage({ params }: Props) {
 
             {/* About */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h2 className="text-base font-bold text-gray-900 mb-3">About {host.name}</h2>
+              <h2 className="text-base font-bold text-gray-900 mb-3">{h.aboutTitle(host.name)}</h2>
               <p className="text-sm text-gray-700 leading-relaxed">{host.about}</p>
             </div>
 
@@ -73,9 +81,9 @@ export default async function HostPage({ params }: Props) {
             {hostTours.length > 0 && (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                 <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-base font-bold text-gray-900">Tours by {host.name}</h2>
+                  <h2 className="text-base font-bold text-gray-900">{h.toursBy(host.name)}</h2>
                   <Link href="/tours" className="text-xs text-brand-600 hover:text-brand-700 font-semibold transition-colors">
-                    Browse all tours →
+                    {h.browseAllTours}
                   </Link>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -95,14 +103,14 @@ export default async function HostPage({ params }: Props) {
                         <p className="text-sm font-semibold text-gray-900 leading-tight line-clamp-2 mb-2 group-hover:text-brand-700 transition-colors">{tour.title}</p>
                         <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
                           <span className="flex items-center gap-0.5"><Clock className="w-3 h-3" />{tour.duration}</span>
-                          <span className="flex items-center gap-0.5"><Users className="w-3 h-3" />Max {tour.maxGuests}</span>
+                          <span className="flex items-center gap-0.5"><Users className="w-3 h-3" />{h.tourMaxGuests(tour.maxGuests)}</span>
                         </div>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1">
                             <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
                             <span className="text-xs font-semibold text-gray-900">{tour.rating}</span>
                           </div>
-                          <span className="text-sm font-bold text-gray-900">{formatPricing(readPricing({ basePrice: tour.price, currency: tour.currency ?? 'USD' }), displayCurrency ?? undefined)}<span className="text-xs font-normal text-gray-400">/p</span></span>
+                          <span className="text-sm font-bold text-gray-900">{formatPricing(readPricing({ basePrice: tour.price, currency: tour.currency ?? 'USD' }), displayCurrency ?? undefined)}<span className="text-xs font-normal text-gray-400">{h.perPersonSuffix}</span></span>
                         </div>
                       </div>
                     </Link>
@@ -126,26 +134,26 @@ export default async function HostPage({ params }: Props) {
 
               {/* Quick facts */}
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                <h3 className="text-sm font-bold text-gray-900 mb-3">Quick Facts</h3>
+                <h3 className="text-sm font-bold text-gray-900 mb-3">{h.quickFacts}</h3>
                 <dl className="space-y-2.5 text-xs">
                   <div className="flex justify-between">
-                    <dt className="text-gray-500">Type</dt>
-                    <dd className="font-semibold text-gray-900 capitalize">{host.type === 'company' ? 'Tour Company' : host.type === 'guide' ? 'Private Guide' : 'Experience Provider'}</dd>
+                    <dt className="text-gray-500">{h.factType}</dt>
+                    <dd className="font-semibold text-gray-900 capitalize">{hostTypeLabel}</dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-gray-500">Based in</dt>
+                    <dt className="text-gray-500">{h.factBasedIn}</dt>
                     <dd className="font-semibold text-gray-900">{host.location}</dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-gray-500">Languages</dt>
+                    <dt className="text-gray-500">{h.factLanguages}</dt>
                     <dd className="font-semibold text-gray-900">{host.languages.join(', ')}</dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-gray-500">Experience</dt>
-                    <dd className="font-semibold text-gray-900">{host.yearsExperience}+ years</dd>
+                    <dt className="text-gray-500">{h.factExperienceLabel}</dt>
+                    <dd className="font-semibold text-gray-900">{h.factExperience(host.yearsExperience)}</dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-gray-500">Guests served</dt>
+                    <dt className="text-gray-500">{h.factGuestsServed}</dt>
                     <dd className="font-semibold text-gray-900">{host.totalGuests.toLocaleString()}+</dd>
                   </div>
                 </dl>

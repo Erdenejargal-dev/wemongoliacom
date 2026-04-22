@@ -32,14 +32,22 @@ export interface DisplayCurrencyContextValue {
   isUserSelected:     boolean
 }
 
-const DEFAULT_CURRENCY: Currency = 'MNT'
+const DEFAULT_CURRENCY: Currency = 'USD'
 
 const Ctx = React.createContext<DisplayCurrencyContextValue | null>(null)
 
-export function DisplayCurrencyProvider({ children }: { children: React.ReactNode }) {
-  // SSR-safe: start from default; hydrate from cookie/localStorage on mount.
+export function DisplayCurrencyProvider({
+  children,
+  /** Must match the server-resolved value from `getResolvedLocaleCurrencyForRequest` to avoid hydration skew. */
+  initialCurrency = DEFAULT_CURRENCY,
+}: {
+  children:         React.ReactNode
+  initialCurrency?: Currency
+}) {
+  // SSR: match layout; client: `readPreferredCurrencyClient` in useEffect
+  // (after middleware may have set cookies) stays aligned.
   const [state, setState] = React.useState<{ currency: Currency; isUserSelected: boolean }>({
-    currency:       DEFAULT_CURRENCY,
+    currency:       initialCurrency,
     isUserSelected: false,
   })
 

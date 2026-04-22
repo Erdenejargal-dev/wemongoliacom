@@ -24,6 +24,8 @@ import { formatMoney } from '@/lib/money'
 import { TripTimeline } from './TripTimeline'
 import { startConversation } from '@/lib/api/conversations'
 import { getFreshAccessToken } from '@/lib/auth-utils'
+import { useTravelerLocale } from '@/lib/i18n/traveler/context'
+import { formatDateForLocaleString } from '@/lib/i18n/format-date'
 
 interface BookingDetailsProps {
   trip: Trip
@@ -38,15 +40,19 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
-function formatDate(d: string) {
-  return new Date(d + 'T00:00:00').toLocaleDateString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
-  })
-}
-
 export function BookingDetails({ trip }: BookingDetailsProps) {
   const router = useRouter()
   const { data: session } = useSession()
+  const { t: dash } = useTravelerLocale()
+
+  function formatDate(d: string) {
+    return formatDateForLocaleString(`${d}T00:00:00`, dash.dateLocale, {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    })
+  }
 
   const [showContactForm, setShowContactForm] = useState(false)
   const [message, setMessage]   = useState(

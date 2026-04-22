@@ -10,6 +10,15 @@
  * - Consistent terminology is enforced via this single file.
  */
 
+import {
+  type AdminFxRatesMessages,
+  type AdminPricingHealthMessages,
+  fxRatesEn,
+  fxRatesMn,
+  pricingHealthEn,
+  pricingHealthMn,
+} from '../messages/adminOperatorTools'
+
 // ── Type ──────────────────────────────────────────────────────────────────────
 
 export interface AdminTranslations {
@@ -76,6 +85,13 @@ export interface AdminTranslations {
       users:     { label: string; desc: string }
       providers: { label: string; desc: string }
       bookings:  { label: string; desc: string }
+      /** Admin → Pricing & FX Health */
+      pricingHealth: { label: string; desc: string }
+    }
+    /** Footnotes for revenue headline when totals are approximated or split */
+    revenueNotes: {
+      mixedCurrenciesMnt: string
+      fxUnavailable: string
     }
     errorLoadingDashboard: string
   }
@@ -229,6 +245,11 @@ export interface AdminTranslations {
     empty: string
     errorLoading: string
   }
+
+  /** /admin/pricing-health */
+  pricingHealth: AdminPricingHealthMessages
+  /** /admin/fx-rates */
+  fxRates: AdminFxRatesMessages
 }
 
 // ── Mongolian (default) ───────────────────────────────────────────────────────
@@ -296,6 +317,11 @@ export const mn: AdminTranslations = {
       users:     { label: 'Хэрэглэгч удирдах',          desc: 'Хэрэглэгчдийн эрхийг харах, засах' },
       providers: { label: 'Үйлчилгээ эрхлэгч удирдах', desc: 'Бизнесийг баталгаажуулах, хянах' },
       bookings:  { label: 'Захиалга удирдах',            desc: 'Захиалгыг хянах, дэмжлэг үзүүлэх' },
+      pricingHealth: { label: 'Үнэ & FX эрүүл мэдрэмж', desc: 'FX сүүлийн мэдээлэл, backfill, түгжигдсэн захиалга' },
+    },
+    revenueNotes: {
+      mixedCurrenciesMnt: 'Олон валютыг тухайн ханшаар MNT руу шилжүүлсэн нийт.',
+      fxUnavailable: 'FX ханш байхгүй — валютаар нь нийт гаргасан.',
     },
     errorLoadingDashboard: 'Хяналтын самбарын мэдээлэл уншиж чадсангүй.',
   },
@@ -450,6 +476,9 @@ export const mn: AdminTranslations = {
     empty:        'Захиалга олдсонгүй.',
     errorLoading: 'Захиалгуудыг уншиж чадсангүй.',
   },
+
+  pricingHealth: pricingHealthMn,
+  fxRates:         fxRatesMn,
 }
 
 // ── English ───────────────────────────────────────────────────────────────────
@@ -517,6 +546,11 @@ export const en: AdminTranslations = {
       users:     { label: 'Manage Users',     desc: 'View and edit user roles' },
       providers: { label: 'Manage Providers', desc: 'Verify and moderate businesses' },
       bookings:  { label: 'Manage Bookings',  desc: 'Review and support bookings' },
+      pricingHealth: { label: 'Pricing & FX Health', desc: 'FX freshness, backfill, blocked bookings' },
+    },
+    revenueNotes: {
+      mixedCurrenciesMnt: 'Mixed currencies, converted to MNT at current rates.',
+      fxUnavailable: 'FX rate unavailable — totals shown per currency.',
     },
     errorLoadingDashboard: 'Failed to load dashboard data.',
   },
@@ -671,6 +705,9 @@ export const en: AdminTranslations = {
     empty:        'No bookings found.',
     errorLoading: 'Failed to load bookings.',
   },
+
+  pricingHealth: pricingHealthEn,
+  fxRates:         fxRatesEn,
 }
 
 // ── Supported languages ───────────────────────────────────────────────────────

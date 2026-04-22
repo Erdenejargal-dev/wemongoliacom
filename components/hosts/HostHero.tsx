@@ -1,11 +1,23 @@
+'use client'
+
 import { MapPin, Star, BadgeCheck, Mail, Globe } from 'lucide-react'
 import type { Host } from '@/lib/mock-data/hosts'
+import { useTranslations } from '@/lib/i18n'
+import type { HostDetailMessages } from '@/lib/i18n/messages/hostDetail'
 
-const typeLabel: Record<string, string> = {
-  company:    'Tour Company',
-  guide:      'Private Guide',
-  driver:     'Driver & Guide',
-  experience: 'Experience Provider',
+function typeLabelFor(host: Host, h: HostDetailMessages): string {
+  switch (host.type) {
+    case 'company':
+      return h.typeCompany
+    case 'guide':
+      return h.typeGuide
+    case 'driver':
+      return h.typeDriver
+    case 'experience':
+      return h.typeProvider
+    default:
+      return h.typeProvider
+  }
 }
 
 interface HostHeroProps {
@@ -13,6 +25,9 @@ interface HostHeroProps {
 }
 
 export function HostHero({ host }: HostHeroProps) {
+  const { t } = useTranslations()
+  const h = t.hostDetail
+
   return (
     <div className="relative">
       {/* Cover image */}
@@ -38,25 +53,26 @@ export function HostHero({ host }: HostHeroProps) {
                 <h1 className="text-xl font-bold text-gray-900 leading-tight">{host.name}</h1>
                 {host.verified && (
                   <span className="flex items-center gap-1 text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                    <BadgeCheck className="w-3 h-3" />
-                    Verified
+                    <BadgeCheck className="w-3 h-3" aria-hidden />
+                    {h.verifiedBadge}
                   </span>
                 )}
                 <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                  {typeLabel[host.type]}
+                  {typeLabelFor(host, h)}
                 </span>
               </div>
 
               <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 mb-3">
-                <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-brand-500" />{host.location}</span>
+                <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5 text-brand-500" aria-hidden />{host.location}</span>
                 {host.website && (
                   <a href={host.website} target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-1 hover:text-brand-600 transition-colors">
-                    <Globe className="w-3.5 h-3.5 text-brand-500" />Website
+                    <Globe className="w-3.5 h-3.5 text-brand-500" aria-hidden />
+                    {h.linkWebsite}
                   </a>
                 )}
                 <a href={`mailto:${host.email}`} className="flex items-center gap-1 hover:text-brand-600 transition-colors">
-                  <Mail className="w-3.5 h-3.5 text-brand-500" />{host.email}
+                  <Mail className="w-3.5 h-3.5 text-brand-500" aria-hidden />{host.email}
                 </a>
               </div>
 
@@ -64,9 +80,9 @@ export function HostHero({ host }: HostHeroProps) {
 
               <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-1.5">
-                  <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                  <Star className="w-4 h-4 fill-amber-400 text-amber-400" aria-hidden />
                   <span className="text-sm font-bold text-gray-900">{host.rating.toFixed(1)}</span>
-                  <span className="text-sm text-gray-500">({host.reviewsCount} reviews)</span>
+                  <span className="text-sm text-gray-500">{h.reviewsWithCount(host.reviewsCount)}</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {host.languages.map(lang => (

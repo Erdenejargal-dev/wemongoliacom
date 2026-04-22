@@ -3,6 +3,7 @@
 import { SlidersHorizontal, RotateCcw, Star, MapPin, Users } from 'lucide-react'
 import type { SearchQuery } from '@/lib/search/types'
 import { formatMoney } from '@/lib/money'
+import { useTranslations } from '@/lib/i18n'
 
 interface FilterSidebarProps {
   query: SearchQuery
@@ -11,23 +12,9 @@ interface FilterSidebarProps {
   total: number
 }
 
-const DURATIONS = [
-  { label: 'Any duration', value: 'any' },
-  { label: '1 Day', value: '1' },
-  { label: '2–3 Days', value: '2-3' },
-  { label: '4–7 Days', value: '4-7' },
-  { label: '8+ Days', value: '8+' },
-]
+const REGION_VALUES = ['', 'gobi', 'khangai', 'khuvsgul', 'ulaanbaatar', 'altai', 'steppe'] as const
 
-const REGIONS = [
-  { label: 'All regions', value: '' },
-  { label: 'Gobi Desert', value: 'gobi' },
-  { label: 'Khangai Mountains', value: 'khangai' },
-  { label: 'Lake Khuvsgul', value: 'khuvsgul' },
-  { label: 'Ulaanbaatar', value: 'ulaanbaatar' },
-  { label: 'Altai Mountains', value: 'altai' },
-  { label: 'Central Steppes', value: 'steppe' },
-]
+const DURATION_VALUES = ['any', '1', '2-3', '4-7', '8+'] as const
 
 const GROUP_SIZES = [
   { label: '1', value: 1 },
@@ -43,22 +30,33 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 export function FilterSidebar({ query, onUpdate, onReset, total }: FilterSidebarProps) {
+  const { t: appT } = useTranslations()
+  const fs = appT.toursSearch.filterSidebar
+
+  const DURATIONS = DURATION_VALUES.map((value) => ({
+    value,
+    label: fs.durationLabels[value] ?? value,
+  }))
+
+  const REGIONS = REGION_VALUES.map((value) => ({
+    value,
+    label: fs.regionLabels[value] ?? value,
+  }))
+
   return (
     <aside className="w-full space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <SlidersHorizontal className="w-4 h-4 text-gray-500" />
-          <span className="text-sm font-semibold text-gray-900">Filters</span>
+          <span className="text-sm font-semibold text-gray-900">{fs.filters}</span>
         </div>
         <button onClick={onReset} className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors">
-          <RotateCcw className="w-3 h-3" /> Reset
+          <RotateCcw className="w-3 h-3" /> {fs.reset}
         </button>
       </div>
 
-      {/* Price Range */}
       <div>
-        <SectionTitle>Price (USD / person)</SectionTitle>
+        <SectionTitle>{fs.price}</SectionTitle>
         <div className="space-y-2">
           <input type="range" min={0} max={2000} step={50}
             value={query.priceRange[1]}
@@ -71,13 +69,12 @@ export function FilterSidebar({ query, onUpdate, onReset, total }: FilterSidebar
         </div>
       </div>
 
-      {/* Departure dates — filters by real scheduled departure dates */}
       <div>
-        <SectionTitle>Departure dates</SectionTitle>
-        <p className="text-xs text-gray-500 mb-2">Filter by scheduled departure date</p>
+        <SectionTitle>{fs.departureDates}</SectionTitle>
+        <p className="text-xs text-gray-500 mb-2">{fs.departureHint}</p>
         <div className="space-y-2">
           <div>
-            <label className="text-[10px] text-gray-400 block mb-0.5">From</label>
+            <label className="text-[10px] text-gray-400 block mb-0.5">{fs.from}</label>
             <input
               type="date"
               min={new Date().toISOString().slice(0, 10)}
@@ -87,7 +84,7 @@ export function FilterSidebar({ query, onUpdate, onReset, total }: FilterSidebar
             />
           </div>
           <div>
-            <label className="text-[10px] text-gray-400 block mb-0.5">To</label>
+            <label className="text-[10px] text-gray-400 block mb-0.5">{fs.to}</label>
             <input
               type="date"
               min={query.fromDate || new Date().toISOString().slice(0, 10)}
@@ -101,15 +98,14 @@ export function FilterSidebar({ query, onUpdate, onReset, total }: FilterSidebar
               onClick={() => onUpdate({ fromDate: '', toDate: '' })}
               className="text-xs text-brand-600 hover:text-brand-700"
             >
-              Clear dates
+              {fs.clearDates}
             </button>
           )}
         </div>
       </div>
 
-      {/* Region (backend-supported) */}
       <div>
-        <SectionTitle>Region</SectionTitle>
+        <SectionTitle>{fs.region}</SectionTitle>
         <div className="space-y-1">
           {REGIONS.map(r => (
             <button key={r.value || 'all'} onClick={() => onUpdate({ region: r.value })}
@@ -125,9 +121,8 @@ export function FilterSidebar({ query, onUpdate, onReset, total }: FilterSidebar
         </div>
       </div>
 
-      {/* Duration */}
       <div>
-        <SectionTitle>Duration</SectionTitle>
+        <SectionTitle>{fs.duration}</SectionTitle>
         <div className="space-y-1">
           {DURATIONS.map(d => (
             <button key={d.value} onClick={() => onUpdate({ durationFilter: d.value })}
@@ -142,14 +137,13 @@ export function FilterSidebar({ query, onUpdate, onReset, total }: FilterSidebar
         </div>
       </div>
 
-      {/* Group size (guests) — filters tours with future departures that fit party size */}
       <div>
-        <SectionTitle>Group size</SectionTitle>
-        <p className="text-xs text-gray-500 mb-2">Tours with future departures that fit your party</p>
+        <SectionTitle>{fs.groupSize}</SectionTitle>
+        <p className="text-xs text-gray-500 mb-2">{fs.groupSizeHint}</p>
         <div className="flex flex-wrap gap-1.5">
           {GROUP_SIZES.map(g => {
-            const total = (query.guests?.adults ?? 1) + (query.guests?.children ?? 0)
-            const isActive = total === g.value || (g.value === 6 && total >= 6)
+            const party = (query.guests?.adults ?? 1) + (query.guests?.children ?? 0)
+            const isActive = party === g.value || (g.value === 6 && party >= 6)
             return (
               <button
                 key={g.value}
@@ -166,9 +160,8 @@ export function FilterSidebar({ query, onUpdate, onReset, total }: FilterSidebar
         </div>
       </div>
 
-      {/* Rating */}
       <div>
-        <SectionTitle>Minimum Rating</SectionTitle>
+        <SectionTitle>{fs.minRating}</SectionTitle>
         <div className="space-y-1">
           {[0, 3, 4, 4.5].map(r => (
             <button key={r} onClick={() => onUpdate({ rating: r })}
@@ -177,10 +170,10 @@ export function FilterSidebar({ query, onUpdate, onReset, total }: FilterSidebar
                   ? 'bg-brand-50 text-brand-700 font-medium border border-brand-200'
                   : 'text-gray-600 hover:bg-gray-50'
               }`}>
-              {r === 0 ? 'Any rating' : (
+              {r === 0 ? fs.anyRating : (
                 <>
                   <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                  {r}+ stars
+                  {fs.starsPlus(r)}
                 </>
               )}
             </button>
@@ -188,9 +181,8 @@ export function FilterSidebar({ query, onUpdate, onReset, total }: FilterSidebar
         </div>
       </div>
 
-      {/* Result count */}
       <p className="text-xs text-gray-400 border-t border-gray-100 pt-4">
-        {total} tour{total !== 1 ? 's' : ''} match your filters
+        {fs.matchCount(total)}
       </p>
     </aside>
   )

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { MapPin, Search, X } from 'lucide-react'
 import { DESTINATIONS } from '@/lib/search/types'
+import { useTranslations } from '@/lib/i18n'
 
 interface DestinationAutocompleteProps {
   value: string
@@ -11,7 +12,10 @@ interface DestinationAutocompleteProps {
   className?: string
 }
 
-export function DestinationAutocomplete({ value, onChange, placeholder = 'Where to?', className }: DestinationAutocompleteProps) {
+export function DestinationAutocomplete({ value, onChange, placeholder, className }: DestinationAutocompleteProps) {
+  const { t } = useTranslations()
+  const tr = t.browse.travel
+  const ph = placeholder ?? tr.placeholderWhere
   const [open, setOpen] = useState(false)
   const [focused, setFocused] = useState(false)
   const [activeIdx, setActiveIdx] = useState(-1)
@@ -40,19 +44,26 @@ export function DestinationAutocomplete({ value, onChange, placeholder = 'Where 
       <div className={`flex items-center gap-2 ${focused ? 'ring-2 ring-brand-400/20 border-brand-400' : 'border-gray-200'} border rounded-xl px-3 py-2.5 bg-white transition-all`}>
         <MapPin className="w-4 h-4 text-brand-500 shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Where</p>
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{tr.whereLabel}</p>
           <input
             value={value}
             onChange={e => { onChange(e.target.value); setOpen(true); setActiveIdx(-1) }}
             onFocus={() => { setFocused(true); setOpen(true) }}
             onBlur={() => setFocused(false)}
             onKeyDown={handleKey}
-            placeholder={placeholder}
+            placeholder={ph}
+            aria-label={ph}
             className="w-full text-sm text-gray-900 bg-transparent focus:outline-none placeholder:text-gray-400"
           />
         </div>
         {value && (
-          <button onClick={() => { onChange(''); setOpen(false) }} className="text-gray-400 hover:text-gray-600">
+          <button
+            type="button"
+            onClick={() => { onChange(''); setOpen(false) }}
+            className="text-gray-400 hover:text-gray-600"
+            title={t.common.close}
+            aria-label={t.common.close}
+          >
             <X className="w-3.5 h-3.5" />
           </button>
         )}

@@ -1,5 +1,8 @@
+'use client'
+
 import { CalendarDays, Compass, Users, MessageSquare } from 'lucide-react'
 import type { Host } from '@/lib/mock-data/hosts'
+import { useTranslations } from '@/lib/i18n'
 
 interface HostStatsProps {
   host: Host
@@ -18,28 +21,31 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
 }
 
 export function HostStats({ host }: HostStatsProps) {
+  const { t } = useTranslations()
+  const h = t.hostDetail
+
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-      <h2 className="text-base font-bold text-gray-900 mb-4">At a Glance</h2>
+      <h2 className="text-base font-bold text-gray-900 mb-4">{h.atAGlance}</h2>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Stat
           icon={<CalendarDays className="w-5 h-5 text-brand-500" />}
-          label="Years Experience"
+          label={h.statYears}
           value={`${host.yearsExperience}+`}
         />
         <Stat
           icon={<Compass className="w-5 h-5 text-brand-500" />}
-          label="Tours Offered"
+          label={h.statToursOffered}
           value={host.totalTours.toString()}
         />
         <Stat
           icon={<Users className="w-5 h-5 text-brand-500" />}
-          label="Guests Hosted"
+          label={h.statGuestsHosted}
           value={host.totalGuests.toLocaleString() + '+'}
         />
         <Stat
           icon={<MessageSquare className="w-5 h-5 text-brand-500" />}
-          label="Reviews"
+          label={h.statReviews}
           value={host.reviewsCount.toString()}
         />
       </div>

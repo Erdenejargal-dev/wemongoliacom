@@ -1,33 +1,24 @@
 'use client'
 
 /**
- * lib/i18n/traveler/context.tsx
+ * TravelerLocaleProvider — /dashboard (traveler) and /account/* areas.
+ * Language is the single global preference from `PreferencesProvider`
+ * (no separate wm_dashboard_lang state).
  *
- * TravelerLocaleProvider — wraps /dashboard (traveler) and /account/* areas.
- * useTravelerLocale()    — returns { t, lang, setLang } in any traveler client component.
- *
- * Default language: English ('en') for traveler role — most customers are foreign visitors.
- * Provider_owner / admin who land on account pages still get Mongolian by default.
- * Persisted in localStorage under the shared key 'wm_dashboard_lang'.
+ * useTravelerLocale() → { t, lang, setLang } — setLang calls `setLanguage` on
+ * PreferencesProvider (persists DB + JWT + cookies when logged in).
  */
 
 import React, {
   createContext,
   useContext,
-  useState,
-  useEffect,
+  useMemo,
   type ReactNode,
 } from 'react'
-import { useSession } from 'next-auth/react'
-import {
-  type DashboardLang,
-  defaultLangForRole,
-  getStoredLang,
-  setStoredLang,
-} from '../config'
-import { type TravelerTranslations, travelerLocales } from './locales'
-
-// ── Context shape ─────────────────────────────────────────────────────────────
+import { usePreferences } from '@/components/providers/PreferencesProvider'
+import { getAppMessages, toAppLang } from '@/lib/i18n/messages/registry'
+import type { DashboardLang } from '../config'
+import { type TravelerTranslations } from './locales'
 
 interface TravelerLocaleContextValue {
   t:       TravelerTranslations
@@ -37,34 +28,24 @@ interface TravelerLocaleContextValue {
 
 const TravelerLocaleContext = createContext<TravelerLocaleContextValue | null>(null)
 
-// ── Provider ──────────────────────────────────────────────────────────────────
-
 export function TravelerLocaleProvider({ children }: { children: ReactNode }) {
-  const { data: session } = useSession()
+  const { language, setLanguage } = usePreferences()
 
-  // SSR-safe default: 'en' during server render (traveler portal is English-first).
-  // useEffect corrects to stored preference or role-based default on client mount.
-  const [lang, setLangState] = useState<DashboardLang>('en')
-
-  useEffect(() => {
-    const stored = getStoredLang()
-    if (stored) {
-      setLangState(stored)
-    } else {
-      setLangState(defaultLangForRole(session?.user?.role))
-    }
-  }, [session?.user?.role])
+  const lang: DashboardLang = toAppLang(language) as DashboardLang
 
   const setLang = (next: DashboardLang) => {
-    setLangState(next)
-    setStoredLang(next)
+    if (next !== 'mn' && next !== 'en') return
+    setLanguage(next)
   }
 
-  const value: TravelerLocaleContextValue = {
-    t:    travelerLocales[lang],
-    lang,
-    setLang,
-  }
+  const value = useMemo<TravelerLocaleContextValue>(
+    () => ({
+      t: getAppMessages(lang).traveler,
+      lang,
+      setLang,
+    }),
+    [lang, setLanguage],
+  )
 
   return (
     <TravelerLocaleContext.Provider value={value}>
@@ -73,15 +54,6 @@ export function TravelerLocaleProvider({ children }: { children: ReactNode }) {
   )
 }
 
-// ── Hook ──────────────────────────────────────────────────────────────────────
-
-/**
- * Use inside any traveler dashboard client component to access translations.
- *
- * @example
- * const { t, lang, setLang } = useTravelerLocale()
- * <h1>{t.dashboard.title}</h1>
- */
 export function useTravelerLocale(): TravelerLocaleContextValue {
   const ctx = useContext(TravelerLocaleContext)
   if (!ctx) {

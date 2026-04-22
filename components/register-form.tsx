@@ -19,65 +19,7 @@ import {
 import { apiClient } from "@/lib/api/client";
 import { sanitizeCallbackUrl, buildLoginUrl } from "@/lib/navigation";
 import { WeMongoliaLogo } from "@/components/brand/WeMongoliaLogo";
-
-/* ── Locale-aware copy ──────────────────────────────────────────────────── */
-
-const COPY = {
-  default: {
-    heading: "Create your account",
-    subtitle:
-      "Join WeMongolia and start exploring authentic Mongolian experiences.",
-    nameLabel: "Full name",
-    namePlaceholder: "Your full name",
-    emailLabel: "Email address",
-    emailPlaceholder: "you@example.com",
-    passwordLabel: "Password",
-    passwordHint: "Must be at least 8 characters",
-    confirmLabel: "Confirm password",
-    submit: "Create account",
-    submitting: "Creating account…",
-    hasAccount: "Already have an account?",
-    signInLink: "Sign in",
-    errorMismatch: "Passwords do not match.",
-    errorGeneric: "Failed to create account. Please try again.",
-    panelBadge: "Your adventure starts here",
-    panelHeading: "Experience the real Mongolia",
-    panelSubtitle:
-      "From the vast Gobi Desert to the Khuvsgul lakeshores \u2014 find experiences that connect you to this extraordinary land.",
-    trustItems: [
-      "Explore Mongolia\u2019s most unique destinations",
-      "Book with confidence \u2014 secure payments",
-      "Support local guides and communities",
-    ],
-  },
-  host: {
-    heading: "Бүртгүүлэх",
-    subtitle:
-      "WeMongolia-д нэгдэж, Дэлхийн зах зээлд борлуулалтаа хийгээрэй.",
-    nameLabel: "Овог нэр",
-    namePlaceholder: "Таны бүтэн нэр",
-    emailLabel: "Имэйл хаяг",
-    emailPlaceholder: "you@example.com",
-    passwordLabel: "Нууц үг",
-    passwordHint: "Хамгийн багадаа 8 тэмдэгт",
-    confirmLabel: "Нууц үг давтах",
-    submit: "Бүртгүүлэх",
-    submitting: "Бүртгэж байна…",
-    hasAccount: "Бүртгэлтэй юу?",
-    signInLink: "Нэвтрэх",
-    errorMismatch: "Нууц үг таарахгүй байна.",
-    errorGeneric: "Бүртгэл амжилтгүй боллоо. Дахин оролдоно уу.",
-    panelBadge: "Итгэлтэй түншлэл",
-    panelHeading: "Хамтдаа Дэлхийд гарцгаая",
-    panelSubtitle:
-      "Эх орноо олон улсад сурталчилж борлуулалтын сувгаа тэлээрэй.",
-    trustItems: [
-      "Бизнесээ хялбар бүртгэж, удирдах боломж",
-      "Баталгаатай төлбөр, найдвартай систем",
-      "Олон улсын аялагчдад хүрэх боломж",
-    ],
-  },
-} as const;
+import { useTranslations } from "@/lib/i18n";
 
 const TRUST_ICONS = [Compass, Shield, MapPin];
 
@@ -91,7 +33,10 @@ export function RegisterForm({
   const searchParams = useSearchParams();
   const callbackUrl = sanitizeCallbackUrl(searchParams.get("callbackUrl"));
   const isHostIntent = callbackUrl?.includes("/onboarding");
-  const t = isHostIntent ? COPY.host : COPY.default;
+
+  const { t: appT } = useTranslations();
+  const t = isHostIntent ? appT.register.host : appT.register.traveler;
+  const c = appT.common;
 
   const [formData, setFormData] = useState({
     name: "",
@@ -162,11 +107,9 @@ export function RegisterForm({
 
   return (
     <div className={cn("grid min-h-svh lg:grid-cols-2", className)} {...props}>
-      {/* ── Form Panel ─────────────────────────────────────────────── */}
       <div className="flex min-h-svh flex-col bg-white lg:relative">
         <div className="h-1 bg-gradient-to-r from-[#4466b0] to-[#0285C9] lg:hidden" />
 
-     
         <div className="flex flex-1 flex-col justify-center px-6 py-10 sm:px-10 lg:px-16 xl:px-20">
           <div className="mx-auto w-full max-w-[420px]">
             <div className="mb-8">
@@ -256,7 +199,7 @@ export function RegisterForm({
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600"
                     tabIndex={-1}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-label={showPassword ? c.hidePassword : c.showPassword}
                   >
                     {showPassword ? (
                       <EyeOff className="h-[18px] w-[18px]" />
@@ -315,36 +258,27 @@ export function RegisterForm({
               </Link>
             </p>
 
-            {isHostIntent ? (
-              <p className="mt-8 text-center text-xs leading-relaxed text-gray-400">
-                Бүртгүүлснээр та манай{" "}
-                <a href="#" className="underline underline-offset-2 transition-colors hover:text-gray-600">
-                  Үйлчилгээний нөхцөл
-                </a>{" "}
-                болон{" "}
-                <a href="#" className="underline underline-offset-2 transition-colors hover:text-gray-600">
-                  Нууцлалын бодлого
-                </a>
-                -ыг зөвшөөрч байна.
-              </p>
-            ) : (
-              <p className="mt-8 text-center text-xs leading-relaxed text-gray-400">
-                By creating an account, you agree to our{" "}
-                <a href="#" className="underline underline-offset-2 transition-colors hover:text-gray-600">
-                  Terms of Service
-                </a>{" "}
-                and{" "}
-                <a href="#" className="underline underline-offset-2 transition-colors hover:text-gray-600">
-                  Privacy Policy
-                </a>
-                .
-              </p>
-            )}
+            <p className="mt-8 text-center text-xs leading-relaxed text-gray-400">
+              {t.legalBeforeTerms}
+              <a
+                href="/terms"
+                className="underline underline-offset-2 transition-colors hover:text-gray-600"
+              >
+                {t.termsOfService}
+              </a>
+              {t.legalBetween}
+              <a
+                href="/privacy"
+                className="underline underline-offset-2 transition-colors hover:text-gray-600"
+              >
+                {t.privacyPolicy}
+              </a>
+              {t.legalAfter}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* ── Visual Panel ──────────────────────────────────────────── */}
       <div className="relative hidden overflow-hidden lg:flex lg:items-center lg:justify-center bg-gradient-to-br from-[#4466b0] via-[#2d5a9a] to-[#0285C9]">
         <svg
           className="pointer-events-none absolute -right-20 -top-20 h-[640px] w-[640px] opacity-[0.06]"

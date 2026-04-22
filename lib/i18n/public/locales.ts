@@ -9,6 +9,11 @@
  * requires entries in BOTH locales to keep typing honest.
  */
 
+import type { MegaNavBundle } from './megaNav'
+import { megaNavEn, megaNavMn } from './megaNav'
+import type { PublicMobileNavCopy } from './mobileNav'
+import { mobileNavEn, mobileNavMn } from './mobileNav'
+
 export type PublicLang = 'en' | 'mn'
 
 export interface PublicTranslations {
@@ -100,6 +105,10 @@ export interface PublicTranslations {
     conversionTitle:       string
     conversionDescription: (cur: string) => string
   }
+  /** Desktop nav + mega menu — see `lib/i18n/public/megaNav.ts` */
+  megaNav: MegaNavBundle
+  /** Mobile drawer labels — see `lib/i18n/public/mobileNav.ts` */
+  mobileNav: PublicMobileNavCopy
 }
 
 // ── English ────────────────────────────────────────────────────────────
@@ -119,7 +128,7 @@ const en: PublicTranslations = {
     languageHeader: 'Language',
     currencyHeader: 'Currency',
     footnote:
-      'Prices may be displayed in your chosen currency. Payments are processed in the listing\u2019s original currency.',
+      'Prices may be shown in your selected currency. You\u2019ll be charged in the listing\u2019s currency at checkout.',
   },
   tourCard: {
     perPerson:         '/ person',
@@ -202,6 +211,8 @@ const en: PublicTranslations = {
     conversionDescription: (cur) =>
       `Pricing is shown in ${cur}. Payment will be charged in Mongolian t\u00F6gr\u00F6g (MNT) using the current exchange rate at checkout.`,
   },
+  megaNav: megaNavEn,
+  mobileNav: mobileNavEn,
 }
 
 // ── Mongolian ──────────────────────────────────────────────────────────
@@ -304,6 +315,8 @@ const mn: PublicTranslations = {
     conversionDescription: (cur) =>
       `Үнэ ${cur}-ээр харагдаж байгаа ч төлбөрийн үед одоогийн ханшаар Монгол төгрөг (MNT)-өөр авагдана.`,
   },
+  megaNav: megaNavMn,
+  mobileNav: mobileNavMn,
 }
 
 export const publicLocales: Record<PublicLang, PublicTranslations> = { en, mn }

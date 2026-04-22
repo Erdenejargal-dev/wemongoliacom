@@ -28,6 +28,7 @@ import { RequestBookingModal } from '@/components/booking-requests/RequestBookin
 import { useEffect } from 'react'
 import { track } from '@/lib/analytics'
 import { usePublicLocale } from '@/lib/i18n/public/context'
+import { useTranslations } from '@/lib/i18n'
 
 interface StayBookingCardProps {
   stay: Pick<
@@ -65,6 +66,8 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
   const { displayCurrency: dcLegacy } = useDisplayCurrency()
   const displayCurrency = preferredCurrency ?? dcLegacy
   const { t } = usePublicLocale()
+  const { t: appT } = useTranslations()
+  const sd = appT.stayDetail
 
   const today     = toInputDate(new Date())
   const tomorrow  = toInputDate(new Date(Date.now() + 86_400_000))
@@ -181,7 +184,7 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
             {stay.ratingAverage.toFixed(1)}
           </span>
           <span className="text-gray-500">
-            ({stay.reviewsCount} review{stay.reviewsCount !== 1 ? 's' : ''})
+            {sd.reviewCount(stay.reviewsCount)}
           </span>
         </div>
       )}
@@ -218,7 +221,7 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
                       {room.name}
                     </p>
                     <p className="text-xs text-gray-500">
-                      Up to {room.maxGuests} guest{room.maxGuests !== 1 ? 's' : ''}
+                      {sd.bookingRoomGuests(room.maxGuests)}
                       {room.bedType ? ` · ${room.bedType}` : ''}
                     </p>
                   </div>
@@ -386,9 +389,13 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
         {(stay.checkInTime || stay.checkOutTime) && (
           <div className="flex items-center gap-2 text-xs text-gray-500">
             <Clock className="w-3.5 h-3.5 text-brand-500 shrink-0" />
-            {stay.checkInTime && `Check-in from ${stay.checkInTime}`}
-            {stay.checkInTime && stay.checkOutTime && ' · '}
-            {stay.checkOutTime && `Check-out by ${stay.checkOutTime}`}
+            {stay.checkInTime && stay.checkOutTime
+              ? `${sd.checkInFrom(stay.checkInTime)} · ${sd.checkOutBy(stay.checkOutTime)}`
+              : stay.checkInTime
+                ? sd.checkInFrom(stay.checkInTime)
+                : stay.checkOutTime
+                  ? sd.checkOutBy(stay.checkOutTime)
+                  : null}
           </div>
         )}
       </div>

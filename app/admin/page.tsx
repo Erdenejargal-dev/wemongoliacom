@@ -27,7 +27,9 @@ import { formatMoney, type Currency, isSupportedCurrency } from '@/lib/money'
  *   - when no FX rate is available, show "Per currency" and list the
  *     top bucket(s) instead of a single fake total
  */
-function formatRevenueHeadline(bucket?: RevenueBucket): { primary: string; note: string | null } {
+type RevenueHeadlineNote = 'mixed' | 'perCurrency' | null
+
+function formatRevenueHeadline(bucket?: RevenueBucket): { primary: string; note: RevenueHeadlineNote } {
   if (!bucket) return { primary: '—', note: null }
   const entries = Object.entries(bucket.byCurrency).filter(([, v]) => v > 0)
 
@@ -35,7 +37,6 @@ function formatRevenueHeadline(bucket?: RevenueBucket): { primary: string; note:
     return { primary: formatMoney(0, 'MNT'), note: null }
   }
 
-  // Single-currency bookings → no FX needed, show authoritative total.
   if (entries.length === 1) {
     const [cur, amt] = entries[0]
     const c: Currency = isSupportedCurrency(cur) ? cur : 'MNT'
@@ -45,18 +46,26 @@ function formatRevenueHeadline(bucket?: RevenueBucket): { primary: string; note:
   if (bucket.normalizationStatus === 'ok' && bucket.normalizedMnt != null) {
     return {
       primary: `≈ ${formatMoney(bucket.normalizedMnt, 'MNT')}`,
-      note:    'Mixed currencies, converted to MNT at current rates.',
+      note:    'mixed',
     }
   }
 
-  // FX missing and >1 currency → do NOT invent a total.
   const parts = entries.map(([cur, amt]) =>
     formatMoney(amt, (isSupportedCurrency(cur) ? cur : 'MNT') as Currency),
   )
   return {
     primary: parts.join(' + '),
-    note:    'FX rate unavailable — totals shown per currency.',
+    note:    'perCurrency',
   }
+}
+
+function resolveRevenueSubnote(
+  note: RevenueHeadlineNote,
+  tr: { mixedCurrenciesMnt: string; fxUnavailable: string },
+): string | null {
+  if (note === 'mixed') return tr.mixedCurrenciesMnt
+  if (note === 'perCurrency') return tr.fxUnavailable
+  return null
 }
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
@@ -181,8 +190,7 @@ export default function AdminOverviewPage() {
     { href: '/admin/users',     ...t.overview.quickActions.users,     icon: Users },
     { href: '/admin/providers', ...t.overview.quickActions.providers, icon: Building2 },
     { href: '/admin/bookings',  ...t.overview.quickActions.bookings,  icon: BookOpen },
-    // Phase 3 — ops surface for FX/pricing integrity.
-    { href: '/admin/pricing-health', label: 'Pricing & FX Health', desc: 'FX freshness, backfill, blocked bookings', icon: TrendingUp },
+    { href: '/admin/pricing-health', ...t.overview.quickActions.pricingHealth, icon: TrendingUp },
   ]
 
   return (
@@ -223,8 +231,9 @@ export default function AdminOverviewPage() {
           const totalRev = formatRevenueHeadline(analytics?.revenue.total)
           const monthRev = formatRevenueHeadline(analytics?.revenue.thisMonth)
           const subCore  = t.overview.stats.revenueThisMonth(monthRev.primary)
-          const sub      = totalRev.note
-            ? `${subCore} — ${totalRev.note}`
+          const trNote   = resolveRevenueSubnote(totalRev.note, t.overview.revenueNotes)
+          const sub      = trNote
+            ? `${subCore} — ${trNote}`
             : subCore
           return (
             <StatCard
@@ -232,7 +241,7 @@ export default function AdminOverviewPage() {
               value={totalRev.primary}
               sub={sub}
               icon={TrendingUp}
-              accent={totalRev.note && totalRev.note.startsWith('FX rate unavailable') ? 'amber' : 'green'}
+              accent={totalRev.note === 'perCurrency' ? 'amber' : 'green'}
             />
           )
         })()}

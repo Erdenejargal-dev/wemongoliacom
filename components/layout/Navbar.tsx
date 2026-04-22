@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Menu, X, Search, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
@@ -11,7 +11,7 @@ import { SearchBar } from './navbar/SearchBar'
 import { UserMenu } from './navbar/UserMenu'
 import { MobileMenu } from './navbar/MobileMenu'
 import { PreferenceSwitcher } from './navbar/PreferenceSwitcher'
-import { navItems } from './navbar/mega-menu-data'
+import { buildNavItems } from './navbar/mega-menu-data'
 import { cn } from '@/lib/utils'
 import { WeMongoliaLogo } from '@/components/brand/WeMongoliaLogo'
 import { usePublicLocale } from '@/lib/i18n/public/context'
@@ -21,6 +21,7 @@ export default function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false)
   const { data: session, status } = useSession()
   const { t } = usePublicLocale()
+  const navItems = useMemo(() => buildNavItems(t.megaNav), [t.megaNav])
   const isLoading = status === 'loading'
   const role      = session?.user?.role
 
@@ -60,7 +61,7 @@ export default function Navbar() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
-                  {'menu' in item && (
+                  {hasMenu && 'menu' in item && item.menu && (
                     <MegaMenu sections={item.menu.sections as Parameters<typeof MegaMenu>[0]['sections']} />
                   )}
                 </div>

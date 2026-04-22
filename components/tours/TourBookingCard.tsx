@@ -14,6 +14,7 @@ import { PaymentCapabilityNotice } from '@/components/payments/PaymentCapability
 import { RequestBookingModal } from '@/components/booking-requests/RequestBookingModal'
 import { track } from '@/lib/analytics'
 import { usePublicLocale } from '@/lib/i18n/public/context'
+import { useTranslations, formatDateMonthDay, formatDateWithWeekdayShort } from '@/lib/i18n'
 
 interface TourBookingCardProps {
   tour: {
@@ -32,16 +33,6 @@ interface TourBookingCardProps {
   departures?: BackendDeparture[] | null
 }
 
-function fmtDate(dateLike: string): string {
-  const d = new Date(dateLike)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-function fmtDateFull(dateLike: string): string {
-  const d = new Date(dateLike)
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
-}
-
 export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
   const router = useRouter()
   // Phase 6 — preferences drive the display currency for public pages.
@@ -52,6 +43,10 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
   const { displayCurrency: dcLegacy } = useDisplayCurrency()
   const displayCurrency = preferredCurrency ?? dcLegacy
   const { t } = usePublicLocale()
+  const { t: appT, lang } = useTranslations()
+  const td = appT.tourDetail
+  const fmtDate = (dateLike: string) => formatDateMonthDay(dateLike, lang)
+  const fmtDateFull = (dateLike: string) => formatDateWithWeekdayShort(dateLike, lang)
   const [guests, setGuests] = useState(1)
   const [selectedDepId, setSelectedDepId] = useState<string | null>(
     departures?.[0]?.id ?? null,
@@ -143,7 +138,9 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
     router.push(`/checkout?${params.toString()}`)
   }
 
-  const durationLabel = tour.durationDays ? `${tour.durationDays} day${tour.durationDays > 1 ? 's' : ''}` : ''
+  const durationLabel = tour.durationDays
+    ? td.bookingDurationSummary(tour.durationDays)
+    : ''
   const hasDepartures = departures && departures.length > 0
 
   return (
@@ -162,7 +159,7 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
       <div className="flex items-center gap-1.5 mb-5 text-sm">
         <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
         <span className="font-semibold text-gray-900">{tour.ratingAverage ?? 0}</span>
-        <span className="text-gray-500">({tour.reviewsCount ?? 0} reviews)</span>
+        <span className="text-gray-500">{td.reviewCount(tour.reviewsCount ?? 0)}</span>
         {durationLabel && (
           <>
             <span className="text-gray-300 mx-1">·</span>

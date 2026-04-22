@@ -10,6 +10,7 @@ import { WeMongoliaLogo } from '@/components/brand/WeMongoliaLogo'
 import { apiClient } from '@/lib/api/client'
 import { buildProviderMenu, type ProviderType } from '@/lib/provider-menu'
 import { useProviderLocale } from '@/lib/i18n/provider/context'
+import { useTranslations } from '@/lib/i18n'
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard,
@@ -31,6 +32,7 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
   const { data: session } = useSession()
   const token = session?.user?.accessToken
   const { t, lang, setLang } = useProviderLocale()
+  const { t: appT } = useTranslations()
 
   const [provider, setProvider] = useState<{
     id: string
@@ -186,7 +188,7 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
           <button
             onClick={() => setLang(lang === 'mn' ? 'en' : 'mn')}
             className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-gray-500 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors border border-gray-200"
-            title={lang === 'mn' ? 'Switch to English' : 'Монгол хэл рүү шилжих'}
+            title={lang === 'mn' ? appT.common.switchToEnglish : appT.common.switchToMongolian}
           >
             <Languages className="w-3.5 h-3.5" />
             {t.langToggleLabel}

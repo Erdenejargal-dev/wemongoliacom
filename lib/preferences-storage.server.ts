@@ -23,10 +23,10 @@ import type { DashboardLang } from './i18n/config'
 /**
  * Read the user's preferred display currency from the request cookie.
  *
- * Returns `null` when no cookie is set — the caller should apply its
- * own default (typically USD, or MNT when the browser locale is
- * Mongolian — that logic lives in `PreferencesProvider` on the
- * client).
+ * Returns `null` when no cookie is set — the caller should apply the
+ * same resolution as `getResolvedLocaleCurrencyForRequest()` (user →
+ * cookie → `CF-IPCountry` → en+USD) so server fetches stay aligned with
+ * middleware and `<html lang>`.
  *
  * Next 15 exposes `cookies()` as an async API while Next 14 is sync;
  * we handle both shapes so the same helper works across versions.

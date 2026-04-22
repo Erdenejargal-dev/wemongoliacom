@@ -7,6 +7,9 @@ declare module "next-auth" {
     avatar?: string;
     /** JWT issued by the Express backend — stored in NextAuth session */
     accessToken?: string;
+    /** Mirrors Prisma `User` — set on sign-in, used for locale + currency. */
+    preferredLanguage?: "mn" | "en";
+    preferredCurrency?: "MNT" | "USD";
   }
 
   interface Session {
@@ -18,6 +21,8 @@ declare module "next-auth" {
       avatar?: string;
       /** Backend JWT — use this as Bearer token for API calls */
       accessToken?: string;
+      preferredLanguage?: "mn" | "en";
+      preferredCurrency?: "MNT" | "USD";
     };
     /** Set when token refresh failed; UI should sign out / redirect */
     error?: 'TokenRefreshFailed';
@@ -33,5 +38,7 @@ declare module "next-auth/jwt" {
     refreshToken?: string;
     accessTokenExpiresAt?: number;
     error?: 'TokenRefreshFailed';
+    preferredLanguage?: "mn" | "en";
+    preferredCurrency?: "MNT" | "USD";
   }
 }

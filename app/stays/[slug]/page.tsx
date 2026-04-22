@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
 import {
   Star, MapPin, BedDouble, Users, Clock, Shield,
   CheckCircle2, Building2, Phone,
@@ -9,9 +8,11 @@ import { RoomImageGallery } from '@/components/stays/RoomImageGallery'
 import { StayBookingCard } from '@/components/stays/StayBookingCard'
 import { PropertyMap } from '@/components/stays/PropertyMap'
 import { ContactProviderButton } from '@/components/ui/ContactProviderButton'
+import { DetailBreadcrumb } from '@/components/navigation/DetailBreadcrumb'
 import { fetchStayBySlug, ACCOMMODATION_TYPE_LABELS } from '@/lib/api/stays'
 import { formatPricing, readPricing } from '@/lib/pricing'
 import { readPreferredCurrencyServer } from '@/lib/preferences-storage.server'
+import { getTranslations } from '@/lib/i18n/server'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -22,21 +23,27 @@ export default async function StayDetailPage({ params }: Props) {
   // Read the preferred display currency from the cookie so server-rendered
   // prices agree with the navbar switcher. `router.refresh()` fired from
   // the switcher re-runs this page, so the value stays current.
-  const [stay, displayCurrency] = await Promise.all([
+  const [{ t }, stay, displayCurrency] = await Promise.all([
+    getTranslations(),
     fetchStayBySlug(slug),
     readPreferredCurrencyServer(),
   ])
   if (!stay) notFound()
   const effectiveDisplayCurrency = displayCurrency ?? 'USD'
+  const sd = t.stayDetail
+  const typeNames = t.browse.stays.types
 
   const images = (stay.images ?? []).map((i) => i.imageUrl).filter(Boolean)
-  const typeLabel = ACCOMMODATION_TYPE_LABELS[stay.accommodationType] ?? stay.accommodationType
+  const typeLabel =
+    (typeNames as Record<string, string | undefined>)[stay.accommodationType]
+    ?? ACCOMMODATION_TYPE_LABELS[stay.accommodationType]
+    ?? stay.accommodationType
 
   // Build a readable location string
   const locationParts = [stay.city, stay.region, stay.destination?.name].filter(Boolean)
   const locationLabel = locationParts.length > 0
     ? locationParts.join(', ')
-    : stay.destination?.name ?? 'Mongolia'
+    : stay.destination?.name ?? sd.defaultLocation
 
   // Cheapest room for the headline summary
   const cheapestRoom = stay.roomTypes.length > 0
@@ -48,16 +55,14 @@ export default async function StayDetailPage({ params }: Props) {
   return (
     <div className="min-h-screen bg-gray-50/40">
 
-      {/* ── Breadcrumb ─────────────────────────────────── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-2">
-        <nav className="flex items-center gap-1.5 text-xs text-gray-500">
-          <Link href="/" className="hover:text-gray-700 transition-colors">Home</Link>
-          <span>/</span>
-          <Link href="/explore" className="hover:text-gray-700 transition-colors">Stays</Link>
-          <span>/</span>
-          <span className="text-gray-900 font-medium truncate max-w-[200px]">{stay.name}</span>
-        </nav>
-      </div>
+      <DetailBreadcrumb
+        ariaLabel={t.common.breadcrumb}
+        items={[
+          { href: '/', label: t.common.home },
+          { href: '/explore', label: t.browse.detail.breadcrumbStays },
+        ]}
+        currentTitle={stay.name}
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
 
@@ -67,7 +72,7 @@ export default async function StayDetailPage({ params }: Props) {
             <TourGallery images={images} title={stay.name} />
           ) : (
             <div className="rounded-2xl border border-gray-100 bg-white h-[420px] flex items-center justify-center text-sm text-gray-400">
-              No photos available yet
+              {t.browse.detail.noPhotos}
             </div>
           )}
         </div>
@@ -106,20 +111,22 @@ export default async function StayDetailPage({ params }: Props) {
                     <span className="font-semibold text-gray-900">
                       {stay.ratingAverage.toFixed(1)}
                     </span>
-                    <span>({stay.reviewsCount} review{stay.reviewsCount !== 1 ? 's' : ''})</span>
+                    <span>{sd.reviewCount(stay.reviewsCount)}</span>
                   </div>
                 )}
                 {cheapestRoom && (
                   <div className="flex items-center gap-1.5">
                     <BedDouble className="w-4 h-4 text-gray-400" />
-                    From {formatPricing(
+                    {sd.fromPerNight}{' '}
+                    {formatPricing(
                       readPricing({
                         pricing: cheapestRoom.pricing,
                         basePricePerNight: cheapestRoom.basePricePerNight,
                         currency: cheapestRoom.currency,
                       }),
                       effectiveDisplayCurrency,
-                    )}/night
+                    )}{' '}
+                    {sd.perNight}
                   </div>
                 )}
               </div>
@@ -131,27 +138,33 @@ export default async function StayDetailPage({ params }: Props) {
 
             {/* Key info grid */}
             <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Property Information</h2>
+              <h2 className="text-lg font-bold text-gray-900 mb-4">{sd.propertyInfo}</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {[
-                  { icon: Building2, label: 'Type',       value: typeLabel },
-                  { icon: Clock,     label: 'Check-in',   value: stay.checkInTime   ?? 'Contact property' },
-                  { icon: Clock,     label: 'Check-out',  value: stay.checkOutTime  ?? 'Contact property' },
-                  ...(stay.address || stay.city ? [{
-                    icon: MapPin,
-                    label: 'Address',
-                    value: [stay.address, stay.city].filter(Boolean).join(', '),
-                  }] : []),
-                  ...(stay.provider ? [{
-                    icon: Phone,
-                    label: 'Hosted by',
-                    value: stay.provider.name,
-                  }] : []),
-                  ...(stay.starRating ? [{
-                    icon: Star,
-                    label: 'Star rating',
-                    value: `${stay.starRating}-star property`,
-                  }] : []),
+                  { icon: Building2, label: sd.type,     value: typeLabel },
+                  { icon: Clock,     label: sd.checkIn,  value: stay.checkInTime   ?? sd.contactProperty },
+                  { icon: Clock,     label: sd.checkOut, value: stay.checkOutTime  ?? sd.contactProperty },
+                  ...(stay.address || stay.city
+                    ? [{
+                        icon: MapPin,
+                        label: sd.address,
+                        value: [stay.address, stay.city].filter(Boolean).join(', '),
+                      }]
+                    : []),
+                  ...(stay.provider
+                    ? [{
+                        icon: Phone,
+                        label: sd.hostedBy,
+                        value: stay.provider.name,
+                      }]
+                    : []),
+                  ...(stay.starRating
+                    ? [{
+                        icon: Star,
+                        label: sd.starRating,
+                        value: sd.starProperty(stay.starRating),
+                      }]
+                    : []),
                 ].map((item) => (
                   <div key={item.label} className="flex items-start gap-3 p-3 rounded-xl bg-gray-50">
                     <div className="w-8 h-8 rounded-lg bg-brand-50 flex items-center justify-center shrink-0 mt-0.5">
@@ -169,7 +182,7 @@ export default async function StayDetailPage({ params }: Props) {
             {/* Amenities */}
             {stay.amenities && stay.amenities.length > 0 && (
               <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-                <h2 className="text-lg font-bold text-gray-900 mb-4">Amenities</h2>
+                <h2 className="text-lg font-bold text-gray-900 mb-4">{sd.amenities}</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {stay.amenities.map((amenity, i) => (
                     <div key={i} className="flex items-center gap-2 text-sm text-gray-700">
@@ -192,7 +205,7 @@ export default async function StayDetailPage({ params }: Props) {
 
             {/* Room types */}
             <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Available Rooms</h2>
+              <h2 className="text-lg font-bold text-gray-900 mb-4">{sd.availableRooms}</h2>
               {stay.roomTypes.length > 0 ? (
                 <div className="space-y-4">
                   {stay.roomTypes.map((room) => {
@@ -227,14 +240,14 @@ export default async function StayDetailPage({ params }: Props) {
                                 effectiveDisplayCurrency,
                               )}
                             </p>
-                            <p className="text-xs text-gray-500">per night</p>
+                            <p className="text-xs text-gray-500">{sd.perNight}</p>
                           </div>
                         </div>
 
                         <div className="flex flex-wrap gap-3 text-xs text-gray-600">
-                          <span className="flex items-center gap-1">
+                            <span className="flex items-center gap-1">
                             <Users className="w-3.5 h-3.5 text-gray-400" />
-                            Up to {room.maxGuests} guest{room.maxGuests !== 1 ? 's' : ''}
+                            {sd.upToGuests(room.maxGuests)}
                           </span>
                           {room.bedType && (
                             <span className="flex items-center gap-1">
@@ -244,16 +257,16 @@ export default async function StayDetailPage({ params }: Props) {
                           )}
                           {room.quantity > 0 && (
                             <span className="text-gray-500">
-                              {room.quantity} unit{room.quantity !== 1 ? 's' : ''}
+                              {sd.units(room.quantity)}
                             </span>
                           )}
                           {availableDates.length > 0 ? (
                             <span className="text-green-700 font-medium">
-                              {availableDates.length} date{availableDates.length !== 1 ? 's' : ''} available
+                              {sd.datesAvailable(availableDates.length)}
                             </span>
                           ) : (
                             <span className="text-amber-600 font-medium">
-                              Contact for availability
+                              {sd.contactForAvailability}
                             </span>
                           )}
                         </div>
@@ -271,7 +284,7 @@ export default async function StayDetailPage({ params }: Props) {
                             ))}
                             {room.amenities.length > 6 && (
                               <span className="text-[11px] text-gray-400">
-                                +{room.amenities.length - 6} more
+                                {sd.moreAmenities(room.amenities.length - 6)}
                               </span>
                             )}
                           </div>
@@ -283,7 +296,7 @@ export default async function StayDetailPage({ params }: Props) {
                 </div>
               ) : (
                 <p className="text-sm text-gray-500">
-                  Room types have not been listed yet. Contact the provider for details.
+                  {sd.noRoomsListed}
                 </p>
               )}
             </div>
@@ -293,7 +306,7 @@ export default async function StayDetailPage({ params }: Props) {
               <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
                 <h2 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
                   <Shield className="w-5 h-5 text-brand-500" />
-                  Cancellation Policy
+                  {sd.cancellationTitle}
                 </h2>
                 <p className="text-sm text-gray-700 leading-relaxed">{stay.cancellationPolicy}</p>
               </div>
@@ -302,7 +315,7 @@ export default async function StayDetailPage({ params }: Props) {
             {/* Provider info */}
             {stay.provider && (
               <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-                <h2 className="text-lg font-bold text-gray-900 mb-4">About the Host</h2>
+                <h2 className="text-lg font-bold text-gray-900 mb-4">{sd.aboutHost}</h2>
                 <div className="flex items-center gap-4">
                   {stay.provider.logoUrl && (
                     <img
@@ -321,7 +334,7 @@ export default async function StayDetailPage({ params }: Props) {
                         <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                         <span className="font-medium">{stay.provider.ratingAverage.toFixed(1)}</span>
                         <span className="text-gray-400">
-                          ({stay.provider.reviewsCount} reviews)
+                          {sd.hostReviews(stay.provider.reviewsCount)}
                         </span>
                       </div>
                     )}
@@ -339,18 +352,18 @@ export default async function StayDetailPage({ params }: Props) {
 
               {/* Contact card */}
               <div className="mt-4 bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-                <p className="text-sm font-semibold text-gray-900 mb-1">Have questions?</p>
+                <p className="text-sm font-semibold text-gray-900 mb-1">{sd.contactCardTitle}</p>
                 <p className="text-xs text-gray-500 mb-3">
                   {stay.provider?.name
-                    ? `Contact ${stay.provider.name} directly — they typically reply within 2 hours.`
-                    : 'Our Mongolia travel experts reply within 2 hours.'}
+                    ? sd.contactWithProvider(stay.provider.name)
+                    : sd.contactGeneric}
                 </p>
                 <ContactProviderButton
                   providerId={stay.provider?.id ?? null}
-                  providerName={stay.provider?.name ?? 'Host'}
+                  providerName={stay.provider?.name ?? sd.defaultProviderName}
                   listingType="accommodation"
                   listingId={stay.id}
-                  label="Contact Host"
+                  label={sd.contactCta}
                 />
               </div>
             </div>

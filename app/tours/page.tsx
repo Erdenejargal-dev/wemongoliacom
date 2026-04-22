@@ -12,17 +12,18 @@ import type { SearchQuery } from '@/lib/search/types'
 import { DEFAULT_QUERY } from '@/lib/search/types'
 import { cn } from '@/lib/utils'
 import { formatMoney } from '@/lib/money'
-
-const SORT_OPTIONS: { label: string; value: SearchQuery['sortBy'] }[] = [
-  { label: 'Most popular', value: 'popular' },
-  { label: 'Top rated', value: 'top_rated' },
-  { label: 'Price: low to high', value: 'price_asc' },
-  { label: 'Price: high to low', value: 'price_desc' },
-]
+import { useTranslations } from '@/lib/i18n'
+import { TOURS_SORT_ORDER } from '@/lib/i18n/messages/toursSearch'
 
 function ToursContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { t: appT } = useTranslations()
+  const st = appT.toursSearch
+  const SORT_OPTIONS = useMemo(
+    () => TOURS_SORT_ORDER.map((value) => ({ value, label: st.sort[value] })),
+    [st],
+  )
   const [filterOpen, setFilterOpen] = useState(false)
   const [sortOpen, setSortOpen] = useState(false)
 
@@ -119,13 +120,13 @@ function ToursContent() {
             <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
               <div>
                 <h1 className="text-base font-semibold text-gray-900">
-                  {query.destination ? `Tours in ${query.destination}` : 'All Mongolia Tours'}
+                  {query.destination ? st.titleInDestination(query.destination) : st.titleAll}
                 </h1>
                 <p className="text-sm text-gray-500 mt-0.5">
-                  {loading ? 'Searching…' : `${total} tour${total !== 1 ? 's' : ''} with scheduled departures`}
+                  {loading ? st.searching : st.resultsLine(total)}
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  Select a tour to see exact dates and confirm availability
+                  {st.subline}
                 </p>
               </div>
 
@@ -141,7 +142,7 @@ function ToursContent() {
                   )}
                 >
                   <SlidersHorizontal className="w-4 h-4" />
-                  Filters
+                  {st.filters}
                   {activeFilters > 0 && (
                     <span className="w-5 h-5 bg-white text-gray-900 rounded-full text-xs font-bold flex items-center justify-center">
                       {activeFilters}
@@ -181,19 +182,19 @@ function ToursContent() {
             {activeFilters > 0 && (
               <div className="flex flex-wrap gap-2 mb-4">
                 {query.priceRange[1] < 2000 && (
-                  <FilterChip label={`Under ${formatMoney(query.priceRange[1], 'USD')}`} onRemove={() => updateQueryAndUrl({ priceRange: [0, 2000] })} />
+                  <FilterChip label={st.chipUnder(formatMoney(query.priceRange[1], 'USD'))} onRemove={() => updateQueryAndUrl({ priceRange: [0, 2000] })} />
                 )}
                 {query.durationFilter !== 'any' && (
-                  <FilterChip label={DURATIONS_MAP[query.durationFilter] ?? query.durationFilter} onRemove={() => updateQueryAndUrl({ durationFilter: 'any' })} />
+                  <FilterChip label={st.durationChip[query.durationFilter] ?? query.durationFilter} onRemove={() => updateQueryAndUrl({ durationFilter: 'any' })} />
                 )}
                 {query.rating > 0 && (
-                  <FilterChip label={`${query.rating}+ stars`} onRemove={() => updateQueryAndUrl({ rating: 0 })} />
+                  <FilterChip label={st.chipStars(query.rating)} onRemove={() => updateQueryAndUrl({ rating: 0 })} />
                 )}
                 {query.region && (
-                  <FilterChip label={REGIONS_MAP[query.region] ?? query.region} onRemove={() => updateQueryAndUrl({ region: '' })} />
+                  <FilterChip label={st.regionChip[query.region] ?? query.region} onRemove={() => updateQueryAndUrl({ region: '' })} />
                 )}
                 {hasGuestFilter && (
-                  <FilterChip label={`${guestCount} guests`} onRemove={() => updateQueryAndUrl({ guests: { adults: 1, children: 0 } })} />
+                  <FilterChip label={st.chipGuests(guestCount)} onRemove={() => updateQueryAndUrl({ guests: { adults: 1, children: 0 } })} />
                 )}
                 {hasDateFilter && (
                   <FilterChip
@@ -202,7 +203,7 @@ function ToursContent() {
                   />
                 )}
                 <button onClick={resetFiltersAndUrl} className="text-xs text-gray-500 hover:text-gray-700 underline transition-colors">
-                  Clear all
+                  {st.clearAll}
                 </button>
               </div>
             )}
@@ -227,7 +228,7 @@ function ToursContent() {
           <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={() => setFilterOpen(false)} />
           <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl z-50 max-h-[85vh] overflow-y-auto lg:hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <p className="text-sm font-semibold text-gray-900">Filters</p>
+              <p className="text-sm font-semibold text-gray-900">{st.filters}</p>
               <button onClick={() => setFilterOpen(false)} className="p-1.5 rounded-lg hover:bg-gray-100">
                 <X className="w-5 h-5 text-gray-500" />
               </button>
@@ -236,7 +237,7 @@ function ToursContent() {
               <FilterSidebar query={query} onUpdate={updateQueryAndUrl} onReset={resetFiltersAndUrl} total={total} />
               <button onClick={() => setFilterOpen(false)}
                 className="w-full mt-4 py-3 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-700 transition-colors">
-                Show {total} tour{total !== 1 ? 's' : ''}
+                {st.mobileShowTours(total)}
               </button>
             </div>
           </div>
@@ -244,22 +245,6 @@ function ToursContent() {
       )}
     </div>
   )
-}
-
-const DURATIONS_MAP: Record<string, string> = {
-  '1': '1 Day',
-  '2-3': '2–3 Days',
-  '4-7': '4–7 Days',
-  '8+': '8+ Days',
-}
-
-const REGIONS_MAP: Record<string, string> = {
-  gobi: 'Gobi Desert',
-  khangai: 'Khangai Mountains',
-  khuvsgul: 'Lake Khuvsgul',
-  ulaanbaatar: 'Ulaanbaatar',
-  altai: 'Altai Mountains',
-  steppe: 'Central Steppes',
 }
 
 function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
@@ -273,10 +258,15 @@ function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }
   )
 }
 
-export default function ToursPage() {
+function ToursPageInner() {
+  const { t: appT } = useTranslations()
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-gray-400 text-sm">Loading…</div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-gray-400 text-sm">{appT.toursSearch.suspenseLoading}</div>}>
       <ToursContent />
     </Suspense>
   )
+}
+
+export default function ToursPage() {
+  return <ToursPageInner />
 }

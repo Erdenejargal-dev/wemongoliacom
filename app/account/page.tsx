@@ -17,10 +17,12 @@ import { NotificationSettings } from '@/components/account/NotificationSettings'
 import { TripsSection } from '@/components/account/TripsSection'
 import { ReviewsSection } from '@/components/account/ReviewsSection'
 import { useTravelerLocale } from '@/lib/i18n/traveler/context'
+import { useTranslations } from '@/lib/i18n'
 import { Languages } from 'lucide-react'
 
 export default function AccountPage() {
   const { t, lang, setLang } = useTravelerLocale()
+  const { t: appT } = useTranslations()
   const at = t.account
 
   const [section, setSection] = useState<AccountSection>('profile')
@@ -63,7 +65,7 @@ export default function AccountPage() {
       } catch (e: unknown) {
         if (!alive) return
         if (e instanceof ApiError && e.status === 401) { await signOut({ redirect: false }); router.push('/auth/login') }
-        else setError(e instanceof Error ? e.message : 'Failed to load account.')
+        else setError(e instanceof Error ? e.message : appT.common.accountLoadFailed)
       } finally { if (alive) setLoading(false) }
     }
     load()
@@ -92,7 +94,7 @@ export default function AccountPage() {
           <button
             onClick={() => setLang(lang === 'mn' ? 'en' : 'mn')}
             className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100 border border-gray-200 hover:border-gray-300 rounded-lg transition-colors"
-            title={lang === 'mn' ? 'Switch to English' : 'Монгол хэл рүү шилжих'}
+            title={lang === 'mn' ? appT.common.switchToEnglish : appT.common.switchToMongolian}
           >
             <Languages className="w-3.5 h-3.5" />
             {t.langToggleLabel}

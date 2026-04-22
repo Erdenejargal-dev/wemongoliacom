@@ -9,22 +9,19 @@
  *   - currency  (MNT | USD)
  *   - language  (mn  | en)
  *
- * RESOLUTION ORDER (MVP, Phase 6.2):
+ * RESOLUTION ORDER (Phase 6.4 — Cloudflare):
  *   1. Logged-in user profile      (session.user.preferredCurrency / preferredLanguage)
  *   2. Cookie                      (wm_currency / wm_lang — also readable by server)
- *   3. localStorage                (wm.displayCurrency / wm_dashboard_lang — Phase 3 keys)
- *   4. Browser language            (navigator.language — 'mn*' → {mn, MNT})
- *   5. Geo hint / CDN country      (GET /geo/hint — 'MN' → {mn, MNT})
- *   6. Default                     ('USD' + 'en')
+ *   3. Cloudflare `CF-IPCountry`   (MN → mn + MNT; other countries → en + USD; XX / T1 → fallback)
+ *   4. Fallback                    (en + USD)
  *
- * MVP RULE (live behavior fix):
- *   A visitor with a Mongolian browser locale OR a CDN country header of
- *   'MN' should land in Mongolian + MNT automatically. Previous phases
- *   ran geo BEFORE browser, and the geo endpoint falls back to EN+USD
- *   when no CDN header is present — so Mongolia visitors on hosts
- *   without CF/Vercel country headers never got MN+MNT. We now consult
- *   the browser first so the OS/browser locale is authoritative when
- *   the CDN can't help.
+ * The **same** rules are implemented in `lib/locale-currency-resolver.ts` and
+ * run in Edge `middleware.ts` (cookie seed) + `getResolvedLocaleCurrencyForRequest`
+ * (RSC). The server passes `initialResolved` into this provider so the first
+ * client render matches SSR and `lang` on `<html>` — no hydration mismatch.
+ *
+ * localStorage mirrors are still written on change for cross-tab sync; the
+ * canonical cross-request source for SSR is the cookie pair.
  *
  * PHASE 6.1 — WHAT CHANGED FROM PHASE 6:
  *   - Cookies are now written in addition to localStorage so server
@@ -42,6 +39,8 @@
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import { updateMyProfile } from '@/lib/api/account'
+import { getFreshAccessToken } from '@/lib/auth-utils'
 import { SUPPORTED_CURRENCIES, type Currency } from '@/lib/money'
 import {
   CURRENCY_COOKIE, LANGUAGE_COOKIE,
@@ -54,10 +53,15 @@ import {
   type PreferenceChangedDetail,
 } from '@/lib/preferences-storage'
 import { type DashboardLang } from '@/lib/i18n/config'
+import type { ResolvedLocaleCurrency } from '@/lib/locale-currency-resolver'
 
 export type Language = DashboardLang  // 'mn' | 'en'
 
 type Source = 'user' | 'cookie' | 'storage' | 'geo' | 'browser' | 'default'
+
+function resolverSourceToUi(s: ResolvedLocaleCurrency['languageSource']): Source {
+  return s
+}
 
 export interface PreferencesContextValue {
   currency:           Currency
@@ -76,58 +80,39 @@ const Ctx = React.createContext<PreferencesContextValue | null>(null)
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
-function readBrowserLang(): Language | null {
-  if (typeof window === 'undefined') return null
-  // `navigator.languages` reflects the full ordered list the user configured
-  // (e.g. ['mn-MN', 'en-US']). We want to pick up Mongolian even if it's not
-  // the single `navigator.language` value.
-  const candidates: string[] = []
-  const langs = (navigator as Navigator).languages
-  if (Array.isArray(langs)) candidates.push(...langs)
-  if (navigator.language) candidates.push(navigator.language)
-  for (const raw of candidates) {
-    const v = (raw || '').toLowerCase()
-    if (v.startsWith('mn')) return 'mn'
-  }
-  for (const raw of candidates) {
-    const v = (raw || '').toLowerCase()
-    if (v.startsWith('en')) return 'en'
-  }
-  return null
-}
-
-/**
- * MVP default pairing: if the browser/OS locale is Mongolian, the user is
- * almost certainly in Mongolia → default BOTH language AND currency so
- * they don't land on a confusing EN+USD first screen. Any explicit
- * preference (cookie / storage / user profile) still wins.
- */
-function defaultsForBrowserLang(lang: Language | null): {
-  currency: Currency | null
-  language: Language | null
-} {
-  if (lang === 'mn') return { currency: 'MNT', language: 'mn' }
-  if (lang === 'en') return { currency: 'USD', language: 'en' }
-  return { currency: null, language: null }
-}
-
 // ── Provider ───────────────────────────────────────────────────────────
 
-export function PreferencesProvider({ children }: { children: React.ReactNode }) {
+export function PreferencesProvider({
+  children,
+  /**
+   * Output of `getResolvedLocaleCurrencyForRequest()` — must be the same
+   * object the root layout used for `<html lang>` so hydration matches.
+   */
+  initialResolved,
+}: {
+  children:         React.ReactNode
+  initialResolved:  ResolvedLocaleCurrency
+}) {
   const router = useRouter()
-  const { data: session } = useSession()
-  const userPrefCurrency = (session?.user as any)?.preferredCurrency as Currency | undefined
-  const userPrefLanguage = (session?.user as any)?.preferredLanguage as Language | undefined
+  const { data: session, status, update: updateSession } = useSession()
+  const userPrefCurrency = session?.user?.preferredCurrency
+  const userPrefLanguage = session?.user?.preferredLanguage
 
-  // SSR-safe: start from defaults so server markup matches the first
-  // client render; hydrate from cookie/storage/geo in a useEffect.
   const [state, setState] = React.useState<{
     currency: Currency;  currencySource: Source
     language: Language;  languageSource: Source
   }>({
-    currency: DEFAULT_CURRENCY, currencySource: 'default',
-    language: DEFAULT_LANGUAGE, languageSource: 'default',
+    currency:         initialResolved.currency,
+    currencySource:   resolverSourceToUi(initialResolved.currencySource),
+    language:         initialResolved.language,
+    languageSource:   resolverSourceToUi(initialResolved.languageSource),
   })
+
+  /** Latest pair for cross-field writes (language change needs current currency, and vice versa). */
+  const latest = React.useRef({ language: state.language, currency: state.currency })
+  React.useLayoutEffect(() => {
+    latest.current = { language: state.language, currency: state.currency }
+  }, [state.language, state.currency])
 
   // 1. Fold user profile preference → state. Fires whenever the session
   //    changes. User preference beats everything else.
@@ -140,10 +125,9 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     }
   }, [userPrefCurrency, userPrefLanguage])
 
-  // 2. Hydrate from cookie / localStorage / geo on first client mount.
+  // 2. After middleware may have set cookies, mirror them into state if
+  //    they differ (e.g. first navigation). User/session still wins.
   React.useEffect(() => {
-    let cancelled = false
-
     const storedCur  = readPreferredCurrencyClient()
     const storedLang = readPreferredLanguageClient()
 
@@ -159,86 +143,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
       }
       return next
     })
-
-    const needCurrency = !userPrefCurrency && !storedCur
-    const needLanguage = !userPrefLanguage && !storedLang
-
-    if (!needCurrency && !needLanguage) return
-
-    // Step 4 — browser language first (MVP-friendly, works on localhost and
-    // anywhere without CDN country headers).
-    const browserLang = readBrowserLang()
-    const browserDefaults = defaultsForBrowserLang(browserLang)
-
-    setState((s) => {
-      const next = { ...s }
-      if (needCurrency && s.currencySource === 'default' && browserDefaults.currency) {
-        next.currency = browserDefaults.currency
-        next.currencySource = 'browser'
-      }
-      if (needLanguage && s.languageSource === 'default' && browserDefaults.language) {
-        next.language = browserDefaults.language
-        next.languageSource = 'browser'
-      }
-      return next
-    })
-
-    async function resolveGeoFallback() {
-      let geoCurrency: Currency | null = null
-      let geoLanguage: Language | null = null
-      let geoCountry: string | null = null
-      try {
-        const base = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1').replace(/\/$/, '')
-        const r = await fetch(`${base}/geo/hint`, { cache: 'no-store' })
-        const j = await r.json().catch(() => null) as any
-        const d = j?.data
-        if (d?.suggestedCurrency === 'MNT' || d?.suggestedCurrency === 'USD') geoCurrency = d.suggestedCurrency
-        if (d?.suggestedLanguage === 'mn'  || d?.suggestedLanguage === 'en')  geoLanguage = d.suggestedLanguage
-        if (typeof d?.country === 'string') geoCountry = d.country.toUpperCase()
-      } catch {
-        // geo failure must never break the site
-      }
-
-      if (cancelled) return
-
-      // Geo is only trusted when the backend saw a real CDN country header.
-      // Without one, the endpoint's 'fallback' default is EN+USD, which
-      // would overwrite a correct browser-derived MN+MNT. Skip in that case.
-      const trustedGeo = geoCountry !== null
-      if (!trustedGeo) return
-
-      const isMongolia = geoCountry === 'MN'
-      setState((s) => {
-        const next = { ...s }
-        // Only upgrade fields the user has NOT explicitly set (via cookie,
-        // storage, or session). 'browser' is allowed to be refined by geo
-        // for the Mongolia case, but otherwise browser wins.
-        if (needCurrency) {
-          const upgradable = s.currencySource === 'default' || s.currencySource === 'browser'
-          if (upgradable && isMongolia) {
-            next.currency = 'MNT'
-            next.currencySource = 'geo'
-          } else if (s.currencySource === 'default' && geoCurrency) {
-            next.currency = geoCurrency
-            next.currencySource = 'geo'
-          }
-        }
-        if (needLanguage) {
-          const upgradable = s.languageSource === 'default' || s.languageSource === 'browser'
-          if (upgradable && isMongolia) {
-            next.language = 'mn'
-            next.languageSource = 'geo'
-          } else if (s.languageSource === 'default' && geoLanguage) {
-            next.language = geoLanguage
-            next.languageSource = 'geo'
-          }
-        }
-        return next
-      })
-    }
-    resolveGeoFallback()
-    return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-time read of cookies set by middleware
   }, [])
 
   // 3. Cross-tab sync for both keys (storage event).
@@ -258,37 +163,95 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     return () => window.removeEventListener('storage', onStorage)
   }, [])
 
-  // ── Setters ──────────────────────────────────────────────────────────
+  // ── Setters — persist to DB for logged-in users, then sync NextAuth JWT. ─
 
-  const setCurrency = React.useCallback((c: Currency) => {
-    if (!SUPPORTED_CURRENCIES.includes(c)) return
-    writePreferredCurrency(c)  // cookie + localStorage
-    setState((s) => ({ ...s, currency: c, currencySource: 'user' }))
+  const setCurrency = React.useCallback(
+    (c: Currency) => {
+      if (!SUPPORTED_CURRENCIES.includes(c)) return
+      const lang = latest.current.language
+      const pair  = { language: lang, currency: c }
 
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent<PreferenceChangedDetail>(PREFERENCE_EVENT, {
-        detail: { field: 'currency', value: c },
-      }))
-    }
+      void (async () => {
+        if (status === 'authenticated') {
+          const token = await getFreshAccessToken()
+          if (!token) return
+          try {
+            await updateMyProfile(token, {
+              preferredLanguage: pair.language,
+              preferredCurrency:  pair.currency,
+            })
+          } catch {
+            return
+          }
+        }
 
-    // Force App Router server components to re-run with the new cookie /
-    // header so server-rendered pricing reflects the change.
-    router.refresh()
-  }, [router])
+        writePreferredCurrency(c)
+        setState((s) => ({ ...s, currency: c, currencySource: 'user' }))
+        latest.current = pair
 
-  const setLanguage = React.useCallback((l: Language) => {
-    if (l !== 'mn' && l !== 'en') return
-    writePreferredLanguage(l)  // cookie + localStorage
-    setState((s) => ({ ...s, language: l, languageSource: 'user' }))
+        if (status === 'authenticated') {
+          await updateSession({
+            preferredLanguage: pair.language,
+            preferredCurrency:  pair.currency,
+          })
+        }
 
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent<PreferenceChangedDetail>(PREFERENCE_EVENT, {
-        detail: { field: 'language', value: l },
-      }))
-    }
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent<PreferenceChangedDetail>(PREFERENCE_EVENT, {
+              detail: { field: 'currency', value: c },
+            }),
+          )
+        }
+        router.refresh()
+      })()
+    },
+    [router, status, updateSession],
+  )
 
-    router.refresh()
-  }, [router])
+  const setLanguage = React.useCallback(
+    (l: Language) => {
+      if (l !== 'mn' && l !== 'en') return
+      const cur = latest.current.currency
+      const pair = { language: l, currency: cur }
+
+      void (async () => {
+        if (status === 'authenticated') {
+          const token = await getFreshAccessToken()
+          if (!token) return
+          try {
+            await updateMyProfile(token, {
+              preferredLanguage: pair.language,
+              preferredCurrency:  pair.currency,
+            })
+          } catch {
+            return
+          }
+        }
+
+        writePreferredLanguage(l)
+        setState((s) => ({ ...s, language: l, languageSource: 'user' }))
+        latest.current = pair
+
+        if (status === 'authenticated') {
+          await updateSession({
+            preferredLanguage: pair.language,
+            preferredCurrency:  pair.currency,
+          })
+        }
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent<PreferenceChangedDetail>(PREFERENCE_EVENT, {
+              detail: { field: 'language', value: l },
+            }),
+          )
+        }
+        router.refresh()
+      })()
+    },
+    [router, status, updateSession],
+  )
 
   const value = React.useMemo<PreferencesContextValue>(() => ({
     currency:       state.currency,

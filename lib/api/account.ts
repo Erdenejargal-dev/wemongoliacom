@@ -11,6 +11,9 @@ export interface BackendAccountProfile {
   bio?: string | null
   role: string
   createdAt: string
+  /** Present when the backend returns them (Phase 6 account prefs). */
+  preferredLanguage?: 'mn' | 'en' | null
+  preferredCurrency?: 'MNT' | 'USD' | null
 }
 
 export async function fetchMyProfile(token: string): Promise<BackendAccountProfile> {
@@ -24,6 +27,8 @@ export interface UpdateMyProfilePayload {
   country?: string | null
   bio?: string | null
   avatarUrl?: string | null
+  preferredLanguage?: 'mn' | 'en'
+  preferredCurrency?: 'MNT' | 'USD'
 }
 
 export async function updateMyProfile(token: string, payload: UpdateMyProfilePayload): Promise<BackendAccountProfile> {

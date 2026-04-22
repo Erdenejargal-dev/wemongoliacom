@@ -7,6 +7,8 @@ import { formatMoney } from '@/lib/money'
 import { TripStatusBadge } from './TripStatusBadge'
 import { BookingDetails } from './BookingDetails'
 import { CancelBookingButton } from './CancelBookingButton'
+import { useTravelerLocale } from '@/lib/i18n/traveler/context'
+import { formatDateForLocaleString } from '@/lib/i18n/format-date'
 
 interface TripCardProps {
   trip: Trip
@@ -15,9 +17,14 @@ interface TripCardProps {
 
 export function TripCard({ trip, onCancel }: TripCardProps) {
   const [expanded, setExpanded] = useState(false)
+  const { t: dash } = useTravelerLocale()
 
   function formatDate(d: string) {
-    return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    return formatDateForLocaleString(`${d}T00:00:00`, dash.dateLocale, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
   }
 
   return (

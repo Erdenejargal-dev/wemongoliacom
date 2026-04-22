@@ -89,13 +89,16 @@ export const authOptions: NextAuthConfig = {
           avatar:      user.avatarUrl ?? undefined,
           accessToken,
           refreshToken,
+          /** Account prefs — used by `resolveLocaleCurrency` (middleware + RSC). */
+          preferredLanguage: (user as { preferredLanguage?: 'mn' | 'en' }).preferredLanguage,
+          preferredCurrency: (user as { preferredCurrency?: 'MNT' | 'USD' }).preferredCurrency,
         };
       },
     }),
   ],
 
   callbacks: {
-    async jwt({ token, user, trigger }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         const u = user as any
         token.id          = u.id
@@ -103,6 +106,12 @@ export const authOptions: NextAuthConfig = {
         token.avatar      = u.avatar
         token.accessToken = u.accessToken
         token.refreshToken = u.refreshToken
+        if (u.preferredLanguage === 'mn' || u.preferredLanguage === 'en') {
+          token.preferredLanguage = u.preferredLanguage
+        }
+        if (u.preferredCurrency === 'MNT' || u.preferredCurrency === 'USD') {
+          token.preferredCurrency = u.preferredCurrency
+        }
 
         const decoded = decodeJwt(String(u.accessToken))
         if (decoded.exp) {
@@ -112,12 +121,39 @@ export const authOptions: NextAuthConfig = {
         }
       }
 
+      // useSession().update({ ... }) from the client — merge into JWT without
+      // forcing an access-token refresh (that path is for expiry / onboarding).
+      if (trigger === "update" && session && typeof session === "object") {
+        const s = session as {
+          preferredLanguage?: string
+          preferredCurrency?: string
+        }
+        if (s.preferredLanguage === "mn" || s.preferredLanguage === "en") {
+          token.preferredLanguage = s.preferredLanguage
+        }
+        if (s.preferredCurrency === "MNT" || s.preferredCurrency === "USD") {
+          token.preferredCurrency = s.preferredCurrency
+        }
+      }
+
       // Refresh the access token when:
-      // 1. useSession().update() is called (e.g. after onboarding promotes role)
+      // 1. useSession().update() with non-preference payload (e.g. onboarding) —
+      //    we detect "preference-only" updates and skip a redundant refresh.
       // 2. The token is near expiry
       const expiresAt = token.accessTokenExpiresAt as number | undefined
       const now = Date.now()
-      const needsRefresh = trigger === 'update' || (expiresAt && now >= expiresAt - 10_000)
+      const sessionKeys =
+        session && typeof session === "object" ? Object.keys(session as object) : []
+      const isPreferenceOnlyUpdate =
+        trigger === "update" &&
+        sessionKeys.length > 0 &&
+        sessionKeys.every(
+          (k) => k === "preferredLanguage" || k === "preferredCurrency",
+        )
+      const needsRefreshFromUpdate =
+        trigger === "update" && !isPreferenceOnlyUpdate
+      const needsRefresh =
+        needsRefreshFromUpdate || (expiresAt !== undefined && now >= expiresAt - 10_000)
       if (needsRefresh && token.accessToken && token.refreshToken) {
         try {
           const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
@@ -156,9 +192,19 @@ export const authOptions: NextAuthConfig = {
         session.user.role        = token.role as string
         session.user.avatar      = token.avatar as string | undefined
         session.user.accessToken = token.accessToken as string | undefined
+        if (token.preferredLanguage === "mn" || token.preferredLanguage === "en") {
+          session.user.preferredLanguage = token.preferredLanguage
+        } else {
+          session.user.preferredLanguage = undefined
+        }
+        if (token.preferredCurrency === "MNT" || token.preferredCurrency === "USD") {
+          session.user.preferredCurrency = token.preferredCurrency
+        } else {
+          session.user.preferredCurrency = undefined
+        }
         // Expose refresh failure so UI can sign out / redirect
-        if (token.error === 'TokenRefreshFailed') {
-          (session as any).error = 'TokenRefreshFailed'
+        if (token.error === "TokenRefreshFailed") {
+          session.error = "TokenRefreshFailed"
         }
       }
       return session;

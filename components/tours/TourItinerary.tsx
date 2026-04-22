@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { ChevronDown, Bed } from 'lucide-react'
+import { useTranslations } from '@/lib/i18n'
 
 interface TourItineraryProps {
   itinerary: {
@@ -13,6 +14,8 @@ interface TourItineraryProps {
 }
 
 export function TourItinerary({ itinerary }: TourItineraryProps) {
+  const { t } = useTranslations()
+  const m = t.tourDetail
   const [openDays, setOpenDays] = useState<Set<number>>(() => {
     const first = itinerary?.[0]?.dayNumber
     return new Set(first ? [first] : [])
@@ -32,11 +35,11 @@ export function TourItinerary({ itinerary }: TourItineraryProps) {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold text-gray-900">Day-by-Day Itinerary</h2>
+        <h2 className="text-lg font-bold text-gray-900">{m.sectionItinerary}</h2>
         <div className="flex gap-3">
-          <button onClick={expandAll} className="text-xs text-brand-600 hover:text-brand-700 font-medium transition-colors">Expand all</button>
+          <button type="button" onClick={expandAll} className="text-xs text-brand-600 hover:text-brand-700 font-medium transition-colors">{m.itineraryExpandAll}</button>
           <span className="text-gray-300">|</span>
-          <button onClick={collapseAll} className="text-xs text-gray-500 hover:text-gray-700 font-medium transition-colors">Collapse all</button>
+          <button type="button" onClick={collapseAll} className="text-xs text-gray-500 hover:text-gray-700 font-medium transition-colors">{m.itineraryCollapseAll}</button>
         </div>
       </div>
 
@@ -47,13 +50,14 @@ export function TourItinerary({ itinerary }: TourItineraryProps) {
           return (
             <div key={day.dayNumber} className="border border-gray-100 rounded-2xl overflow-hidden bg-white">
               <button
+                type="button"
                 onClick={() => toggle(day.dayNumber)}
                 className="flex items-center justify-between w-full px-5 py-4 text-left hover:bg-gray-50/70 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   {/* Day badge */}
                   <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isOpen ? 'bg-brand-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
-                    Day {day.dayNumber}
+                    {m.itineraryDay(day.dayNumber)}
                   </span>
                   <span className="text-sm font-semibold text-gray-900">{day.title}</span>
                 </div>

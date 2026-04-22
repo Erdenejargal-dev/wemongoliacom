@@ -20,17 +20,12 @@ import {
 } from '@/lib/api/stays'
 import { usePreferences } from '@/components/providers/PreferencesProvider'
 import { readPricing, formatPricing } from '@/lib/pricing'
+import { useTranslations } from '@/lib/i18n'
 
-// ── Type filter options ───────────────────────────────────────────────────────
+// ── Type filter keys (labels from `t.browse.stays.types`) ────────────────────
 
-const TYPE_FILTERS: { value: AccommodationType | 'all'; label: string }[] = [
-  { value: 'all',        label: 'All Stays'   },
-  { value: 'ger_camp',   label: 'Ger Camps'   },
-  { value: 'hotel',      label: 'Hotels'      },
-  { value: 'resort',     label: 'Resorts'     },
-  { value: 'lodge',      label: 'Lodges'      },
-  { value: 'guesthouse', label: 'Guesthouses' },
-  { value: 'homestay',   label: 'Homestays'   },
+const TYPE_FILTER_ORDER: (AccommodationType | 'all')[] = [
+  'all', 'ger_camp', 'hotel', 'resort', 'lodge', 'guesthouse', 'homestay',
 ]
 
 const TYPE_COLOURS: Partial<Record<AccommodationType, string>> = {
@@ -48,11 +43,19 @@ const FALLBACK_IMAGE =
 
 // ── Stay card ─────────────────────────────────────────────────────────────────
 
-function StayCard({ stay }: { stay: BackendStay }) {
+function StayCard({
+  stay,
+  getTypeLabel,
+  priceLabels,
+}: {
+  stay: BackendStay
+  getTypeLabel: (ac: AccommodationType) => string | undefined
+  priceLabels: { from: string; perNight: string; onRequest: string; view: string }
+}) {
   const [imgError, setImgError] = useState(false)
   const { currency: displayCurrency } = usePreferences()
   const imageUrl   = stay.images?.[0]?.imageUrl ?? FALLBACK_IMAGE
-  const typeLabel  = ACCOMMODATION_TYPE_LABELS[stay.accommodationType] ?? stay.accommodationType
+  const typeLabel  = getTypeLabel(stay.accommodationType) ?? ACCOMMODATION_TYPE_LABELS[stay.accommodationType] ?? stay.accommodationType
   const typeDot    = TYPE_COLOURS[stay.accommodationType] ?? 'bg-gray-500'
   const cheapestRoom = stay.roomTypes.length > 0
     ? stay.roomTypes.reduce((a, b) => (a.basePricePerNight <= b.basePricePerNight ? a : b))
@@ -122,19 +125,19 @@ function StayCard({ stay }: { stay: BackendStay }) {
         <div className="flex items-center justify-between pt-3 border-t border-gray-100">
           {pricing ? (
             <div>
-              <span className="text-[10px] text-gray-400 uppercase tracking-wide block">From</span>
+              <span className="text-[10px] text-gray-400 uppercase tracking-wide block">{priceLabels.from}</span>
               <div className="flex items-baseline gap-0.5">
                 <span className="text-base font-bold text-gray-900">
                   {formatPricing(pricing, displayCurrency)}
                 </span>
-                <span className="text-[10px] text-gray-400">/night</span>
+                <span className="text-[10px] text-gray-400">{priceLabels.perNight}</span>
               </div>
             </div>
           ) : (
-            <span className="text-xs text-gray-400 italic">Price on request</span>
+            <span className="text-xs text-gray-400 italic">{priceLabels.onRequest}</span>
           )}
           <span className="text-xs font-semibold text-brand-600 group-hover:text-brand-700 transition-colors">
-            View →
+            {priceLabels.view}
           </span>
         </div>
       </div>
@@ -157,10 +160,16 @@ function SkeletonGrid() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function StaysPage() {
+  const { t } = useTranslations()
+  const b = t.browse.stays
   const [stays,   setStays]   = useState<BackendStay[]>([])
   const [loading, setLoading] = useState(true)
   const [search,  setSearch]  = useState('')
   const [typeFilter, setTypeFilter] = useState<AccommodationType | 'all'>('all')
+  const typeFilters = TYPE_FILTER_ORDER.map((value) => ({
+    value,
+    label: b.types[value] ?? value,
+  }))
 
   // Phase 6.2 — refetch when the display currency changes so the backend's
   // `X-Display-Currency`-aware pricing DTO is refreshed for every card.
@@ -177,6 +186,15 @@ export default function StaysPage() {
       .finally(() => setLoading(false))
   }, [typeFilter, displayCurrency])
 
+  const getTypeLabel = (ac: AccommodationType) => b.types[ac]
+
+  const priceLabels = {
+    from: b.from,
+    perNight: b.perNight,
+    onRequest: b.priceOnRequest,
+    view: b.viewCta,
+  }
+
   const filtered = stays.filter(s => {
     if (!search.trim()) return true
     const q = search.toLowerCase()
@@ -192,21 +210,22 @@ export default function StaysPage() {
       {/* ── Hero ────────────────────────────────── */}
       <section className="relative bg-gray-950 overflow-hidden">
         <img
-          src="https://images.unsplash.com/photo-1707669904577-2ebc6f95a826?q=80&w=1025&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D://images.unsplash.com/photo-1567191327852-25f4e5c1d0c4?q=80&w=1600"
-          alt="Mongolia stays"
+          src="https://images.unsplash.com/photo-1707669904577-2ebc6f95a826?q=80&w=1025&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+          alt={b.heroImageAlt}
           className="absolute inset-0 w-full h-full object-cover opacity-45"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/40 to-black/80" />
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 text-center">
           <p className="text-orange-400 text-xs font-semibold uppercase tracking-[0.2em] mb-4">
-            Where to Stay
+            {b.heroEyebrow}
           </p>
           <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-5 leading-[1.1] tracking-tight">
-            Ger Camps, Hotels &<br className="hidden sm:block" />
-            <span className="text-orange-400"> Lodges in Mongolia</span>
+            {b.heroTitle}
+            <br className="hidden sm:block" />
+            <span className="text-orange-400">{b.heroTitleAccent}</span>
           </h1>
           <p className="text-white/65 text-base sm:text-lg max-w-xl mx-auto mb-10">
-            From traditional nomadic ger camps to luxury resorts — find where to stay for your Mongolia adventure.
+            {b.heroLead}
           </p>
 
           {/* Search */}
@@ -216,13 +235,17 @@ export default function StaysPage() {
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search by name or destination…"
+              placeholder={b.searchPlaceholder}
+              aria-label={b.searchPlaceholder}
               className="w-full pl-11 pr-10 py-4 bg-white rounded-2xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400/30 shadow-2xl"
             />
             {search && (
               <button
+                type="button"
                 onClick={() => setSearch('')}
                 className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                title={t.common.close}
+                aria-label={t.common.close}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -236,7 +259,7 @@ export default function StaysPage() {
 
         {/* Type filters */}
         <div className="flex items-center gap-2 flex-wrap">
-          {TYPE_FILTERS.map(f => (
+          {typeFilters.map(f => (
             <button
               key={f.value}
               onClick={() => setTypeFilter(f.value)}
@@ -259,28 +282,34 @@ export default function StaysPage() {
           <>
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm text-gray-400">
-                {filtered.length} {filtered.length === 1 ? 'stay' : 'stays'}
+                {b.staysCount(filtered.length)}
               </p>
             </div>
 
             {filtered.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                {filtered.map(stay => <StayCard key={stay.id} stay={stay} />)}
+                {filtered.map(stay => (
+                  <StayCard
+                    key={stay.id}
+                    stay={stay}
+                    getTypeLabel={getTypeLabel}
+                    priceLabels={priceLabels}
+                  />
+                ))}
               </div>
             ) : (
               <div className="text-center py-20">
                 <Compass className="w-10 h-10 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-700 font-semibold mb-1">No stays found</p>
+                <p className="text-gray-700 font-semibold mb-1">{b.emptyTitle}</p>
                 <p className="text-gray-400 text-sm mb-5">
-                  {search
-                    ? `No results for "${search}"`
-                    : 'No stays available for this filter'}
+                  {search ? b.emptyNoResults(search) : b.emptyNoFilter}
                 </p>
                 <button
+                  type="button"
                   onClick={() => { setSearch(''); setTypeFilter('all') }}
                   className="text-sm font-semibold text-brand-600 underline"
                 >
-                  Clear filters
+                  {b.clearFilters}
                 </button>
               </div>
             )}
@@ -295,15 +324,15 @@ export default function StaysPage() {
               style={{ background: 'radial-gradient(ellipse at 50% 0%, #f97316 0%, transparent 70%)' }}
             />
             <div className="relative">
-              <h3 className="text-xl font-bold text-white mb-2">Looking for tours too?</h3>
+              <h3 className="text-xl font-bold text-white mb-2">{b.ctaToursTitle}</h3>
               <p className="text-white/55 text-sm mb-6 max-w-md mx-auto">
-                Browse guided tours and packages across Mongolia.
+                {b.ctaToursLead}
               </p>
               <Link
                 href="/tours"
                 className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm px-7 py-3.5 rounded-xl transition-colors shadow-md"
               >
-                Browse All Tours
+                {b.ctaToursButton}
               </Link>
             </div>
           </section>

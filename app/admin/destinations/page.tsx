@@ -29,12 +29,7 @@ import {
   type AdminDestinationInput,
 } from '@/lib/api/admin'
 import { MONGOLIA_REGIONS } from '@/lib/constants/geography'
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
+import { useTranslations, formatDateMonthYear } from '@/lib/i18n'
 
 // ── Empty form ────────────────────────────────────────────────────────────────
 
@@ -384,6 +379,7 @@ function DestinationFormPanel({
 function DestinationsContent() {
   const { data: session }  = useSession()
   const token              = session?.user?.accessToken ?? ''
+  const { lang } = useTranslations()
 
   const [destinations, setDestinations] = useState<AdminDestination[]>([])
   const [loading,      setLoading]      = useState(true)
@@ -558,7 +554,7 @@ function DestinationsContent() {
 
                         {/* Created */}
                         <td className="px-5 py-3.5 hidden lg:table-cell">
-                          <span className="text-xs text-gray-400">{fmtDate(dest.createdAt)}</span>
+                          <span className="text-xs text-gray-400">{formatDateMonthYear(dest.createdAt, lang)}</span>
                         </td>
 
                         {/* Actions */}

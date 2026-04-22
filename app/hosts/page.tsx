@@ -5,21 +5,30 @@ import { Search, X, Users, Compass } from 'lucide-react'
 import { hosts } from '@/lib/mock-data/hosts'
 import { HostCard } from '@/components/hosts/HostCard'
 import Link from 'next/link'
+import { useTranslations } from '@/lib/i18n'
+import type { HostsBrowseMessages } from '@/lib/i18n/messages/hostsBrowse'
 
-const TYPES = ['All', 'company', 'guide', 'experience', 'driver']
-const TYPE_LABELS: Record<string, string> = {
-  All: 'All Types',
-  company: 'Tour Companies',
-  guide: 'Private Guides',
-  experience: 'Experience Providers',
-  driver: 'Driver Guides',
+const TYPES = ['All', 'company', 'guide', 'experience', 'driver'] as const
+type TypeFilter = (typeof TYPES)[number]
+
+function typeFilterLabel(t: TypeFilter, hb: HostsBrowseMessages): string {
+  switch (t) {
+    case 'All': return hb.filterAll
+    case 'company': return hb.filterCompany
+    case 'guide': return hb.filterGuide
+    case 'experience': return hb.filterExperience
+    case 'driver': return hb.filterDriver
+    default: return hb.filterAll
+  }
 }
 
 const FEATURED_SLUGS = ['gobi-adventure-tours', 'altai-expeditions', 'northern-trails']
 
 export default function HostsPage() {
+  const { t } = useTranslations()
+  const hb = t.hostsBrowse
   const [search, setSearch] = useState('')
-  const [type, setType] = useState('All')
+  const [type, setType] = useState<TypeFilter>('All')
 
   const featured = hosts.filter(h => FEATURED_SLUGS.includes(h.slug))
 
@@ -42,35 +51,39 @@ export default function HostsPage() {
       <section className="relative bg-gray-900 overflow-hidden">
         <img
           src="https://images.unsplash.com/photo-1470770903676-69b98201ea1c?w=1600"
-          alt="Tour guides and operators"
+          alt={hb.heroImageAlt}
           className="absolute inset-0 w-full h-full object-cover opacity-30"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-gray-900/50 to-gray-900/90" />
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
           <div className="flex items-center justify-center gap-2 text-brand-400 text-xs font-bold uppercase tracking-widest mb-4">
-            <Users className="w-3.5 h-3.5" />
-            Verified Operators
+            <Users className="w-3.5 h-3.5" aria-hidden />
+            {hb.heroKicker}
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4 leading-tight">
-            Tour Guides &amp;<br className="hidden sm:block" /> Local Operators
+            {hb.heroTitleLine1}
+            <br className="hidden sm:block" />
+            {hb.heroTitleLine2}
           </h1>
           <p className="text-white/70 text-base sm:text-lg max-w-xl mx-auto mb-8 leading-relaxed">
-            Meet trusted guides and tour companies offering authentic experiences across Mongolia.
+            {hb.heroSubtitle}
           </p>
 
           {/* Search */}
           <div className="relative max-w-lg mx-auto">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" aria-hidden />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search by name or location…"
+              placeholder={hb.searchPlaceholder}
+              aria-label={hb.searchPlaceholder}
               className="w-full pl-11 pr-10 py-3.5 bg-white rounded-2xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400/30 shadow-xl"
             />
             {search && (
-              <button onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+              <button type="button" onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label={t.common.close}>
                 <X className="w-4 h-4" />
               </button>
             )}
@@ -84,8 +97,8 @@ export default function HostsPage() {
         {!hasFilters && (
           <section>
             <div className="flex items-center gap-2 mb-6">
-              <span className="w-1 h-5 rounded-full bg-brand-500 inline-block" />
-              <h2 className="text-lg font-bold text-gray-900">Featured Operators</h2>
+              <span className="w-1 h-5 rounded-full bg-brand-500 inline-block" aria-hidden />
+              <h2 className="text-lg font-bold text-gray-900">{hb.featuredSection}</h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
               {featured.map(host => (
@@ -100,22 +113,22 @@ export default function HostsPage() {
           {/* Filter row */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
             <div className="flex flex-wrap gap-2">
-              {TYPES.map(t => (
-                <button key={t}
-                  onClick={() => setType(t)}
-                  className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${type === t ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
-                  {TYPE_LABELS[t]}
+              {TYPES.map(tf => (
+                <button type="button" key={tf}
+                  onClick={() => setType(tf)}
+                  className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${type === tf ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
+                  {typeFilterLabel(tf, hb)}
                 </button>
               ))}
               {hasFilters && (
-                <button onClick={() => { setSearch(''); setType('All') }}
+                <button type="button" onClick={() => { setSearch(''); setType('All') }}
                   className="text-xs text-gray-500 hover:text-gray-700 underline transition-colors">
-                  Clear all
+                  {hb.clearAll}
                 </button>
               )}
             </div>
             <p className="text-sm text-gray-500 shrink-0">
-              {filtered.length} host{filtered.length !== 1 ? 's' : ''}
+              {hb.hostCount(filtered.length)}
             </p>
           </div>
 
@@ -128,12 +141,12 @@ export default function HostsPage() {
             </div>
           ) : (
             <div className="text-center py-16">
-              <Compass className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 font-medium text-sm mb-1">No hosts found</p>
-              <p className="text-gray-400 text-xs">Try adjusting your search or filter</p>
-              <button onClick={() => { setSearch(''); setType('All') }}
+              <Compass className="w-10 h-10 text-gray-300 mx-auto mb-3" aria-hidden />
+              <p className="text-gray-500 font-medium text-sm mb-1">{hb.noResultsTitle}</p>
+              <p className="text-gray-400 text-xs">{hb.noResultsHint}</p>
+              <button type="button" onClick={() => { setSearch(''); setType('All') }}
                 className="mt-4 text-sm text-brand-600 hover:text-brand-700 font-semibold underline transition-colors">
-                Clear filters
+                {hb.clearFilters}
               </button>
             </div>
           )}
@@ -141,12 +154,12 @@ export default function HostsPage() {
 
         {/* ── CTA ──────────────────────────────── */}
         <section className="bg-gradient-to-r from-brand-500 to-brand-600 rounded-2xl p-8 text-center">
-          <h3 className="text-xl font-bold text-white mb-2">Are you a local guide or operator?</h3>
-          <p className="text-white/80 text-sm mb-5">Join the platform and connect with travelers from around the world.</p>
+          <h3 className="text-xl font-bold text-white mb-2">{hb.ctaTitle}</h3>
+          <p className="text-white/80 text-sm mb-5">{hb.ctaSub}</p>
           <Link href="/onboarding"
             className="inline-flex items-center gap-2 bg-white text-brand-700 font-bold text-sm px-6 py-3 rounded-xl hover:bg-brand-50 transition-colors shadow-lg">
-            <Users className="w-4 h-4" />
-            Register as a Host
+            <Users className="w-4 h-4" aria-hidden />
+            {hb.ctaButton}
           </Link>
         </section>
 

@@ -76,6 +76,9 @@ export async function login(input: LoginInput) {
       email:     user.email,
       role:      user.role,
       avatarUrl: user.avatarUrl,
+      /** Exposed to Next.js session for locale + display-currency resolution. */
+      preferredLanguage: user.preferredLanguage,
+      preferredCurrency: user.preferredCurrency,
     },
     ...tokens,
   }

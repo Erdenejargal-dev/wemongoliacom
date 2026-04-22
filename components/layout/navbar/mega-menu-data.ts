@@ -1,60 +1,54 @@
 /**
- * components/layout/navbar/mega-menu-data.ts
- *
- * Main navigation item definitions.
- * Desktop uses MegaMenu dropdowns; mobile reads the same data for accordions.
- *
- * Rules:
- * - Every href must be a real, working route.
- * - No '#' placeholder links.
- * - Removed: Trip Planner, Travel Guides, Experiences — routes do not exist.
+ * Main navigation structure: hrefs + icons. Labels come from `PublicTranslations.megaNav`
+ * via `buildNavItems(megaNav)` so EN/MN stay in sync.
  */
 
-import { MapPin, Compass, BedDouble } from 'lucide-react'
+import { MapPin, Compass } from 'lucide-react'
+import type { MegaNavBundle } from '@/lib/i18n/public/megaNav'
 
-export const navItems = [
-  // ── Destinations — mega menu with real destination slugs ──────────────────
-  {
-    label: 'Destinations',
-    key:   'destinations',
-    menu: {
-      sections: [
-        {
-          title: 'Popular Destinations',
-          icon:   MapPin,
-          items: [
-            { label: 'Gobi Desert',          href: '/destinations/gobi-desert',          description: 'Dunes, canyons & ancient fossils' },
-            { label: 'Lake Khövsgöl',         href: '/destinations/lake-khovsgol',         description: "Mongolia's pristine Blue Pearl" },
-            { label: 'Altai Mountains',       href: '/destinations/altai-mountains',       description: 'Eagle hunters & glacier peaks' },
-            { label: 'Ulaanbaatar',           href: '/destinations/ulaanbaatar',           description: "The world's most surprising capital" },
-            { label: 'Terelj National Park',  href: '/destinations/terelj-national-park',  description: 'Dramatic granite, 55km from UB' },
-            { label: 'Orkhon Valley',         href: '/destinations/orkhon-valley',         description: 'UNESCO World Heritage landscape' },
-          ],
-        },
-        {
-          title: 'Browse',
-          icon:   Compass,
-          items: [
-            { label: 'All Destinations', href: '/destinations', description: 'Explore every region of Mongolia' },
-            { label: 'All Tours',        href: '/tours',        description: 'Browse scheduled tours & packages' },
-            { label: 'All Stays',        href: '/stays',        description: 'Ger camps, hotels & lodges' },
-          ],
-        },
-      ],
-    },
-  },
-
-  // ── Tours — direct link (no dropdown needed until filter-page exists) ──────
-  {
-    label: 'Tours',
-    key:   'tours',
-    href:  '/tours',
-  },
-
-  // ── Stays — direct link ───────────────────────────────────────────────────
-  {
-    label: 'Stays',
-    key:   'stays',
-    href:  '/stays',
-  },
+/** First N items match `megaNav.popular` order for mobile featured list */
+export const POPULAR_DESTINATION_HREFS = [
+  '/destinations/gobi-desert',
+  '/destinations/lake-khovsgol',
+  '/destinations/altai-mountains',
+  '/destinations/ulaanbaatar',
+  '/destinations/terelj-national-park',
+  '/destinations/orkhon-valley',
 ] as const
+
+const BROWSE_HREFS = ['/destinations', '/tours', '/stays'] as const
+
+export function buildNavItems(m: MegaNavBundle) {
+  return [
+    {
+      key: 'destinations' as const,
+      label: m.rootDestinations,
+      menu: {
+        sections: [
+          {
+            title: m.popularTitle,
+            icon: MapPin,
+            items: m.popular.map((item, i) => ({
+              label: item.label,
+              description: item.description,
+              href: POPULAR_DESTINATION_HREFS[i],
+            })),
+          },
+          {
+            title: m.browseTitle,
+            icon: Compass,
+            items: m.browse.map((item, i) => ({
+              label: item.label,
+              description: item.description,
+              href: BROWSE_HREFS[i],
+            })),
+          },
+        ],
+      },
+    },
+    { key: 'tours' as const, label: m.rootTours, href: '/tours' },
+    { key: 'stays' as const, label: m.rootStays, href: '/stays' },
+  ]
+}
+
+export type BuiltNavItem = (ReturnType<typeof buildNavItems>)[number]

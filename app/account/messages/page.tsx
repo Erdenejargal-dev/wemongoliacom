@@ -28,18 +28,9 @@ import {
 } from '@/lib/api/conversations'
 import { getFreshAccessToken } from '@/lib/auth-utils'
 import { ApiError } from '@/lib/api/client'
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function formatTime(dateStr: string): string {
-  const d = new Date(dateStr)
-  const now = new Date()
-  const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000)
-  if (diffDays === 0) return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-  if (diffDays === 1) return 'Yesterday'
-  if (diffDays < 7) return d.toLocaleDateString('en-US', { weekday: 'short' })
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
+import { useTravelerLocale } from '@/lib/i18n/traveler/context'
+import { formatDateForLocaleString } from '@/lib/i18n/format-date'
+import { useTranslations } from '@/lib/i18n'
 
 // ── Loading fallback (also used as Suspense fallback) ─────────────────────────
 
@@ -58,6 +49,22 @@ function MessagesContent() {
   const router            = useRouter()
   const searchParams      = useSearchParams()
   const token             = session?.user?.accessToken
+  const { t: dash } = useTravelerLocale()
+  const { t: app } = useTranslations()
+
+  function formatTime(dateStr: string): string {
+    const d = new Date(dateStr)
+    const now = new Date()
+    const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000)
+    if (diffDays === 0) {
+      return d.toLocaleTimeString(dash.dateLocale, { hour: 'numeric', minute: '2-digit' })
+    }
+    if (diffDays === 1) return app.common.yesterday
+    if (diffDays < 7) {
+      return formatDateForLocaleString(d, dash.dateLocale, { weekday: 'short' })
+    }
+    return formatDateForLocaleString(d, dash.dateLocale, { month: 'short', day: 'numeric' })
+  }
 
   const [conversations,   setConversations]   = useState<Conversation[]>([])
   const [loading,         setLoading]         = useState(true)

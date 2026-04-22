@@ -11,14 +11,10 @@ import { getLastBooking, type Booking } from '@/lib/booking'
 import { fetchBookingByCode } from '@/lib/api/bookings'
 import { getFreshAccessToken } from '@/lib/auth-utils'
 import { formatMoney } from '@/lib/money'
-
-function formatDate(dateStr: string) {
-  if (!dateStr) return 'To be confirmed'
-  const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
-}
+import { useTranslations, formatDateLong } from '@/lib/i18n'
 
 function SuccessInner() {
+  const { t, lang } = useTranslations()
   const { data: session } = useSession()
   const params = useSearchParams()
   const codeFromUrl = params.get('bookingCode')
@@ -69,6 +65,11 @@ function SuccessInner() {
     backend?.startDate
       ? String(backend.startDate).slice(0, 10)
       : booking?.date ?? ''
+
+  const formatBookingDate = (ds: string) => {
+    if (!ds) return t.common.dateToBeConfirmed
+    return formatDateLong(`${ds}T00:00:00`, lang)
+  }
 
   function copyId() {
     if (!bookingCode) return
@@ -189,7 +190,7 @@ function SuccessInner() {
           </div>
           <div className="p-5 space-y-3">
             <Detail icon={<MapPin className="w-4 h-4 text-brand-500" />} label="Location" value={loc || '—'} />
-            <Detail icon={<CalendarDays className="w-4 h-4 text-brand-500" />} label="Date" value={formatDate(dateStr)} />
+            <Detail icon={<CalendarDays className="w-4 h-4 text-brand-500" />} label="Date" value={formatBookingDate(dateStr)} />
             <Detail icon={<Users className="w-4 h-4 text-brand-500" />} label="Guests" value={`${guests} guest${guests !== 1 ? 's' : ''}`} />
             <Detail icon={<Clock className="w-4 h-4 text-brand-500" />} label="Details" value={booking?.tourDuration ?? '—'} />
           </div>

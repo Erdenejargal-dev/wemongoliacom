@@ -16,6 +16,7 @@
 
 import { CalendarDays, Users, Clock, MapPin, Shield, Tag } from 'lucide-react'
 import { formatMoney } from '@/lib/money'
+import { useTranslations, formatDateLong } from '@/lib/i18n'
 
 interface BookingSummaryProps {
   tourTitle: string
@@ -36,16 +37,16 @@ interface BookingSummaryProps {
   slug: string
 }
 
-function formatDate(dateStr: string) {
-  if (!dateStr) return 'To be confirmed'
-  const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
-}
-
 export function BookingSummary({
   tourTitle, tourLocation, tourDuration, tourImage, date, guests, pricePerPerson, currency, quote,
 }: BookingSummaryProps) {
+  const { t, lang } = useTranslations()
   const quoteCurrency = quote?.currency ?? currency
+
+  function formatDate(dateStr: string) {
+    if (!dateStr) return t.common.dateToBeConfirmed
+    return formatDateLong(`${dateStr}T00:00:00`, lang)
+  }
 
   return (
     <div className="space-y-4">

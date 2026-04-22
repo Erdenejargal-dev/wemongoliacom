@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * components/tours/TourLocationSection.tsx
  *
@@ -19,6 +21,7 @@
 
 import Link from 'next/link'
 import { MapPin, Navigation, ExternalLink, Globe } from 'lucide-react'
+import { useTranslations } from '@/lib/i18n'
 
 interface TourLocationSectionProps {
   /** Primary destination the tour is linked to (optional) */
@@ -46,6 +49,8 @@ export function TourLocationSection({
   meetingLat,
   meetingLng,
 }: TourLocationSectionProps) {
+  const { t } = useTranslations()
+  const m = t.tourDetail
   const hasProvince = provinces && provinces.length > 0
   const hasRegion   = region || destination?.region
   const hasMeeting  = meetingPoint && meetingPoint.trim().length > 0
@@ -64,7 +69,7 @@ export function TourLocationSection({
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
       <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
         <Globe className="w-5 h-5 text-brand-500" />
-        Location &amp; Coverage
+        {m.locationTitle}
       </h2>
 
       <div className="space-y-4">
@@ -77,7 +82,9 @@ export function TourLocationSection({
             </div>
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">
-                {hasProvince ? (provinces!.length > 1 ? 'Provinces covered' : 'Province') : 'Region'}
+                {hasProvince
+                  ? (provinces!.length > 1 ? m.locationProvincesMany : m.locationProvinceOne)
+                  : m.locationRegion}
               </p>
               {hasProvince ? (
                 <div className="flex flex-wrap gap-1.5">
@@ -104,7 +111,7 @@ export function TourLocationSection({
               <MapPin className="w-4 h-4 text-orange-600" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">Destination</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">{m.locationDestination}</p>
               <Link
                 href={`/destinations/${destination.slug}`}
                 className="text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors underline-offset-2 hover:underline"
@@ -125,7 +132,7 @@ export function TourLocationSection({
               <Navigation className="w-4 h-4 text-green-600" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">Meeting point</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">{m.locationMeetingPoint}</p>
               <p className="text-sm text-gray-900">{meetingPoint}</p>
               {mapsUrl && (
                 <a
@@ -135,7 +142,7 @@ export function TourLocationSection({
                   className="inline-flex items-center gap-1 mt-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700 transition-colors"
                 >
                   <ExternalLink className="w-3 h-3" />
-                  Open in Google Maps
+                  {m.locationOpenMaps}
                 </a>
               )}
             </div>
@@ -145,7 +152,7 @@ export function TourLocationSection({
         {/* Informational note for multi-location tours */}
         {hasProvince && provinces!.length > 1 && (
           <p className="text-xs text-gray-400 mt-1 pl-11">
-            This tour visits multiple provinces. Specific places and the full route are described in the itinerary below.
+            {m.locationMultiProvinceNote}
           </p>
         )}
       </div>

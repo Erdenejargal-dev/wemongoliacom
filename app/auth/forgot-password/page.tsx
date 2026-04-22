@@ -8,8 +8,12 @@ import { Input } from '@/components/ui/input'
 import { requestForgotPassword } from '@/lib/api/auth-password'
 import { ApiError } from '@/lib/api/client'
 import { WeMongoliaLogo } from '@/components/brand/WeMongoliaLogo'
+import { useTranslations } from '@/lib/i18n'
 
 export default function ForgotPasswordPage() {
+  const { t: appT } = useTranslations()
+  const c = appT.forgotPassword
+
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -23,7 +27,7 @@ export default function ForgotPasswordPage() {
       await requestForgotPassword(email.trim())
       setSubmitted(true)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.')
+      setError(err instanceof ApiError ? err.message : c.genericError)
     } finally {
       setLoading(false)
     }
@@ -40,20 +44,19 @@ export default function ForgotPasswordPage() {
           className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to sign in
+          {c.backToSignIn}
         </Link>
 
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Forgot password</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{c.title}</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Enter your email and we will send you a link to reset your password if an account exists.
+            {c.lead}
           </p>
         </div>
 
         {submitted ? (
           <div className="rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-800">
-            If an account exists for that email, we sent instructions to reset your password. Check your inbox
-            and spam folder.
+            {c.successMessage}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -62,7 +65,7 @@ export default function ForgotPasswordPage() {
             )}
             <div>
               <label htmlFor="fp-email" className="mb-1.5 block text-sm font-medium text-gray-700">
-                Email
+                {c.emailLabel}
               </label>
               <Input
                 id="fp-email"
@@ -73,7 +76,7 @@ export default function ForgotPasswordPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loading}
                 className="rounded-xl"
-                placeholder="you@example.com"
+                placeholder={c.emailPlaceholder}
               />
             </div>
             <Button
@@ -84,10 +87,10 @@ export default function ForgotPasswordPage() {
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sending…
+                  {c.sending}
                 </>
               ) : (
-                'Send reset link'
+                c.submit
               )}
             </Button>
           </form>

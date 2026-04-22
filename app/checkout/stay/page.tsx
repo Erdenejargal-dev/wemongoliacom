@@ -26,15 +26,10 @@ import { type Booking, saveBooking } from '@/lib/booking'
 import { formatMoney } from '@/lib/money'
 import { getFreshAccessToken } from '@/lib/auth-utils'
 import { ApiError } from '@/lib/api/client'
+import { useTranslations, formatDateWithWeekdayShort } from '@/lib/i18n'
 
 const EMPTY_TRAVELER: TravelerData = {
   name: '', email: '', phone: '', country: '', specialRequests: '',
-}
-
-function fmtDate(d: string): string {
-  return new Date(d).toLocaleDateString('en-US', {
-    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
-  })
 }
 
 function nightsBetween(a: string, b: string): number {
@@ -48,6 +43,9 @@ function StayCheckoutContent() {
   const params  = useSearchParams()
   const router  = useRouter()
   const { data: session } = useSession()
+  const { lang } = useTranslations()
+
+  const fmtDate = (d: string) => formatDateWithWeekdayShort(d, lang)
 
   const slug        = params.get('slug')       ?? ''
   const roomTypeId  = params.get('roomTypeId') ?? ''
