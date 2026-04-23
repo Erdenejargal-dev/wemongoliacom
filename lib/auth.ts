@@ -214,7 +214,7 @@ export const authOptions: NextAuthConfig = {
   pages: {
     signIn:  "/auth/login",
     signOut: "/auth/login",
-    error:   "/auth/error",
+    error:   "/auth/login",
   },
 
   session: {

@@ -69,9 +69,14 @@ export function StayBookingCard({ stay }: StayBookingCardProps) {
   const { t: appT } = useTranslations()
   const sd = appT.stayDetail
 
-  const today     = toInputDate(new Date())
-  const tomorrow  = toInputDate(new Date(Date.now() + 86_400_000))
-  const maxDate   = toInputDate(new Date(Date.now() + 60 * 86_400_000))
+  const baseDate = new Date()
+  const today = toInputDate(baseDate)
+  const tomorrowDate = new Date(baseDate)
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1)
+  const tomorrow = toInputDate(tomorrowDate)
+  const maxSelectableDate = new Date(baseDate)
+  maxSelectableDate.setDate(maxSelectableDate.getDate() + 60)
+  const maxDate = toInputDate(maxSelectableDate)
 
   const [selectedRoomId, setSelectedRoomId] = useState<string>(
     stay.roomTypes[0]?.id ?? '',

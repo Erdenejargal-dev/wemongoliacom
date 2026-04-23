@@ -16,10 +16,10 @@ export interface LoginInput {
   password: string
 }
 
-function buildTokens(userId: string, role: string) {
+function buildTokens(userId: string, role: string, refreshTokenVersion: number) {
   return {
     accessToken:  signAccessToken({ userId, role }),
-    refreshToken: signRefreshToken({ userId }),
+    refreshToken: signRefreshToken({ userId, tokenVersion: refreshTokenVersion }),
   }
 }
 
@@ -47,7 +47,7 @@ export async function register(input: RegisterInput) {
     },
   })
 
-  const tokens = buildTokens(user.id, user.role)
+  const tokens = buildTokens(user.id, user.role, 0)
 
   void import('./email.service')
     .then((m) => m.notifyWelcomeAfterRegistration(user.email, user.firstName))
@@ -66,7 +66,7 @@ export async function login(input: LoginInput) {
   const valid = await verifyPassword(input.password, user.passwordHash)
   if (!valid) throw new AppError('Invalid email or password.', 401)
 
-  const tokens = buildTokens(user.id, user.role)
+  const tokens = buildTokens(user.id, user.role, user.refreshTokenVersion)
 
   return {
     user: {
@@ -89,21 +89,24 @@ export async function login(input: LoginInput) {
 // Returns a new accessToken (and refreshToken for rotation).
 // ─────────────────────────────────────────────────────────────────────────────
 export async function refresh(input: { refreshToken: string }) {
-  let payload: { userId: string }
+  let payload: { userId: string; tokenVersion: number }
   try {
-    payload = verifyRefreshToken(input.refreshToken) as { userId: string }
+    payload = verifyRefreshToken(input.refreshToken) as { userId: string; tokenVersion: number }
   } catch {
     throw new AppError('Invalid or expired refresh token.', 401)
   }
 
   const user = await prisma.user.findUnique({
     where: { id: payload.userId },
-    select: { id: true, role: true },
+    select: { id: true, role: true, refreshTokenVersion: true },
   })
 
   if (!user) throw new AppError('User not found.', 401)
+  if (user.refreshTokenVersion !== payload.tokenVersion) {
+    throw new AppError('Refresh token has been revoked.', 401)
+  }
 
-  const tokens = buildTokens(user.id, user.role)
+  const tokens = buildTokens(user.id, user.role, user.refreshTokenVersion)
   return tokens
 }
 

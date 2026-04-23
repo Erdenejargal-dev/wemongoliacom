@@ -56,7 +56,7 @@ function StepBusinessType({ data, onNext }: { data: OnboardingState; onNext: (p:
 
   const [combo, setCombo] = useState<ProviderCombo | null>(comboFromProviderTypes(data.providerTypes))
 
-  const Card = ({
+  const renderCard = ({
     value,
     title,
     subtitle,
@@ -103,34 +103,34 @@ function StepBusinessType({ data, onNext }: { data: OnboardingState; onNext: (p:
       </div>
 
       <div className="space-y-3">
-        <Card
-          value="tour_operator"
-          title={o.serviceCards.tour.title}
-          subtitle={o.serviceCards.tour.subtitle}
-          badge="🗺️"
-          colorClass="border-brand-400 bg-brand-50/50"
-        />
-        <Card
-          value="hotel"
-          title={o.serviceCards.hotel.title}
-          subtitle={o.serviceCards.hotel.subtitle}
-          badge="🏨"
-          colorClass="border-blue-400 bg-blue-50/50"
-        />
-        <Card
-          value="car_rental"
-          title={o.serviceCards.carRental.title}
-          subtitle={o.serviceCards.carRental.subtitle}
-          badge="🚐"
-          colorClass="border-orange-400 bg-orange-50/50"
-        />
-        <Card
-          value="multiple"
-          title={o.serviceCards.all.title}
-          subtitle={o.serviceCards.all.subtitle}
-          badge="✨"
-          colorClass="border-gray-800 bg-gray-50"
-        />
+        {renderCard({
+          value: 'tour_operator',
+          title: o.serviceCards.tour.title,
+          subtitle: o.serviceCards.tour.subtitle,
+          badge: '🗺️',
+          colorClass: 'border-brand-400 bg-brand-50/50',
+        })}
+        {renderCard({
+          value: 'hotel',
+          title: o.serviceCards.hotel.title,
+          subtitle: o.serviceCards.hotel.subtitle,
+          badge: '🏨',
+          colorClass: 'border-blue-400 bg-blue-50/50',
+        })}
+        {renderCard({
+          value: 'car_rental',
+          title: o.serviceCards.carRental.title,
+          subtitle: o.serviceCards.carRental.subtitle,
+          badge: '🚐',
+          colorClass: 'border-orange-400 bg-orange-50/50',
+        })}
+        {renderCard({
+          value: 'multiple',
+          title: o.serviceCards.all.title,
+          subtitle: o.serviceCards.all.subtitle,
+          badge: '✨',
+          colorClass: 'border-gray-800 bg-gray-50',
+        })}
       </div>
 
       <div className="pt-2">

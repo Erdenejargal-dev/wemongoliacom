@@ -22,7 +22,7 @@ export function DetailBreadcrumb({
   bar?: boolean
   className?: string
 }) {
-  const Sep = () =>
+  const renderSeparator = () =>
     variant === 'chevron' ? (
       <ChevronRight className="w-3 h-3 shrink-0 text-gray-400" aria-hidden />
     ) : (
@@ -38,7 +38,7 @@ export function DetailBreadcrumb({
     >
       {items.map((item, i) => (
         <span key={item.href} className="flex items-center gap-1.5 min-w-0">
-          {i > 0 && <Sep />}
+          {i > 0 && renderSeparator()}
           <Link
             href={item.href}
             className="hover:text-gray-800 transition-colors shrink-0 hover:text-gray-700"
@@ -48,7 +48,7 @@ export function DetailBreadcrumb({
         </span>
       ))}
       <span className="flex items-center gap-1.5 min-w-0">
-        {items.length > 0 && <Sep />}
+        {items.length > 0 && renderSeparator()}
         <span className="text-gray-900 font-medium truncate max-w-[200px]">{currentTitle}</span>
       </span>
     </nav>

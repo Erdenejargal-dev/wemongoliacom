@@ -215,9 +215,10 @@ function PayContent() {
   const paymentId = payload?.paymentId ?? ''
 
   const bankOptions = useMemo(() => {
-    if (!payload?.deeplinks?.length) return []
-    return payload.deeplinks.filter((d) => getBonumDeeplinkHref(d))
-  }, [payload?.deeplinks])
+    const deeplinks = payload?.deeplinks
+    if (!deeplinks?.length) return []
+    return deeplinks.filter((d) => getBonumDeeplinkHref(d))
+  }, [payload])
 
   const firstBankDeeplinkSample = bankOptions[0]
 
@@ -236,7 +237,9 @@ function PayContent() {
   )
 
   useEffect(() => {
-    setShowAllBankApps(false)
+    queueMicrotask(() => {
+      setShowAllBankApps(false)
+    })
   }, [bankOptions])
 
   const visibleBankApps = showAllBankApps ? bankOptions : preferredBankApps

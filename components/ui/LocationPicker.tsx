@@ -96,12 +96,16 @@ export function LocationPicker({
   useEffect(() => {
     if (syncedRef.current) return
     if (initialAddress) {
-      setQuery(initialAddress)
       syncedRef.current = true
+      queueMicrotask(() => {
+        setQuery(initialAddress)
+      })
     }
     if (initialLat && initialLng && initialAddress) {
-      setResult({ lat: initialLat, lng: initialLng, address: initialAddress })
-      setStatus('found')
+      queueMicrotask(() => {
+        setResult({ lat: initialLat, lng: initialLng, address: initialAddress })
+        setStatus('found')
+      })
     }
   }, [initialAddress, initialLat, initialLng])
 

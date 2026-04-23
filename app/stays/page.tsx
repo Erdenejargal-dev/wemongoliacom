@@ -176,7 +176,9 @@ export default function StaysPage() {
   const { currency: displayCurrency } = usePreferences()
 
   useEffect(() => {
-    setLoading(true)
+    queueMicrotask(() => {
+      setLoading(true)
+    })
     const params = typeFilter !== 'all'
       ? { accommodationTypes: [typeFilter as AccommodationType], limit: 50 }
       : { limit: 50 }

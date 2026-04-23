@@ -69,7 +69,10 @@ export async function resetPasswordWithToken(plainToken: string, newPassword: st
   await prisma.$transaction(async (tx) => {
     await tx.user.update({
       where: { id: record.userId },
-      data:  { passwordHash },
+      data:  {
+        passwordHash,
+        refreshTokenVersion: { increment: 1 },
+      },
     })
     await tx.passwordResetToken.deleteMany({ where: { userId: record.userId } })
   })

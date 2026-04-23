@@ -8,6 +8,7 @@
 import React, {
   createContext,
   useContext,
+  useCallback,
   useMemo,
   type ReactNode,
 } from 'react'
@@ -31,10 +32,10 @@ export function AdminLocaleProvider({ children }: { children: ReactNode }) {
 
   const lang: DashboardLang = toAppLang(language) as DashboardLang
 
-  const setLang = (next: DashboardLang) => {
+  const setLang = useCallback((next: DashboardLang) => {
     if (next !== 'mn' && next !== 'en') return
     setLanguage(next)
-  }
+  }, [setLanguage])
 
   const value = useMemo<AdminLocaleContextValue>(
     () => ({
@@ -42,7 +43,7 @@ export function AdminLocaleProvider({ children }: { children: ReactNode }) {
       lang,
       setLang,
     }),
-    [lang, setLanguage],
+    [lang, setLang],
   )
 
   return (

@@ -62,13 +62,15 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
     ? Math.min(tour.maxGuests, remainingSeats)
     : tour.maxGuests
 
-  const canReserve = selectedDeparture != null && remainingSeats != null && remainingSeats > 0 && guests <= remainingSeats
-
-  useEffect(() => {
-    if (remainingSeats != null && guests > remainingSeats) {
-      setGuests(Math.max(1, remainingSeats))
-    }
-  }, [remainingSeats])
+  const effectiveGuests =
+    remainingSeats != null && guests > remainingSeats
+      ? Math.max(1, remainingSeats)
+      : guests
+  const canReserve =
+    selectedDeparture != null &&
+    remainingSeats != null &&
+    remainingSeats > 0 &&
+    effectiveGuests <= remainingSeats
 
   // Phase 3: prefer the Pricing DTO (dep override first, then tour). Fall back
   // to legacy basePrice/currency only if the backend hasn't yet re-populated
@@ -118,7 +120,7 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
     track('view_listing_unpayable', {
       listingType:  'tour',
       listingId:    tour.id,
-      baseCurrency: baseCurrency,
+      baseCurrency,
     })
   }, [mustRequest, tour.id, baseCurrency])
 
@@ -132,7 +134,7 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
       tourId: tour.id,
       depId: selectedDeparture.id,
       slug: tour.slug,
-      guests: String(guests),
+      guests: String(effectiveGuests),
       date: selectedDeparture.startDate.slice(0, 10),
     })
     router.push(`/checkout?${params.toString()}`)
@@ -189,7 +191,10 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
                 <button
                   key={dep.id}
                   type="button"
-                  onClick={() => setSelectedDepId(dep.id)}
+                  onClick={() => {
+                    setSelectedDepId(dep.id)
+                    setGuests((current) => Math.min(current, Math.max(1, seats)))
+                  }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all ${
                     isSelected
                       ? 'border-brand-400 bg-brand-50/50 ring-2 ring-brand-400/20'
@@ -245,15 +250,17 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
         <div className="flex items-center justify-between border border-gray-200 rounded-xl px-4 py-3">
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-brand-500" />
-            <span className="text-sm text-gray-700">{guests === 1 ? t.tourCard.guestsOne : `${guests} ${t.tourCard.guestsMany}`}</span>
+            <span className="text-sm text-gray-700">
+              {effectiveGuests === 1 ? t.tourCard.guestsOne : `${effectiveGuests} ${t.tourCard.guestsMany}`}
+            </span>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={() => setGuests(g => Math.max(1, g - 1))} disabled={guests <= 1}
+            <button onClick={() => setGuests(g => Math.max(1, g - 1))} disabled={effectiveGuests <= 1}
               className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:border-gray-400 disabled:opacity-30 transition-colors">
               <Minus className="w-3 h-3" />
             </button>
-            <span className="w-5 text-center text-sm font-semibold text-gray-900">{guests}</span>
-            <button onClick={() => setGuests(g => Math.min(maxGuestsForDate, g + 1))} disabled={guests >= maxGuestsForDate}
+            <span className="w-5 text-center text-sm font-semibold text-gray-900">{effectiveGuests}</span>
+            <button onClick={() => setGuests(g => Math.min(maxGuestsForDate, g + 1))} disabled={effectiveGuests >= maxGuestsForDate}
               className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:border-gray-400 disabled:opacity-30 transition-colors">
               <Plus className="w-3 h-3" />
             </button>
@@ -276,7 +283,7 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
           /bookings/quote and displays the real subtotal/serviceFee/total. */}
       <div className="border-t border-gray-100 pt-4 mb-4">
         <p className="text-xs text-gray-500">
-          {t.tourCard.pricePerPerson(primaryPrice || formatMoney(pricePerPerson, baseCurrency), guests)}
+          {t.tourCard.pricePerPerson(primaryPrice || formatMoney(pricePerPerson, baseCurrency), effectiveGuests)}
         </p>
         <p className="text-xs text-gray-400 mt-1">{t.tourCard.serviceFeeAtCheckout}</p>
       </div>
@@ -326,7 +333,7 @@ export function TourBookingCard({ tour, departures }: TourBookingCardProps) {
         listingCurrency={baseCurrency}
         initialStartDate={selectedDeparture?.startDate}
         initialEndDate={selectedDeparture?.endDate ?? selectedDeparture?.startDate}
-        initialGuests={guests}
+        initialGuests={effectiveGuests}
       />
 
       {/* Trust badges */}

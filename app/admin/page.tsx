@@ -154,7 +154,10 @@ export default function AdminOverviewPage() {
 
   useEffect(() => {
     if (!token) return
-    setLoading(true)
+    queueMicrotask(() => {
+      setLoading(true)
+      setError(null)
+    })
     Promise.all([
       fetchAdminAnalytics(token),
       fetchAdminProviders({ verificationStatus: 'pending_review', limit: 6 }, token),

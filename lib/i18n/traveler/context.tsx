@@ -12,6 +12,7 @@
 import React, {
   createContext,
   useContext,
+  useCallback,
   useMemo,
   type ReactNode,
 } from 'react'
@@ -33,10 +34,10 @@ export function TravelerLocaleProvider({ children }: { children: ReactNode }) {
 
   const lang: DashboardLang = toAppLang(language) as DashboardLang
 
-  const setLang = (next: DashboardLang) => {
+  const setLang = useCallback((next: DashboardLang) => {
     if (next !== 'mn' && next !== 'en') return
     setLanguage(next)
-  }
+  }, [setLanguage])
 
   const value = useMemo<TravelerLocaleContextValue>(
     () => ({
@@ -44,7 +45,7 @@ export function TravelerLocaleProvider({ children }: { children: ReactNode }) {
       lang,
       setLang,
     }),
-    [lang, setLanguage],
+    [lang, setLang],
   )
 
   return (
