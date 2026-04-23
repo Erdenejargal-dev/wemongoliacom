@@ -96,9 +96,9 @@ export const footerEn: FooterMessages = {
 }
 
 export const footerMn: FooterMessages = {
-  ctaTitle: 'Монголыг нээх бэлтгэл үү?',
+  ctaTitle: 'Жинхэнэ адал явдалд бэлэн үү?',
   ctaSubtitle:
-    'Нутгийн эзэн хөтчөөс — аялал, буудал, тээврийн итгэлт сонголт.',
+    'Аялалд найдвартай хамтрагч хэрэгтэй WeMongolia',
   ctaButton: 'Эхлэх',
   brandTagline: 'Монголыг сэтгэлтэйгээр нээ',
   copyright: (year) =>

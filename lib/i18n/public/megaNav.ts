@@ -39,13 +39,13 @@ export const megaNavEn: MegaNavBundle = {
 export const megaNavMn: MegaNavBundle = {
   rootDestinations: 'Чиглэлүүд',
   rootTours: 'Аяллууд',
-  rootStays: 'Буудал, буусан газар',
+  rootStays: 'Буудал, камп',
   popularTitle: 'Алдартай чиглэлүүд',
   browseTitle: 'Үзэх',
   popular: [
     { label: 'Говь цөл', description: 'Элс, хавцал, олдворууд' },
     { label: 'Хөвсгөл нуур', description: 'Монголын “Цэнхэр суврага”' },
-    { label: 'Алтайн нуруу', description: 'Бүргэдчид, мөсөн гол' },
+    { label: 'Алтайн нуруу', description: 'Мөсөн гол' },
     { label: 'Улаанбаатар', description: 'Өнгө аястай нийслэл' },
     { label: 'Тэрэлж', description: 'UB-аас 55 км ой толгод' },
     { label: 'Орхонын хөндий', description: 'ДУТ үзлэг' },
