@@ -141,7 +141,7 @@ export default function HeroInteractive() {
 
   const submitRegisterMessage = async () => {
     const trimmed = registerInput.trim();
-    if (!trimmed || status !== "ready" || sessionStatus === "authenticated") {
+    if (!trimmed || status !== "ready") {
       return;
     }
 

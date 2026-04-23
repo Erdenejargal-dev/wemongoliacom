@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     system: [
       systemPrompt,
       signedInEmail
-        ? `The visitor is already signed in as ${signedInEmail}. Do not offer registration. Explain that they should sign out first if they want a different account.`
+        ? `The visitor is signed in as ${signedInEmail}. They can still chat freely about Mongolian travel, tours, stays, and trip planning. Do not offer or push registration - they already have an account.`
         : 'The visitor is currently signed out.',
     ].join(' '),
     messages: modelMessages,
