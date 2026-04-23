@@ -75,3 +75,37 @@ Vector Indexing: Ensure an HNSW index is applied to the embedding column in Post
 - **Completed:** `app/api/register-user/route.ts` (Proxy to Lightsail) and `HeroInteractive.tsx` chat UI.
 - **Immediate Task:** Implement the Vercel AI SDK `tools` layer.
 - **Logic:** The AI should now be able to call `registerUser` as a tool when it detects registration intent, rather than following a hard-coded sequence.
+# Project: We Mongolia AI Concierge
+**Version:** 1.95 (AI-Bridge Live)
+**Last Updated:** April 2026
+
+## 1. System Architecture (Hybrid Cloud)
+- **Frontend (Vercel):** Next.js App using `useChat` hook for real-time AI streaming.
+- **Backend (AWS Lightsail):** Node.js/Prisma/PostgreSQL server handling core business logic and user data.
+- **AI Model:** Google Gemini 2.0/2.5 Flash via Google AI Studio.
+
+## 2. Environment Configuration
+Required variables for the project to run:
+- `GOOGLE_GENERATIVE_AI_API_KEY`: Required in Vercel for Gemini access.
+- `BACKEND_URL`: The internal endpoint for your Lightsail server.
+- `INTERNAL_AUTH_SECRET`: Used to sign requests between Vercel and Lightsail.
+
+## 3. Data Flow & Security
+1. **Chat Interaction:** User input flows to `app/api/chat/route.ts`.
+2. **Intelligence:** Gemini processes intent. If "Sign Up" is detected, it triggers the `registerUser` tool.
+3. **Execution:** The `chat` route calls the local `api/register-user/route.ts` proxy.
+4. **Persistence:** The proxy forwards the request to AWS Lightsail where Prisma saves the user.
+5. **Security:** Passwords are never sent back to the AI; they are hashed on the Lightsail server.
+
+## 4. Implemented Tools
+- [x] **`registerUser`**: 
+    - Schema: `{ name, email, password }`
+    - Logic: Conversational onboarding in `HeroInteractive.tsx`.
+- [ ] **`displayCards`** (NEXT UP): 
+    - Goal: Render `HotelCard` and `TourCard` components directly in chat.
+- [ ] **`createBooking`** (PLANNED): 
+    - Goal: Handle hotel reservations via conversation.
+
+## 5. Developer Commands
+- `npm run dev`: Start local development.
+- `npm run build`: Verify production readiness (currently passing).
