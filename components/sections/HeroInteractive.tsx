@@ -11,6 +11,7 @@ import {
   MapPin,
   MessageCircle,
   Search,
+  User,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -409,13 +410,19 @@ export default function HeroInteractive() {
 
             {category === "register" && (
               <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
-                <div className="rounded-2xl border border-orange-100 bg-gradient-to-br from-orange-50 via-white to-amber-50 p-5">
+                <style jsx>{`
+                  @keyframes typingDot {
+                    0%, 60%, 100% { opacity: 0.2; transform: translateY(0px); }
+                    30% { opacity: 1; transform: translateY(-4px); }
+                  }
+                `}</style>
+                <div className="rounded-2xl border border-[#0033A0]/10 bg-gradient-to-br from-[#0033A0]/5 via-white to-[#F9BE02]/10 p-5 shadow-sm">
                   <div className="flex items-start gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-500 text-white shadow-sm">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#0033A0] text-white shadow-sm">
                       <MessageCircle className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-500">
+                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0033A0]">
                         AI Concierge
                       </p>
                       <h3 className="mt-1 text-lg font-bold text-gray-900">
@@ -432,23 +439,30 @@ export default function HeroInteractive() {
                   </div>
 
                   {sessionStatus === "authenticated" ? (
-                    <div className="mt-5 rounded-2xl border border-gray-100 bg-white p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
-                        Signed in as
-                      </p>
-                      <p className="mt-2 text-xl font-bold text-gray-900">
-                        {session.user?.name || session.user?.email || "We Mongolia traveler"}
-                      </p>
-                      <p className="mt-1 text-sm text-gray-600">
-                        {session.user?.email}
-                      </p>
-                      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                    <div className="mt-5 rounded-2xl border border-[#0033A0]/15 bg-gradient-to-br from-[#0033A0]/5 to-white p-5 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0033A0] shadow-md">
+                          <User className="h-6 w-6 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-widest text-[#0033A0]/70">
+                            We Mongolia Traveler
+                          </p>
+                          <p className="text-lg font-bold text-gray-900">
+                            {session.user?.name ?? "Traveler"}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {session.user?.email}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-5 flex flex-col gap-2 sm:flex-row">
                         <button
                           type="button"
                           onClick={() => router.push("/account")}
-                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-orange-600"
+                          className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[#0033A0] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#002280] active:scale-[0.98]"
                         >
-                          View profile
+                          View Profile
                           <ArrowUpRight className="h-4 w-4" />
                         </button>
                         <button
@@ -459,9 +473,9 @@ export default function HeroInteractive() {
                               router.refresh();
                             });
                           }}
-                          className="inline-flex items-center justify-center rounded-xl border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-50"
+                          className="inline-flex items-center justify-center rounded-xl border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-50"
                         >
-                          Sign out to register another account
+                          Sign Out
                         </button>
                       </div>
                     </div>
@@ -484,20 +498,30 @@ export default function HeroInteractive() {
                                     key={`${message.id}-text-${index}`}
                                     className={
                                       message.role === "assistant"
-                                        ? "flex justify-start"
-                                        : "flex justify-end"
+                                        ? "flex items-end gap-2 justify-start"
+                                        : "flex items-end gap-2 justify-end"
                                     }
                                   >
+                                    {message.role === "assistant" && (
+                                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0033A0] text-xs font-bold text-white">
+                                        WM
+                                      </div>
+                                    )}
                                     <div
                                       className={[
-                                        "max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm",
+                                        "max-w-[85%] px-4 py-3 text-sm leading-6 shadow-sm",
                                         message.role === "assistant"
-                                          ? "bg-gray-100 text-gray-800"
-                                          : "bg-orange-500 text-white",
+                                          ? "rounded-2xl rounded-tl-sm border border-gray-200 bg-white text-gray-800"
+                                          : "rounded-2xl rounded-tr-sm bg-[#0033A0] text-white",
                                       ].join(" ")}
                                     >
                                       {part.text}
                                     </div>
+                                    {message.role === "user" && (
+                                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200">
+                                        <User className="h-4 w-4 text-gray-500" />
+                                      </div>
+                                    )}
                                   </div>
                                 ))}
 
@@ -507,7 +531,7 @@ export default function HeroInteractive() {
                                       className={[
                                         "max-w-[88%] rounded-2xl border px-4 py-3 text-sm shadow-sm",
                                         toolResult.success
-                                          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                          ? "border-[#F9BE02]/50 bg-[#F9BE02]/15 text-yellow-900"
                                           : "border-amber-200 bg-amber-50 text-amber-800",
                                       ].join(" ")}
                                     >
@@ -527,12 +551,26 @@ export default function HeroInteractive() {
                             );
                           })}
 
-                          {(status !== "ready" || isAutoLoggingIn) && (
-                            <div className="flex justify-start">
-                              <div className="rounded-2xl bg-gray-100 px-4 py-3 text-sm text-gray-600 shadow-sm">
-                                {isAutoLoggingIn
-                                  ? "Signing you in..."
-                                  : "The concierge is typing..."}
+                          {(status === "streaming" || isAutoLoggingIn) && (
+                            <div className="flex items-end gap-2 justify-start">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0033A0] text-xs font-bold text-white">
+                                WM
+                              </div>
+                              <div className="rounded-2xl rounded-tl-sm border border-gray-200 bg-white px-4 py-3 shadow-sm">
+                                <div className="flex items-center gap-1.5">
+                                  <span
+                                    className="h-1.5 w-1.5 rounded-full bg-[#0033A0]"
+                                    style={{ animation: "typingDot 1.2s ease-in-out 0s infinite" }}
+                                  />
+                                  <span
+                                    className="h-1.5 w-1.5 rounded-full bg-[#0033A0]"
+                                    style={{ animation: "typingDot 1.2s ease-in-out 0.2s infinite" }}
+                                  />
+                                  <span
+                                    className="h-1.5 w-1.5 rounded-full bg-[#0033A0]"
+                                    style={{ animation: "typingDot 1.2s ease-in-out 0.4s infinite" }}
+                                  />
+                                </div>
                               </div>
                             </div>
                           )}
@@ -570,7 +608,7 @@ export default function HeroInteractive() {
                               (status !== "ready" && status !== "error")
                             }
                             placeholder="I want to create an account"
-                            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:cursor-not-allowed disabled:bg-gray-50"
+                            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-[#0033A0] focus:ring-2 focus:ring-[#0033A0]/10 disabled:cursor-not-allowed disabled:bg-gray-50"
                           />
                         </div>
                         <button
@@ -581,7 +619,7 @@ export default function HeroInteractive() {
                             !registerInput.trim() ||
                             (status !== "ready" && status !== "error")
                           }
-                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-gray-300"
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0033A0] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#002280] disabled:cursor-not-allowed disabled:bg-gray-300"
                         >
                           <UserPlus className="h-4 w-4" />
                           Send
@@ -593,7 +631,7 @@ export default function HeroInteractive() {
 
                 <div className="flex flex-col justify-between rounded-2xl bg-gray-950 p-5 text-white shadow-xl">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-400">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#F9BE02]">
                       What happens next
                     </p>
                     <div className="mt-4 space-y-3">
@@ -646,7 +684,7 @@ export default function HeroInteractive() {
                         <button
                           type="button"
                           onClick={() => router.push("/account")}
-                          className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-orange-400 transition hover:text-orange-300"
+                          className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#F9BE02] transition hover:text-[#F9BE02]/80"
                         >
                           Open profile
                           <ArrowUpRight className="h-4 w-4" />
@@ -670,7 +708,7 @@ export default function HeroInteractive() {
                           <button
                             type="button"
                             onClick={() => router.push("/auth/login")}
-                            className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-orange-400 transition hover:text-orange-300"
+                            className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#F9BE02] transition hover:text-[#F9BE02]/80"
                           >
                             Go to login
                             <ArrowUpRight className="h-4 w-4" />
@@ -688,7 +726,7 @@ export default function HeroInteractive() {
                         <button
                           type="button"
                           onClick={() => router.push("/auth/login")}
-                          className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-orange-400 transition hover:text-orange-300"
+                          className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#F9BE02] transition hover:text-[#F9BE02]/80"
                         >
                           Go to login
                           <ArrowUpRight className="h-4 w-4" />
