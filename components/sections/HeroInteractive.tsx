@@ -2,6 +2,7 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
+import { signIn, signOut, useSession } from "next-auth/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -19,6 +20,11 @@ type Category = "tours" | "stays" | "register";
 type RegisterUserResult = {
   success: boolean;
   message: string;
+  alreadySignedIn?: boolean;
+  autoLogin?: {
+    email: string;
+    password: string;
+  };
   user?: {
     id?: string;
     firstName?: string;
@@ -81,6 +87,7 @@ function getRegisterToolError(message: UIMessage): string | null {
 
 export default function HeroInteractive() {
   const router = useRouter();
+  const { data: session, status: sessionStatus, update } = useSession();
 
   const [category, setCategory] = useState<Category>("tours");
   const [destination, setDestination] = useState("");
@@ -90,8 +97,11 @@ export default function HeroInteractive() {
   const [checkOut, setCheckOut] = useState("");
   const [stayGuests, setStayGuests] = useState("2");
   const [registerInput, setRegisterInput] = useState("");
+  const [autoLoginError, setAutoLoginError] = useState<string | null>(null);
+  const [isAutoLoggingIn, setIsAutoLoggingIn] = useState(false);
 
   const messagesRef = useRef<HTMLDivElement | null>(null);
+  const autoLoginAttemptKeyRef = useRef<string | null>(null);
 
   const { messages, sendMessage, status, error, setMessages } = useChat({
     transport: new DefaultChatTransport({
@@ -130,7 +140,9 @@ export default function HeroInteractive() {
 
   const submitRegisterMessage = async () => {
     const trimmed = registerInput.trim();
-    if (!trimmed || status !== "ready") return;
+    if (!trimmed || status !== "ready" || sessionStatus === "authenticated") {
+      return;
+    }
 
     setRegisterInput("");
     await sendMessage({ text: trimmed });
@@ -161,9 +173,85 @@ export default function HeroInteractive() {
   }, [messages]);
 
   const registerSucceeded = latestRegisterResult?.success === true;
+  const registerTabLabel =
+    sessionStatus === "authenticated" ? "Profile" : "Register";
+
+  const categories = useMemo(
+    () =>
+      CATEGORIES.map((cat) =>
+        cat.id === "register" ? { ...cat, label: registerTabLabel } : cat,
+      ),
+    [registerTabLabel],
+  );
+
+  useEffect(() => {
+    const autoLogin = latestRegisterResult?.autoLogin;
+    const registeredEmail = latestRegisterResult?.user?.email;
+
+    if (!latestRegisterResult?.success || !autoLogin || !registeredEmail) return;
+
+    if (
+      sessionStatus === "authenticated" &&
+      session?.user?.email?.toLowerCase() === registeredEmail.toLowerCase()
+    ) {
+      setAutoLoginError(null);
+      setIsAutoLoggingIn(false);
+      return;
+    }
+
+    const attemptKey = `${registeredEmail}:${latestRegisterResult.message}`;
+    if (autoLoginAttemptKeyRef.current === attemptKey) return;
+    autoLoginAttemptKeyRef.current = attemptKey;
+
+    let isCancelled = false;
+
+    const autoLoginUser = async () => {
+      setAutoLoginError(null);
+      setIsAutoLoggingIn(true);
+
+      try {
+        if (sessionStatus === "authenticated") {
+          await signOut({ redirect: false });
+        }
+
+        const result = await signIn("credentials", {
+          email: autoLogin.email,
+          password: autoLogin.password,
+          redirect: false,
+        });
+
+        if (isCancelled) return;
+
+        if (result?.error) {
+          setAutoLoginError("Account created, but automatic sign-in failed.");
+          return;
+        }
+
+        await update();
+        router.refresh();
+      } catch {
+        if (!isCancelled) {
+          setAutoLoginError("Account created, but automatic sign-in failed.");
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsAutoLoggingIn(false);
+        }
+      }
+    };
+
+    void autoLoginUser();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [latestRegisterResult, router, session, sessionStatus, update]);
 
   const resetRegisterFlow = () => {
     setRegisterInput("");
+    setAutoLoginError(null);
+    setIsAutoLoggingIn(false);
+    autoLoginAttemptKeyRef.current = null;
     setMessages(INITIAL_REGISTER_MESSAGES);
   };
 
@@ -200,7 +288,7 @@ export default function HeroInteractive() {
 
         <div className="rounded-2xl bg-white shadow-2xl">
           <div className="flex">
-            {CATEGORIES.map((cat, i) => (
+            {categories.map((cat, i) => (
               <button
                 key={cat.id}
                 onClick={() => setCategory(cat.id)}
@@ -331,122 +419,176 @@ export default function HeroInteractive() {
                         AI Concierge
                       </p>
                       <h3 className="mt-1 text-lg font-bold text-gray-900">
-                        Create your We Mongolia account in chat
+                        {sessionStatus === "authenticated"
+                          ? "Your We Mongolia profile"
+                          : "Create your We Mongolia account in chat"}
                       </h3>
                       <p className="mt-2 text-sm leading-6 text-gray-600">
-                        Tell the concierge you want to sign up. It will collect your
-                        full name, email, and password, then securely call the
-                        register tool for you.
+                        {sessionStatus === "authenticated"
+                          ? "You're already signed in. Your current account is active across the site."
+                          : "Tell the concierge you want to sign up. It will collect your full name, email, and password, then securely call the register tool for you."}
                       </p>
                     </div>
                   </div>
 
-                  <div
-                    ref={messagesRef}
-                    className="mt-5 h-[320px] overflow-y-auto rounded-2xl border border-gray-100 bg-white p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
-                  >
-                    <div className="space-y-3">
-                      {messages.map((message) => {
-                        const textParts = message.parts.filter(isTextPart);
-                        const toolResult = getRegisterToolResult(message);
-                        const toolError = getRegisterToolError(message);
-
-                        return (
-                          <div key={message.id} className="space-y-2">
-                            {textParts.map((part, index) => (
-                              <div
-                                key={`${message.id}-text-${index}`}
-                                className={
-                                  message.role === "assistant"
-                                    ? "flex justify-start"
-                                    : "flex justify-end"
-                                }
-                              >
-                                <div
-                                  className={[
-                                    "max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm",
-                                    message.role === "assistant"
-                                      ? "bg-gray-100 text-gray-800"
-                                      : "bg-orange-500 text-white",
-                                  ].join(" ")}
-                                >
-                                  {part.text}
-                                </div>
-                              </div>
-                            ))}
-
-                            {toolResult && (
-                              <div className="flex justify-start">
-                                <div
-                                  className={[
-                                    "max-w-[88%] rounded-2xl border px-4 py-3 text-sm shadow-sm",
-                                    toolResult.success
-                                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                                      : "border-amber-200 bg-amber-50 text-amber-800",
-                                  ].join(" ")}
-                                >
-                                  {toolResult.message}
-                                </div>
-                              </div>
-                            )}
-
-                            {toolError && (
-                              <div className="flex justify-start">
-                                <div className="max-w-[88%] rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
-                                  {toolError}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-
-                      {status !== "ready" && (
-                        <div className="flex justify-start">
-                          <div className="rounded-2xl bg-gray-100 px-4 py-3 text-sm text-gray-600 shadow-sm">
-                            The concierge is typing...
-                          </div>
-                        </div>
-                      )}
-
-                      {error && (
-                        <div className="flex justify-start">
-                          <div className="max-w-[88%] rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
-                            {error.message}
-                          </div>
-                        </div>
-                      )}
+                  {sessionStatus === "authenticated" ? (
+                    <div className="mt-5 rounded-2xl border border-gray-100 bg-white p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                        Signed in as
+                      </p>
+                      <p className="mt-2 text-xl font-bold text-gray-900">
+                        {session.user?.name || session.user?.email || "We Mongolia traveler"}
+                      </p>
+                      <p className="mt-1 text-sm text-gray-600">
+                        {session.user?.email}
+                      </p>
+                      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                        <button
+                          type="button"
+                          onClick={() => router.push("/account")}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-orange-600"
+                        >
+                          View profile
+                          <ArrowUpRight className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void signOut({ redirect: false }).then(() => {
+                              resetRegisterFlow();
+                              router.refresh();
+                            });
+                          }}
+                          className="inline-flex items-center justify-center rounded-xl border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-50"
+                        >
+                          Sign out to register another account
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div
+                        ref={messagesRef}
+                        className="mt-5 h-[320px] overflow-y-auto rounded-2xl border border-gray-100 bg-white p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
+                      >
+                        <div className="space-y-3">
+                          {messages.map((message) => {
+                            const textParts = message.parts.filter(isTextPart);
+                            const toolResult = getRegisterToolResult(message);
+                            const toolError = getRegisterToolError(message);
 
-                  <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                    <div className="flex-1">
-                      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
-                        Chat with the concierge
-                      </label>
-                      <input
-                        type="text"
-                        value={registerInput}
-                        onChange={(e) => setRegisterInput(e.target.value)}
-                        onKeyDown={handleRegisterKey}
-                        disabled={status !== "ready" && status !== "error"}
-                        placeholder="I want to create an account"
-                        className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:cursor-not-allowed disabled:bg-gray-50"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => void submitRegisterMessage()}
-                      disabled={
-                        !registerInput.trim() ||
-                        (status !== "ready" && status !== "error")
-                      }
-                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-gray-300"
-                    >
-                      <UserPlus className="h-4 w-4" />
-                      Send
-                    </button>
-                  </div>
+                            return (
+                              <div key={message.id} className="space-y-2">
+                                {textParts.map((part, index) => (
+                                  <div
+                                    key={`${message.id}-text-${index}`}
+                                    className={
+                                      message.role === "assistant"
+                                        ? "flex justify-start"
+                                        : "flex justify-end"
+                                    }
+                                  >
+                                    <div
+                                      className={[
+                                        "max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm",
+                                        message.role === "assistant"
+                                          ? "bg-gray-100 text-gray-800"
+                                          : "bg-orange-500 text-white",
+                                      ].join(" ")}
+                                    >
+                                      {part.text}
+                                    </div>
+                                  </div>
+                                ))}
+
+                                {toolResult && (
+                                  <div className="flex justify-start">
+                                    <div
+                                      className={[
+                                        "max-w-[88%] rounded-2xl border px-4 py-3 text-sm shadow-sm",
+                                        toolResult.success
+                                          ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                          : "border-amber-200 bg-amber-50 text-amber-800",
+                                      ].join(" ")}
+                                    >
+                                      {toolResult.message}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {toolError && (
+                                  <div className="flex justify-start">
+                                    <div className="max-w-[88%] rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
+                                      {toolError}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                          {(status !== "ready" || isAutoLoggingIn) && (
+                            <div className="flex justify-start">
+                              <div className="rounded-2xl bg-gray-100 px-4 py-3 text-sm text-gray-600 shadow-sm">
+                                {isAutoLoggingIn
+                                  ? "Signing you in..."
+                                  : "The concierge is typing..."}
+                              </div>
+                            </div>
+                          )}
+
+                          {error && (
+                            <div className="flex justify-start">
+                              <div className="max-w-[88%] rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
+                                {error.message}
+                              </div>
+                            </div>
+                          )}
+
+                          {autoLoginError && (
+                            <div className="flex justify-start">
+                              <div className="max-w-[88%] rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-sm">
+                                {autoLoginError}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                        <div className="flex-1">
+                          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                            Chat with the concierge
+                          </label>
+                          <input
+                            type="text"
+                            value={registerInput}
+                            onChange={(e) => setRegisterInput(e.target.value)}
+                            onKeyDown={handleRegisterKey}
+                            disabled={
+                              isAutoLoggingIn ||
+                              (status !== "ready" && status !== "error")
+                            }
+                            placeholder="I want to create an account"
+                            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:cursor-not-allowed disabled:bg-gray-50"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void submitRegisterMessage()}
+                          disabled={
+                            isAutoLoggingIn ||
+                            !registerInput.trim() ||
+                            (status !== "ready" && status !== "error")
+                          }
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-gray-300"
+                        >
+                          <UserPlus className="h-4 w-4" />
+                          Send
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="flex flex-col justify-between rounded-2xl bg-gray-950 p-5 text-white shadow-xl">
@@ -456,39 +598,84 @@ export default function HeroInteractive() {
                     </p>
                     <div className="mt-4 space-y-3">
                       <FeaturePill
-                        title="AI-guided"
-                        text="The concierge naturally asks for the details it still needs."
+                        title={
+                          sessionStatus === "authenticated"
+                            ? "Live session"
+                            : "AI-guided"
+                        }
+                        text={
+                          sessionStatus === "authenticated"
+                            ? "Your current We Mongolia session is active, so the site can show your profile and account actions right away."
+                            : "The concierge naturally asks for the details it still needs."
+                        }
                       />
                       <FeaturePill
                         title="Secure bridge"
-                        text="Registration is executed through your existing server proxy, not directly from the browser."
+                        text={
+                          sessionStatus === "authenticated"
+                            ? "The session is backed by your NextAuth cookie, which carries the backend access and refresh tokens after sign-in."
+                            : "Registration is executed through your existing server proxy, and automatic sign-in stores the new session in the app cookie."
+                        }
                       />
                       <FeaturePill
-                        title="Account ready"
-                        text="Once the tool succeeds, the UI shows the success state and a login path."
+                        title={
+                          sessionStatus === "authenticated"
+                            ? "Profile ready"
+                            : "Account ready"
+                        }
+                        text={
+                          sessionStatus === "authenticated"
+                            ? "You can jump straight to your account page or sign out if you want to register a different traveler."
+                            : "Once the tool succeeds, the UI automatically signs the new traveler in and refreshes the page state."
+                        }
                       />
                     </div>
                   </div>
 
                   <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
-                    {registerSucceeded ? (
+                    {sessionStatus === "authenticated" ? (
                       <>
                         <p className="text-sm font-semibold text-white">
-                          Account created successfully
+                          Signed in
                         </p>
                         <p className="mt-1 text-sm leading-6 text-white/65">
-                          {latestRegisterResult?.user?.email
-                            ? `You can now sign in with ${latestRegisterResult.user.email}.`
-                            : "You can now sign in and start planning your trip."}
+                          {session.user?.email
+                            ? `Your active session belongs to ${session.user.email}.`
+                            : "Your We Mongolia session is active."}
                         </p>
                         <button
                           type="button"
-                          onClick={() => router.push("/auth/login")}
+                          onClick={() => router.push("/account")}
                           className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-orange-400 transition hover:text-orange-300"
                         >
-                          Go to login
+                          Open profile
                           <ArrowUpRight className="h-4 w-4" />
                         </button>
+                      </>
+                    ) : registerSucceeded ? (
+                      <>
+                        <p className="text-sm font-semibold text-white">
+                          {isAutoLoggingIn
+                            ? "Account created, signing you in"
+                            : "Account created successfully"}
+                        </p>
+                        <p className="mt-1 text-sm leading-6 text-white/65">
+                          {isAutoLoggingIn
+                            ? "We are replacing the old session with your new traveler account now."
+                            : latestRegisterResult?.user?.email
+                              ? `You can now sign in with ${latestRegisterResult.user.email}.`
+                              : "You can now sign in and start planning your trip."}
+                        </p>
+                        {!isAutoLoggingIn && (
+                          <button
+                            type="button"
+                            onClick={() => router.push("/auth/login")}
+                            className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-orange-400 transition hover:text-orange-300"
+                          >
+                            Go to login
+                            <ArrowUpRight className="h-4 w-4" />
+                          </button>
+                        )}
                       </>
                     ) : (
                       <>

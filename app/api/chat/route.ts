@@ -1,6 +1,7 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { convertToModelMessages, stepCountIs, streamText, tool, type UIMessage } from 'ai'
 import { z } from 'zod'
+import { auth } from '@/lib/auth'
 
 export const maxDuration = 30
 
@@ -29,6 +30,8 @@ const systemPrompt = [
 
 export async function POST(req: Request) {
   const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim()
+  const session = await auth()
+  const signedInEmail = session?.user?.email?.trim()
 
   if (!apiKey) {
     return Response.json(
@@ -47,7 +50,12 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: google('gemini-2.5-flash-lite'),
-    system: systemPrompt,
+    system: [
+      systemPrompt,
+      signedInEmail
+        ? `The visitor is already signed in as ${signedInEmail}. Do not offer registration. Explain that they should sign out first if they want a different account.`
+        : 'The visitor is currently signed out.',
+    ].join(' '),
     messages: modelMessages,
     stopWhen: stepCountIs(5),
     tools: {
@@ -56,6 +64,17 @@ export async function POST(req: Request) {
           'Create a We Mongolia traveler account after collecting the full name, email, and password.',
         inputSchema: registerUserInputSchema,
         execute: async ({ name, email, password }) => {
+          if (signedInEmail) {
+            return {
+              success: false,
+              alreadySignedIn: true,
+              message: `You are already signed in as ${signedInEmail}. Please sign out before registering a new account.`,
+              user: {
+                email: signedInEmail,
+              },
+            }
+          }
+
           const parts = name.trim().split(/\s+/).filter(Boolean)
 
           if (parts.length < 2) {
@@ -119,6 +138,10 @@ export async function POST(req: Request) {
               lastName: payload.data.user.lastName ?? lastName,
               email: payload.data.user.email ?? email,
               role: payload.data.user.role ?? 'traveler',
+            },
+            autoLogin: {
+              email,
+              password,
             },
           }
         },
