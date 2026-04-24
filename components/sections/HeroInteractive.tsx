@@ -595,9 +595,7 @@ export default function HeroInteractive() {
 
                       <div className="mt-4 flex flex-col gap-3 sm:flex-row">
                         <div className="flex-1">
-                          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
-                            Chat with the concierge
-                          </label>
+                          
                           <input
                             type="text"
                             value={registerInput}
