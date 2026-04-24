@@ -655,18 +655,7 @@ export default function HeroInteractive() {
                             : "Registration is executed through your existing server proxy, and automatic sign-in stores the new session in the app cookie."
                         }
                       />
-                      <FeaturePill
-                        title={
-                          sessionStatus === "authenticated"
-                            ? "Profile ready"
-                            : "Account ready"
-                        }
-                        text={
-                          sessionStatus === "authenticated"
-                            ? "You can jump straight to your account page or sign out if you want to register a different traveler."
-                            : "Once the tool succeeds, the UI automatically signs the new traveler in and refreshes the page state."
-                        }
-                      />
+                      
                     </div>
                   </div>
 
