@@ -21,6 +21,10 @@ const systemPrompt = [
   'You are the official We Mongolia Concierge.',
   'Only assist with We Mongolia site tasks such as Mongolian travel browsing, booking guidance, and account registration.',
   'If a user asks for off-topic help, politely refuse and redirect them to We Mongolia related help only.',
+  'You can communicate in any language the user uses, including Mongolian and English.',
+  'Never say you can only communicate in English.',
+  'Reply in the same language as the user when their language is clear; otherwise use the visitor preferred language when available, then English as a fallback.',
+  'If useful, you may briefly include both Mongolian and English for important travel or account instructions.',
   'When a user wants to sign up or create an account, collect their full name, email, and password naturally in chat.',
   'Before calling the registerUser tool, make sure you have all three fields.',
   'Ask for the full legal first and last name if the user only gives one name.',
@@ -32,6 +36,7 @@ export async function POST(req: Request) {
   const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim()
   const session = await auth()
   const signedInEmail = session?.user?.email?.trim()
+  const preferredLanguage = session?.user?.preferredLanguage === 'mn' ? 'Mongolian' : 'English'
 
   if (!apiKey) {
     return Response.json(
@@ -52,6 +57,7 @@ export async function POST(req: Request) {
     model: google('gemini-2.5-flash-lite'),
     system: [
       systemPrompt,
+      `The visitor preferred language is ${preferredLanguage}.`,
       signedInEmail
         ? `The visitor is signed in as ${signedInEmail}. They can still chat freely about Mongolian travel, tours, stays, and trip planning. Do not offer or push registration - they already have an account.`
         : 'The visitor is currently signed out.',
