@@ -418,24 +418,8 @@ export default function HeroInteractive() {
                 `}</style>
                 <div className="rounded-2xl border border-[#0085C9]/10 bg-gradient-to-br from-[#0085C9]/5 via-white to-[#F9BE02]/10 p-5 shadow-sm">
                   <div className="flex items-start gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#0085C9] text-white shadow-sm">
-                      <MessageCircle className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0085C9]">
-                        AI Concierge
-                      </p>
-                      <h3 className="mt-1 text-lg font-bold text-gray-900">
-                        {sessionStatus === "authenticated"
-                          ? "Your We Mongolia profile"
-                          : "Create your We Mongolia account in chat"}
-                      </h3>
-                      <p className="mt-2 text-sm leading-6 text-gray-600">
-                        {sessionStatus === "authenticated"
-                          ? "You're already signed in. Your current account is active across the site."
-                          : "Tell the concierge you want to sign up. It will collect your full name, email, and password, then securely call the register tool for you."}
-                      </p>
-                    </div>
+                   
+                   
                   </div>
 
                   {sessionStatus === "authenticated" ? (
