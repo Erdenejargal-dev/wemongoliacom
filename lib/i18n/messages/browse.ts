@@ -219,10 +219,10 @@ export const browseMn: BrowseMessages = {
     heroImageAlt: 'Монголын амралт, байршил',
   },
   destinations: {
-    heroEyebrow: 'Монголыг нээнэ үү',
+    heroEyebrow: 'Үзэсгэлэнт байгалийн тогтцууд',
     heroTitle: 'Чиглэлээр',
     heroTitleAccent: ' Монголыг нээ',
-    heroLead: 'Говиос Алтай хүртэл — тухайн бүс нутаг бүрийн онцлогыг нээнэ үү.',
+    heroLead: 'Говиос Алтай хүртэл — аяллууд, байршлуудтай танилцана уу.',
     searchPlaceholder: 'Чиглэл хайх…',
     featured: 'Онцлох чиглэл',
     browseTours: 'Аяллууд',
