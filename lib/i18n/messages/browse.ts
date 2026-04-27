@@ -190,7 +190,7 @@ export const browseEn: BrowseMessages = {
 export const browseMn: BrowseMessages = {
   stays: {
     heroEyebrow: 'Байр сонгох',
-    heroTitle: 'Гэр буудал, зочид буудал,',
+    heroTitle: 'Гэр, зочид буудал,',
     heroTitleAccent: ' лодж — Монголд',
     heroLead:
       'Уламжлалт гэр ба зочид буудлаас тансаг амралт хүртэл — аяллын хоноглолтоо сонгоорой.',
