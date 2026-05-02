@@ -19,6 +19,7 @@
     "@radix-ui/react-slot": "^1.2.4",
     "ai": "^6.0.168",
     "class-variance-authority": "^0.7.1",
+    "claude": "^0.1.1",
     "cloudinary": "^2.9.0",
     "clsx": "^2.1.1",
     "embla-carousel-react": "^8.6.0",

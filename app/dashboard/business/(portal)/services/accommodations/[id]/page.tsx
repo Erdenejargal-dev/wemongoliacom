@@ -485,7 +485,7 @@ function RoomTypesTab({ accId, roomTypes, token, onUpdated }: {
                 <p className="text-xs text-gray-500 mt-0.5">
                   {rt.maxGuests} guest{rt.maxGuests !== 1 ? 's' : ''}
                   {rt.bedType && ` · ${BED_TYPES.find(b => b.value === rt.bedType)?.label ?? rt.bedType}`}
-                  {' · '}{rt.quantity} unit{rt.quantity !== 1 ? 's' : ''}
+                  {' · '}{rt.quantity} room{rt.quantity !== 1 ? 's' : ''}
                   {rt.amenities.length > 0 && ` · ${rt.amenities.length} amenities`}
                 </p>
                 <p className="text-xs font-semibold text-gray-700 mt-0.5">{formatMoney(rt.basePricePerNight, rt.currency ?? 'USD')} / night</p>
@@ -590,8 +590,9 @@ function RoomSlideOver({ room, isNew, accId, token, onSave, onClose }: {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">Quantity</label>
+              <label className="text-sm font-medium text-gray-700 block mb-1">Number of rooms of this type</label>
               <input type="number" min={1} max={500} value={local.quantity} onChange={e => set('quantity', parseInt(e.target.value) || 1)} className={inputClass} />
+              <p className="mt-1 text-xs text-gray-400">How many physical rooms of this type your property has (e.g. 10 standard rooms)</p>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1">Price / night <span className="text-red-500">*</span></label>

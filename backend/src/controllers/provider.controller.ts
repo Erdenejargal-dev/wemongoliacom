@@ -88,6 +88,13 @@ export const updateTourSchema = z.object({
   cancellationPolicy: z.string().trim().max(5000).nullable().optional(),
   // ── Status ──────────────────────────────────────────────────────────────────
   status:             z.enum(['draft', 'active', 'paused']).optional(),
+  // ── Itinerary ───────────────────────────────────────────────────────────────
+  itinerary: z.array(z.object({
+    dayNumber:         z.number().int().positive().max(365),
+    title:             z.string().trim().min(1).max(300),
+    description:       z.string().trim().max(5000).optional(),
+    overnightLocation: z.string().trim().max(300).nullable().optional(),
+  })).max(365).optional(),
 })
 
 export const addTourImagesSchema = z.object({

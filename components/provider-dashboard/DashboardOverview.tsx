@@ -99,7 +99,7 @@ export function DashboardOverview({
   }
 
   const quickActions = [
-    { href: '/dashboard/business/services', label: ot.addTour,  icon: Plus,         bg: 'bg-brand-50',   hbg: 'group-hover:bg-brand-100',  border: 'hover:border-brand-200',  iconCls: 'text-brand-600'  },
+    { href: '/dashboard/business/services/tours', label: ot.addTour,  icon: Plus,         bg: 'bg-brand-50',   hbg: 'group-hover:bg-brand-100',  border: 'hover:border-brand-200',  iconCls: 'text-brand-600'  },
     { href: '/dashboard/business/bookings', label: ot.bookings, icon: CalendarCheck, bg: 'bg-blue-50',    hbg: 'group-hover:bg-blue-100',   border: 'hover:border-blue-200',   iconCls: 'text-blue-600'   },
     { href: '/dashboard/business/messages', label: ot.messages, icon: MessageSquare, bg: 'bg-purple-50',  hbg: 'group-hover:bg-purple-100', border: 'hover:border-purple-200', iconCls: 'text-purple-600' },
     { href: '/dashboard/business/settings', label: ot.settings, icon: Settings,      bg: 'bg-gray-100',   hbg: 'group-hover:bg-gray-200',   border: 'hover:border-gray-200',   iconCls: 'text-gray-600'   },
@@ -259,7 +259,11 @@ export function DashboardOverview({
               const sc = statusColors[b.bookingStatus] ?? 'bg-gray-100 text-gray-600'
               const statusLabel = (t.statusLabels as Record<string, string>)[b.bookingStatus] ?? b.bookingStatus
               return (
-                <div key={b.id} className="flex items-center gap-4 px-4 py-3.5">
+                <Link
+                  key={b.id}
+                  href={`/dashboard/business/bookings?bookingCode=${b.bookingCode}`}
+                  className="flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50/70 transition-colors"
+                >
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">{name}</p>
                     <p className="text-xs text-gray-400">
@@ -272,7 +276,7 @@ export function DashboardOverview({
                   <span className="text-sm font-semibold text-gray-900 shrink-0">
                     {formatMoney(b.totalAmount, b.currency)}
                   </span>
-                </div>
+                </Link>
               )
             })}
           </div>

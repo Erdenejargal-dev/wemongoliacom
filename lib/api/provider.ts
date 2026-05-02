@@ -316,6 +316,14 @@ export interface ReadinessResult {
   missing: string[]
 }
 
+export interface ItineraryDay {
+  id?:               string
+  dayNumber:         number
+  title:             string
+  description?:      string | null
+  overnightLocation?: string | null
+}
+
 export interface ProviderTourDetail extends ProviderTour {
   description:        string | null
   category:           string | null
@@ -326,6 +334,7 @@ export interface ProviderTourDetail extends ProviderTour {
   cancellationPolicy: string | null
   languages:          string[]
   images:             TourImage[]
+  itinerary:          ItineraryDay[]
   _count:             { departures: number; images: number }
   readiness:          ReadinessResult
 }
@@ -376,6 +385,8 @@ export interface UpdateTourInput {
   cancellationPolicy?: string | null
   // Status
   status?:             'draft' | 'active' | 'paused'
+  // Itinerary — full replacement when present
+  itinerary?: { dayNumber: number; title: string; description?: string; overnightLocation?: string | null }[]
 }
 
 export async function fetchProviderTours(

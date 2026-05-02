@@ -17,11 +17,12 @@ interface DataTableProps<T> {
   keyExtractor: (row: T) => string
   pageSize?: number
   emptyState?: React.ReactNode
+  onRowClick?: (row: T) => void
 }
 
 type SortDir = 'asc' | 'desc' | null
 
-export function DataTable<T>({ columns, data, keyExtractor, pageSize = 8, emptyState }: DataTableProps<T>) {
+export function DataTable<T>({ columns, data, keyExtractor, pageSize = 8, emptyState, onRowClick }: DataTableProps<T>) {
   const [sortKey, setSortKey] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<SortDir>(null)
   const [page, setPage] = useState(1)
@@ -84,7 +85,11 @@ export function DataTable<T>({ columns, data, keyExtractor, pageSize = 8, emptyS
               </tr>
             ) : (
               paginated.map(row => (
-                <tr key={keyExtractor(row)} className="hover:bg-gray-50/50 transition-colors">
+                <tr
+                  key={keyExtractor(row)}
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                  className={`hover:bg-gray-50/50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
+                >
                   {columns.map(col => (
                     <td key={String(col.key)} className={`px-4 py-3 text-gray-700 ${col.className ?? ''}`}>
                       {col.render

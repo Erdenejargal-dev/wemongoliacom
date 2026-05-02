@@ -11,6 +11,7 @@ import { apiClient } from '@/lib/api/client'
 import { buildProviderMenu, type ProviderType } from '@/lib/provider-menu'
 import { useProviderLocale } from '@/lib/i18n/provider/context'
 import { useTranslations } from '@/lib/i18n'
+import type { InitialProvider } from '@/app/dashboard/business/(portal)/shell'
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard,
@@ -25,9 +26,11 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
 interface DashboardSidebarProps {
   open: boolean
   onClose: () => void
+  initialProvider?: InitialProvider
+  pendingCount?: number
 }
 
-export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
+export function DashboardSidebar({ open, onClose, initialProvider, pendingCount = 0 }: DashboardSidebarProps) {
   const pathname = usePathname()
   const { data: session } = useSession()
   const token = session?.user?.accessToken
@@ -40,8 +43,8 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
     email?: string | null
     providerTypes: ProviderType[]
     plan?: string | null
-  } | null>(null)
-  const [loading, setLoading] = useState(true)
+  } | null>(initialProvider ?? null)
+  const [loading, setLoading] = useState(!initialProvider)
   const [activeId, setActiveId] = useState<string | null>(() => {
     try { return localStorage.getItem('wm_nav_active') } catch { return null }
   })
@@ -59,7 +62,9 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
     onClose()
   }
 
+  // Skip profile fetch if we received it from SSR layout
   useEffect(() => {
+    if (initialProvider) { setLoading(false); return }
     let alive = true
     async function load() {
       if (!token) { setLoading(false); return }
@@ -83,7 +88,8 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
     }
     load()
     return () => { alive = false }
-  }, [token])
+  }, [token, initialProvider])
+
 
   const providerTypes: ProviderType[] = provider?.providerTypes?.length ? provider.providerTypes : ['tour_operator']
   const sections = useMemo(() => buildProviderMenu(providerTypes), [providerTypes])
@@ -156,8 +162,8 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
               {sec.items.map(item => {
                 const IconComp = ICON_MAP[item.icon]
                 const active = isActive(item)
-                // Translate menu label from locale dict by item.id; fall back to item.label
                 const label = (t.menu as Record<string, string>)[item.id] ?? item.label
+                const badge = item.id === 'bookings' && pendingCount > 0 ? pendingCount : 0
                 return (
                   <Link
                     key={item.id}
@@ -173,8 +179,13 @@ export function DashboardSidebar({ open, onClose }: DashboardSidebarProps) {
                     {IconComp && (
                       <IconComp className={cn('w-4 h-4 shrink-0', active ? 'text-white' : 'text-gray-400')} />
                     )}
-                    <span className="truncate">{label}</span>
-                    {active && <ChevronRight className="w-3 h-3 ml-auto shrink-0" />}
+                    <span className="truncate flex-1">{label}</span>
+                    {badge > 0 && (
+                      <span className="ml-auto shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
+                        {badge > 99 ? '99+' : badge}
+                      </span>
+                    )}
+                    {active && badge === 0 && <ChevronRight className="w-3 h-3 ml-auto shrink-0" />}
                   </Link>
                 )
               })}

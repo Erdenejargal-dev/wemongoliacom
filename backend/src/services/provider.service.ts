@@ -651,6 +651,8 @@ export interface UpdateTourInput {
   cancellationPolicy?: string | null
   // Status
   status?:             'draft' | 'active' | 'paused'
+  // Itinerary — full replacement when present
+  itinerary?: { dayNumber: number; title: string; description?: string; overnightLocation?: string | null }[]
 }
 
 export async function updateProviderTour(ownerUserId: string, tourId: string, input: UpdateTourInput) {
@@ -701,7 +703,7 @@ export async function updateProviderTour(ownerUserId: string, tourId: string, in
     })
   }
 
-  return prisma.tour.update({
+  const updated = await prisma.tour.update({
     where: { id: tourId },
     data: {
       slug,
@@ -735,6 +737,24 @@ export async function updateProviderTour(ownerUserId: string, tourId: string, in
     },
     select: providerTourSelect,
   })
+
+  // Itinerary — replace all days when provided (deleteMany + createMany is atomic enough for this use case)
+  if (input.itinerary !== undefined) {
+    await prisma.tourItineraryDay.deleteMany({ where: { tourId } })
+    if (input.itinerary.length > 0) {
+      await prisma.tourItineraryDay.createMany({
+        data: input.itinerary.map(day => ({
+          tourId,
+          dayNumber:         day.dayNumber,
+          title:             day.title,
+          description:       day.description ?? null,
+          overnightLocation: day.overnightLocation ?? null,
+        })),
+      })
+    }
+  }
+
+  return updated
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -784,6 +804,7 @@ const providerTourDetailSelect = {
   updatedAt:           true,
   destination:         { select: { id: true, name: true, slug: true } },
   images:              { orderBy: { sortOrder: 'asc' as const }, select: { id: true, imageUrl: true, publicId: true, altText: true, sortOrder: true } },
+  itinerary:           { orderBy: { dayNumber: 'asc' as const } },
   _count:              { select: { departures: true, images: true } },
 } as const
 

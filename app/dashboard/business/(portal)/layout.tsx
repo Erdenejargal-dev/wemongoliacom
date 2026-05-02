@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
-import { DashboardShell } from './shell'
+import { DashboardShell, type InitialProvider } from './shell'
 
 export default async function BusinessPortalLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -29,6 +29,20 @@ export default async function BusinessPortalLayout({ children }: { children: Rea
     )
   }
 
-  return <DashboardShell>{children}</DashboardShell>
+  // Pass the already-fetched profile to the sidebar so it doesn't re-fetch.
+  let initialProvider: InitialProvider | undefined
+  try {
+    const json = await res.json()
+    const p = json?.data ?? json
+    initialProvider = {
+      id:            p.id,
+      name:          p.name,
+      email:         p.email ?? null,
+      providerTypes: p.providerTypes ?? [],
+      plan:          p.plan ?? 'FREE',
+    }
+  } catch { /* non-fatal — sidebar will fall back to its own fetch */ }
+
+  return <DashboardShell initialProvider={initialProvider}>{children}</DashboardShell>
 }
 
