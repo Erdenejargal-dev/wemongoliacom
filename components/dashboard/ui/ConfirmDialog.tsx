@@ -92,8 +92,12 @@ interface PromptDialogProps {
   onCancel: () => void
 }
 
-export function PromptDialog({
-  open,
+export function PromptDialog(props: PromptDialogProps) {
+  if (!props.open) return null
+  return <PromptDialogInner {...props} />
+}
+
+function PromptDialogInner({
   title,
   description,
   placeholder  = '',
@@ -107,16 +111,14 @@ export function PromptDialog({
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    if (open) { setValue(''); setTimeout(() => inputRef.current?.focus(), 50) }
-  }, [open])
+    setTimeout(() => inputRef.current?.focus(), 50)
+  }, [])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel() }
-    if (open) document.addEventListener('keydown', handler)
+    document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [open, onCancel])
-
-  if (!open) return null
+  }, [onCancel])
 
   const canSubmit = !required || value.trim().length > 0
 
