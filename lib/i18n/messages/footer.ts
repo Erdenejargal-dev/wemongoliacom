@@ -100,13 +100,13 @@ export const footerMn: FooterMessages = {
   ctaSubtitle:
     'Аялалд найдвартай хамтрагч хэрэгтэй WeMongolia',
   ctaButton: 'Эхлэх',
-  brandTagline: 'Монголыг сэтгэлтэйгээр нээ',
+  brandTagline: 'Аяллын найдвартай хамтрагч',
   copyright: (year) =>
     `© ${year} WeMongolia, Inc. Бүх эрх хуулийн дагуу хамгаалагдсан.`,
   legalNavAria: 'Хууль эрх зүй',
   sections: [
     {
-      heading: 'Нээнэ үү',
+      heading: 'Холбоос',
       links: [
         { href: href.tours, label: 'Аялал, туршлага' },
         { href: href.destinations, label: 'Чиглэлүүд' },
@@ -115,7 +115,7 @@ export const footerMn: FooterMessages = {
       ],
     },
     {
-      heading: 'Зочлох зочид буудал',
+      heading: 'Санал болгох',
       links: [
         { href: href.onboarding, label: 'Хөтөч болох' },
         { href: href.business, label: 'Бизнесийн портал' },
@@ -124,7 +124,7 @@ export const footerMn: FooterMessages = {
       ],
     },
     {
-      heading: 'Дэмжлэг',
+      heading: 'Тусламж хэрэгтэй юу',
       links: [
         { href: href.help, label: 'Тусламжийн төв' },
         { href: href.bookingHelp, label: 'Захиалгын тусламж' },
@@ -133,7 +133,7 @@ export const footerMn: FooterMessages = {
       ],
     },
     {
-      heading: 'Байгууллага',
+      heading: 'Байгууллагын холбоос',
       links: [
         { href: href.about, label: 'Танилцуулга' },
         { href: href.mission, label: 'Эрхэм зорилго' },

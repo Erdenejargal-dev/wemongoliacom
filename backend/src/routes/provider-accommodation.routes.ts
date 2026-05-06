@@ -1,4 +1,4 @@
-import { Router } from 'express'
+.0import { Router } from 'express'
 import { validate } from '../middleware/validate'
 import {
   listAccommodations,

@@ -18,7 +18,7 @@ Pricing: Free Tier (10 RPM limit).
 
 Environment Variables:
 
-GOOGLE_GENERATIVE_AI_API_KEY (AIzaSyBDBOs48M_eURP1MAofQDNa67oyvql38Vw i will delete it before to push use it and configure)
+GOOGLE_GENERATIVE_AI_API_KEY ( i will delete it before to push use it and configure)
 
 DATABASE_URL (Lightsail)
 
