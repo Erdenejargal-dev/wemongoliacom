@@ -1,6 +1,10 @@
 import { prisma } from '../lib/prisma'
 import { AppError } from '../middleware/error'
 
+function toSenderRole(role: string): 'traveler' | 'provider' {
+  return role === 'traveler' ? 'traveler' : 'provider'
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // List conversations for the current user
 // ─────────────────────────────────────────────────────────────────────────────
@@ -145,7 +149,7 @@ export async function sendMessage(input: SendMessageInput) {
     data: {
       conversationId,
       senderId:   senderUserId,
-      senderRole: senderRole as any,
+      senderRole: toSenderRole(senderRole),
       text,
       attachments: attachments ?? [],
     },
@@ -175,7 +179,7 @@ export async function sendMessage(input: SendMessageInput) {
     .then(({ notifyMessageSent }) =>
       notifyMessageSent({
         conversationId,
-        senderRole:     senderRole as 'traveler' | 'provider',
+        senderRole:     toSenderRole(senderRole),
         messagePreview: text.slice(0, 200),
       }),
     )
