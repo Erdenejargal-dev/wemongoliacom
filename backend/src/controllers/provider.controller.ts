@@ -95,6 +95,9 @@ export const updateTourSchema = z.object({
     description:       z.string().trim().max(5000).optional(),
     overnightLocation: z.string().trim().max(300).nullable().optional(),
   })).max(365).optional(),
+  // ── Included / excluded items ────────────────────────────────────────────────
+  includedItems: z.array(z.string().trim().min(1).max(300)).max(50).optional(),
+  excludedItems: z.array(z.string().trim().min(1).max(300)).max(50).optional(),
 })
 
 export const addTourImagesSchema = z.object({

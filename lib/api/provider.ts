@@ -335,6 +335,8 @@ export interface ProviderTourDetail extends ProviderTour {
   languages:          string[]
   images:             TourImage[]
   itinerary:          ItineraryDay[]
+  includedItems:      { id: string; label: string }[]
+  excludedItems:      { id: string; label: string }[]
   _count:             { departures: number; images: number }
   readiness:          ReadinessResult
 }
@@ -387,6 +389,9 @@ export interface UpdateTourInput {
   status?:             'draft' | 'active' | 'paused'
   // Itinerary — full replacement when present
   itinerary?: { dayNumber: number; title: string; description?: string; overnightLocation?: string | null }[]
+  // Included / excluded items — full replacement when present
+  includedItems?: string[]
+  excludedItems?: string[]
 }
 
 export async function fetchProviderTours(

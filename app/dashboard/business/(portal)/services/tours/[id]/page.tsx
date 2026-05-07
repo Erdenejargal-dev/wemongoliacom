@@ -6,7 +6,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   Loader2, ArrowLeft, Save, Trash2, X, Plus,
-  Image as ImageIcon, AlertTriangle, CheckCircle2,
+  Image as ImageIcon, AlertTriangle, CheckCircle2, XCircle,
   ListOrdered, Calendar, DollarSign, Info, GripVertical,
 } from 'lucide-react'
 import { MultiImageUpload } from '@/components/ui/MultiImageUpload'
@@ -177,6 +177,66 @@ function LanguageChips({ value, onChange }: {
             </span>
           ))}
         </div>
+      )}
+    </div>
+  )
+}
+
+// ── Included / excluded items editor ─────────────────────────────────────────
+
+function ItemListEditor({ items, onChange, placeholder }: {
+  items: string[]
+  onChange: (items: string[]) => void
+  placeholder: string
+}) {
+  const [draft, setDraft] = useState('')
+
+  function add() {
+    const v = draft.trim()
+    if (!v || items.includes(v)) return
+    onChange([...items, v])
+    setDraft('')
+  }
+
+  function remove(idx: number) {
+    onChange(items.filter((_, i) => i !== idx))
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2">
+        <input
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add() } }}
+          placeholder={placeholder}
+          className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-colors"
+        />
+        <button
+          type="button"
+          onClick={add}
+          disabled={!draft.trim()}
+          className="px-4 py-2 text-sm font-semibold text-brand-600 border border-brand-200 rounded-xl hover:bg-brand-50 disabled:opacity-40 transition-colors"
+        >
+          Add
+        </button>
+      </div>
+      {items.length > 0 && (
+        <ul className="space-y-1.5">
+          {items.map((item, idx) => (
+            <li key={idx} className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-100 group">
+              <span className="flex-1 text-sm text-gray-800">{item}</span>
+              <button
+                type="button"
+                onClick={() => remove(idx)}
+                className="text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                aria-label="Remove"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   )
@@ -508,6 +568,8 @@ export default function TourDetailPage() {
   const [cancellationPolicy, setCancellationPolicy] = useState('')
   const [status,             setStatus]             = useState<'draft' | 'active' | 'paused'>('draft')
   const [itinerary,          setItinerary]          = useState<ItineraryDay[]>([])
+  const [includedItems,      setIncludedItems]      = useState<string[]>([])
+  const [excludedItems,      setExcludedItems]      = useState<string[]>([])
 
   async function applyTourData(ft: string) {
     const [t, deps, dests] = await Promise.all([
@@ -534,6 +596,8 @@ export default function TourDetailPage() {
     setCancellationPolicy(t.cancellationPolicy ?? '')
     setStatus(t.status as 'draft' | 'active' | 'paused')
     setItinerary(t.itinerary ?? [])
+    setIncludedItems((t.includedItems ?? []).map(i => i.label))
+    setExcludedItems((t.excludedItems ?? []).map(i => i.label))
   }
 
   const loadTour = useCallback(async () => {
@@ -595,6 +659,8 @@ export default function TourDetailPage() {
             description:       d.description?.trim() || undefined,
             overnightLocation: d.overnightLocation?.trim() || null,
           })),
+        includedItems: includedItems.map(s => s.trim()).filter(s => s.length > 0),
+        excludedItems: excludedItems.map(s => s.trim()).filter(s => s.length > 0),
       }
       await updateProviderTour(freshToken, tourId, input)
       await applyTourData(freshToken)
@@ -798,6 +864,31 @@ export default function TourDetailPage() {
               <label className={labelClass}>{te.labels.meetingPoint}</label>
               <input maxLength={500} value={meetingPoint} onChange={e => setMeetingPoint(e.target.value)} className={inputClass} placeholder={te.placeholders.meetingPoint} />
               <p className={hintClass}>{te.hints.meetDay1}</p>
+            </div>
+          </Section>
+
+          <Section title="What's Included / Not Included" description="Shown on the public tour page. Press Enter or click Add to add each item.">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <p className="text-xs font-bold text-green-700 uppercase tracking-wide mb-2.5 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> What&apos;s Included
+                </p>
+                <ItemListEditor
+                  items={includedItems}
+                  onChange={setIncludedItems}
+                  placeholder="e.g. Accommodation, meals, guide…"
+                />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2.5 flex items-center gap-1.5">
+                  <XCircle className="w-3.5 h-3.5" /> Not Included
+                </p>
+                <ItemListEditor
+                  items={excludedItems}
+                  onChange={setExcludedItems}
+                  placeholder="e.g. Flights, visa fees, tips…"
+                />
+              </div>
             </div>
           </Section>
         </div>

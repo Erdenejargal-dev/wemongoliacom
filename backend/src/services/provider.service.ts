@@ -653,6 +653,9 @@ export interface UpdateTourInput {
   status?:             'draft' | 'active' | 'paused'
   // Itinerary — full replacement when present
   itinerary?: { dayNumber: number; title: string; description?: string; overnightLocation?: string | null }[]
+  // Included / excluded items — full replacement when present
+  includedItems?: string[]
+  excludedItems?: string[]
 }
 
 export async function updateProviderTour(ownerUserId: string, tourId: string, input: UpdateTourInput) {
@@ -754,6 +757,25 @@ export async function updateProviderTour(ownerUserId: string, tourId: string, in
     }
   }
 
+  // Included / excluded items — same replace-all pattern
+  if (input.includedItems !== undefined) {
+    await prisma.tourIncludedItem.deleteMany({ where: { tourId } })
+    if (input.includedItems.length > 0) {
+      await prisma.tourIncludedItem.createMany({
+        data: input.includedItems.map(label => ({ tourId, label })),
+      })
+    }
+  }
+
+  if (input.excludedItems !== undefined) {
+    await prisma.tourExcludedItem.deleteMany({ where: { tourId } })
+    if (input.excludedItems.length > 0) {
+      await prisma.tourExcludedItem.createMany({
+        data: input.excludedItems.map(label => ({ tourId, label })),
+      })
+    }
+  }
+
   return updated
 }
 
@@ -805,6 +827,8 @@ const providerTourDetailSelect = {
   destination:         { select: { id: true, name: true, slug: true } },
   images:              { orderBy: { sortOrder: 'asc' as const }, select: { id: true, imageUrl: true, publicId: true, altText: true, sortOrder: true } },
   itinerary:           { orderBy: { dayNumber: 'asc' as const } },
+  includedItems:       { select: { id: true, label: true } },
+  excludedItems:       { select: { id: true, label: true } },
   _count:              { select: { departures: true, images: true } },
 } as const
 
