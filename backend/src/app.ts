@@ -13,6 +13,10 @@ import { displayCurrencyMiddleware } from './middleware/display-currency'
 
 const app = express()
 
+// Trust the first proxy (nginx/load balancer) so express-rate-limit reads
+// the real client IP from X-Forwarded-For instead of the proxy address.
+app.set('trust proxy', 1)
+
 // ── Security ───────────────────────────────────────────────────────────────
 app.use(helmet())
 app.use(cors({
