@@ -5,6 +5,7 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   ArrowUpRight,
   Calendar,
@@ -259,12 +260,12 @@ export default function HeroInteractive() {
 
   return (
     <section className="relative flex min-h-[92vh] items-center overflow-hidden rounded-[28px] sm:rounded-[36px] lg:rounded-[44px]">
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{
-          backgroundImage:
-            "url('https://res.cloudinary.com/dyqvc31tb/image/upload/v1776868938/Omni_gobi_Irmuun_Agency_daplep.jpg')",
-        }}
+      <Image
+        src="https://res.cloudinary.com/dyqvc31tb/image/upload/v1776868938/Omni_gobi_Irmuun_Agency_daplep.jpg"
+        alt=""
+        fill
+        priority
+        className="object-cover object-center"
         aria-hidden="true"
       />
 
