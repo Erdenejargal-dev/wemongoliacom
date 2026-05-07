@@ -8,6 +8,14 @@
     "start": "next start",
     "lint": "eslint"
   },
+  "browserslist": [
+    "chrome >= 93",
+    "edge >= 93",
+    "firefox >= 92",
+    "safari >= 15.4",
+    "opera >= 79",
+    "not dead"
+  ],
   "dependencies": {
     "@ai-sdk/google": "^3.0.64",
     "@ai-sdk/react": "^3.0.170",
