@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import * as Sentry from '@sentry/node'
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
@@ -10,6 +11,14 @@ import router from './routes/index'
 import bonumWebhookRoutes from './routes/bonum.webhook.routes'
 import { errorHandler } from './middleware/error'
 import { displayCurrencyMiddleware } from './middleware/display-currency'
+
+// ── Sentry — must init before anything else ───────────────────────────────
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: env.NODE_ENV,
+  tracesSampleRate: env.NODE_ENV === 'development' ? 1.0 : 0.1,
+  sendDefaultPii: true,
+})
 
 const app = express()
 
@@ -69,6 +78,9 @@ app.use(env.API_PREFIX, router)
 app.use((_req, res) => {
   res.status(404).json({ success: false, error: 'Route not found.' })
 })
+
+// ── Sentry error handler — must come before custom errorHandler ───────────
+Sentry.setupExpressErrorHandler(app)
 
 // ── Global error handler (must be last) ───────────────────────────────────
 app.use(errorHandler)
