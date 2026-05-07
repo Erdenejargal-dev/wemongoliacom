@@ -509,34 +509,38 @@ export default function TourDetailPage() {
   const [status,             setStatus]             = useState<'draft' | 'active' | 'paused'>('draft')
   const [itinerary,          setItinerary]          = useState<ItineraryDay[]>([])
 
+  async function applyTourData(ft: string) {
+    const [t, deps, dests] = await Promise.all([
+      fetchProviderTour(ft, tourId),
+      fetchTourDepartures(ft, tourId),
+      fetchDestinations(ft),
+    ])
+    setTour(t)
+    setDepartures(deps)
+    setDestinations(dests)
+    setTitle(t.title)
+    setShortDesc(t.shortDescription ?? '')
+    setDescription(t.description ?? '')
+    setCategory(t.category ?? '')
+    setDifficulty(t.difficulty ?? '')
+    setDurationDays(t.durationDays ? String(t.durationDays) : '')
+    setMaxGuests(t.maxGuests ? String(t.maxGuests) : '')
+    setMinGuests(t.minGuests ? String(t.minGuests) : '')
+    setLanguages(t.languages ?? [])
+    setDestinationId(t.destination?.id ?? '')
+    setMeetingPoint(t.meetingPoint ?? '')
+    setBasePrice(t.basePrice != null ? String(t.basePrice) : '')
+    setCurrency(t.currency ?? 'USD')
+    setCancellationPolicy(t.cancellationPolicy ?? '')
+    setStatus(t.status as 'draft' | 'active' | 'paused')
+    setItinerary(t.itinerary ?? [])
+  }
+
   const loadTour = useCallback(async () => {
     const freshToken = token ? await getFreshAccessToken() : null
     if (!freshToken) { setLoading(false); return }
     try {
-      const [t, deps, dests] = await Promise.all([
-        fetchProviderTour(freshToken, tourId),
-        fetchTourDepartures(freshToken, tourId),
-        fetchDestinations(freshToken),
-      ])
-      setTour(t)
-      setDepartures(deps)
-      setDestinations(dests)
-      setTitle(t.title)
-      setShortDesc(t.shortDescription ?? '')
-      setDescription(t.description ?? '')
-      setCategory(t.category ?? '')
-      setDifficulty(t.difficulty ?? '')
-      setDurationDays(t.durationDays ? String(t.durationDays) : '')
-      setMaxGuests(t.maxGuests ? String(t.maxGuests) : '')
-      setMinGuests(t.minGuests ? String(t.minGuests) : '')
-      setLanguages(t.languages ?? [])
-      setDestinationId(t.destination?.id ?? '')
-      setMeetingPoint(t.meetingPoint ?? '')
-      setBasePrice(t.basePrice != null ? String(t.basePrice) : '')
-      setCurrency(t.currency ?? 'USD')
-      setCancellationPolicy(t.cancellationPolicy ?? '')
-      setStatus(t.status as 'draft' | 'active' | 'paused')
-      setItinerary(t.itinerary ?? [])
+      await applyTourData(freshToken)
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         signOut({ redirect: false }); router.push('/auth/login')
@@ -583,9 +587,9 @@ export default function TourDetailPage() {
           })),
       }
       await updateProviderTour(freshToken, tourId, input)
+      await applyTourData(freshToken)
       setSuccess(te.toasts.saved)
       setTimeout(() => setSuccess(null), 3000)
-      loadTour()
     } catch (err) {
       setError(err instanceof Error ? err.message : te.toasts.errSave)
     } finally {
