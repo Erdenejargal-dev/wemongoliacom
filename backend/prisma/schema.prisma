@@ -840,6 +840,7 @@ model Booking {
 
   @@index([userId])
   @@index([providerId])
+  @@index([providerId, createdAt(sort: Desc)])
   @@index([listingType, listingId])
   @@index([bookingStatus])
   @@index([startDate])

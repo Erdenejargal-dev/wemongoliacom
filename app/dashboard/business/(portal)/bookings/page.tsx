@@ -329,17 +329,28 @@ export default function BookingsPage() {
   }, [codeParam, bookings])
 
   const load = useCallback(async () => {
-    const freshToken = token ? await getFreshAccessToken() : null
-    if (!freshToken) return
+    if (!token) return
     setLoading(true)
     setError(null)
     try {
-      const result = await fetchProviderBookings(freshToken, { status: statusFilter })
+      const result = await fetchProviderBookings(token, { status: statusFilter })
       setBookings(result.data)
       setTotal(result.total)
     } catch (e: unknown) {
-      if (e instanceof ApiError && e.status === 401) { await signOut({ redirect: false }); router.push('/auth/login') }
-      else setError(e instanceof Error ? e.message : bt.errorLoading)
+      if (e instanceof ApiError && e.status === 401) {
+        // Token stale — refresh once before giving up
+        const freshToken = await getFreshAccessToken()
+        if (!freshToken) { await signOut({ redirect: false }); router.push('/auth/login'); return }
+        try {
+          const result = await fetchProviderBookings(freshToken, { status: statusFilter })
+          setBookings(result.data)
+          setTotal(result.total)
+        } catch {
+          await signOut({ redirect: false }); router.push('/auth/login')
+        }
+      } else {
+        setError(e instanceof Error ? e.message : bt.errorLoading)
+      }
     } finally {
       setLoading(false)
     }
