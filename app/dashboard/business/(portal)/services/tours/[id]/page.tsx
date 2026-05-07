@@ -557,7 +557,7 @@ export default function TourDetailPage() {
     setSaving(true)
     try {
       const input: UpdateTourInput = {
-        title:             title.trim(),
+        title:             title.trim() || undefined,
         shortDescription:  shortDesc.trim() || undefined,
         description:       description.trim() || undefined,
         category:          category.trim() || undefined,
@@ -572,12 +572,15 @@ export default function TourDetailPage() {
         currency,
         cancellationPolicy: cancellationPolicy.trim() || null,
         status,
-        itinerary: itinerary.map(d => ({
-          dayNumber:         d.dayNumber,
-          title:             d.title,
-          description:       d.description || undefined,
-          overnightLocation: d.overnightLocation || null,
-        })),
+        // Skip days with no title — they're unsaved stubs
+        itinerary: itinerary
+          .filter(d => d.title.trim().length > 0)
+          .map(d => ({
+            dayNumber:         d.dayNumber,
+            title:             d.title.trim(),
+            description:       d.description?.trim() || undefined,
+            overnightLocation: d.overnightLocation?.trim() || null,
+          })),
       }
       await updateProviderTour(freshToken, tourId, input)
       setSuccess(te.toasts.saved)
