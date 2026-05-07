@@ -568,7 +568,7 @@ export default function TourDetailPage() {
         languages,
         destinationId:     destinationId || null,
         meetingPoint:      meetingPoint.trim() || null,
-        basePrice:         parseFloat(basePrice),
+        basePrice:         basePrice ? parseFloat(basePrice) : undefined,
         currency,
         cancellationPolicy: cancellationPolicy.trim() || null,
         status,
