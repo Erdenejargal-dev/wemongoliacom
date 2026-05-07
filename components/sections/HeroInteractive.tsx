@@ -6,7 +6,6 @@ import { signIn, signOut, useSession } from "next-auth/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { cloudinaryUrl } from "@/lib/cloudinary";
 import {
   ArrowUpRight,
   Calendar,
@@ -262,11 +261,10 @@ export default function HeroInteractive() {
   return (
     <section className="relative flex min-h-[92vh] items-center overflow-hidden rounded-[28px] sm:rounded-[36px] lg:rounded-[44px]">
       <Image
-        src={cloudinaryUrl('https://res.cloudinary.com/dyqvc31tb/image/upload/v1776868938/Omni_gobi_Irmuun_Agency_daplep.jpg', { format: 'webp', quality: 'auto' })}
+        src="https://res.cloudinary.com/dyqvc31tb/image/upload/v1776868938/Omni_gobi_Irmuun_Agency_daplep.jpg"
         alt=""
         fill
         priority
-        unoptimized
         className="object-cover object-center"
         aria-hidden="true"
       />
