@@ -12,4 +12,6 @@ Sentry.init({
   integrations: [Sentry.replayIntegration()],
 
   enableLogs: true,
+
+  allowUrls: [/wemongolia\.com/, /localhost/],
 })
