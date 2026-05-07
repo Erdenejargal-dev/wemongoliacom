@@ -6,7 +6,7 @@ import { ok } from '../utils/response'
 export const listQuerySchema = z.object({
   featured: z.enum(['true', 'false']).optional().transform(v => v === 'true' ? true : v === 'false' ? false : undefined),
   page:     z.coerce.number().int().positive().optional(),
-  limit:    z.coerce.number().int().positive().max(50).optional(),
+  limit:    z.coerce.number().int().positive().max(200).optional(),
 })
 
 export async function listDestinations(req: Request, res: Response, next: NextFunction) {
