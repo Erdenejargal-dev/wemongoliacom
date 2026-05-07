@@ -1,5 +1,4 @@
 import 'dotenv/config'
-import * as Sentry from '@sentry/node'
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
@@ -11,14 +10,7 @@ import router from './routes/index'
 import bonumWebhookRoutes from './routes/bonum.webhook.routes'
 import { errorHandler } from './middleware/error'
 import { displayCurrencyMiddleware } from './middleware/display-currency'
-
-// ── Sentry — must init before anything else ───────────────────────────────
-Sentry.init({
-  dsn: process.env.SENTRY_DSN,
-  environment: env.NODE_ENV,
-  tracesSampleRate: env.NODE_ENV === 'development' ? 1.0 : 0.1,
-  sendDefaultPii: true,
-})
+import * as Sentry from '@sentry/node'
 
 const app = express()
 
