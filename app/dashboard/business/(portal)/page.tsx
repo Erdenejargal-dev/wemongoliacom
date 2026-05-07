@@ -89,7 +89,7 @@ export default function BusinessDashboardPage() {
 
   return (
     <div className="space-y-4">
-      {provider.status === 'draft' && provider.verificationStatus !== 'pending_review' && (
+      {provider.status === 'draft' && provider.verificationStatus !== 'pending_review' && provider.verificationStatus !== 'verified' && (
         <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
           {t.overview.draftWarning}
         </div>
