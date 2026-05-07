@@ -781,11 +781,23 @@ export async function updateRoomAvailabilityDay(
 
   const overrideCurrency = input.baseOverrideCurrency ?? rt.baseCurrency ?? rt.currency ?? 'USD'
 
+  // When blocking: zero availableUnits so unit-count check also blocks booking.
+  // When unblocking: restore to quantity minus any existing bookedUnits.
+  const existing = await prisma.roomAvailability.findUnique({
+    where: { roomTypeId_date: { roomTypeId: roomId, date } },
+    select: { bookedUnits: true },
+  })
+  const resolvedAvailableUnits =
+    input.availableUnits !== undefined ? input.availableUnits :
+    input.status === 'blocked'   ? 0 :
+    input.status === 'available' ? rt.quantity - (existing?.bookedUnits ?? 0) :
+    undefined
+
   const record = await prisma.roomAvailability.upsert({
     where:  { roomTypeId_date: { roomTypeId: roomId, date } },
     update: {
-      ...(input.status !== undefined           && { status: input.status }),
-      ...(input.availableUnits !== undefined   && { availableUnits: input.availableUnits }),
+      ...(input.status !== undefined                && { status: input.status }),
+      ...(resolvedAvailableUnits !== undefined      && { availableUnits: resolvedAvailableUnits }),
       ...(input.baseOverrideAmount !== undefined && {
         baseOverrideAmount:   input.baseOverrideAmount,
         baseOverrideCurrency: input.baseOverrideAmount != null ? overrideCurrency : null,
@@ -795,7 +807,7 @@ export async function updateRoomAvailabilityDay(
     create: {
       roomTypeId:           roomId,
       date,
-      availableUnits:       input.availableUnits ?? rt.quantity,
+      availableUnits:       input.status === 'blocked' ? 0 : (input.availableUnits ?? rt.quantity),
       bookedUnits:          0,
       status:               input.status ?? 'available',
       baseOverrideAmount:   input.baseOverrideAmount ?? null,
@@ -833,13 +845,20 @@ export async function bulkUpdateRoomAvailability(
   const nights         = eachNight(start, end)
   const overrideCurrency = input.baseOverrideCurrency ?? rt.baseCurrency ?? rt.currency ?? 'USD'
 
+  const resolvedAvailableUnits =
+    input.availableUnits !== undefined ? input.availableUnits :
+    input.status === 'blocked'         ? 0                    :
+    undefined  // unblock restore handled per-record below via rt.quantity
+
   await prisma.$transaction(
     nights.map(night =>
       prisma.roomAvailability.upsert({
         where:  { roomTypeId_date: { roomTypeId: roomId, date: night } },
         update: {
-          ...(input.status !== undefined           && { status: input.status }),
-          ...(input.availableUnits !== undefined   && { availableUnits: input.availableUnits }),
+          ...(input.status !== undefined                && { status: input.status }),
+          ...(resolvedAvailableUnits !== undefined      && { availableUnits: resolvedAvailableUnits }),
+          // unblock: restore to full quantity (bookedUnits adjustment handled by booking service)
+          ...(input.status === 'available' && input.availableUnits === undefined && { availableUnits: rt.quantity }),
           ...(input.baseOverrideAmount !== undefined && {
             baseOverrideAmount:   input.baseOverrideAmount,
             baseOverrideCurrency: input.baseOverrideAmount != null ? overrideCurrency : null,
@@ -849,7 +868,7 @@ export async function bulkUpdateRoomAvailability(
         create: {
           roomTypeId:           roomId,
           date:                 night,
-          availableUnits:       input.availableUnits ?? rt.quantity,
+          availableUnits:       input.status === 'blocked' ? 0 : (input.availableUnits ?? rt.quantity),
           bookedUnits:          0,
           status:               input.status ?? 'available',
           baseOverrideAmount:   input.baseOverrideAmount ?? null,

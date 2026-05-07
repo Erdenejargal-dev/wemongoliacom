@@ -157,8 +157,11 @@ async function checkRoomAvailability(roomTypeId: string, checkIn: Date, checkOut
     const avail = await prisma.roomAvailability.findUnique({
       where: { roomTypeId_date: { roomTypeId, date: night } },
     })
-    const units = avail?.availableUnits ?? rt.quantity
-    const booked = avail?.bookedUnits ?? 0
+    if (avail?.status === 'blocked') {
+      throw new AppError(`No availability on ${night.toISOString().split('T')[0]}.`, 409)
+    }
+    const units  = avail?.availableUnits ?? rt.quantity
+    const booked = avail?.bookedUnits    ?? 0
     if (units - booked < 1) {
       throw new AppError(`No availability on ${night.toISOString().split('T')[0]}.`, 409)
     }
