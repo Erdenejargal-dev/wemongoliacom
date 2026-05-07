@@ -29,7 +29,23 @@ export function cloudinaryUrl(
 ): string {
   if (!CLOUD_NAME || !publicIdOrUrl) return publicIdOrUrl
 
-  // If it's already a full URL (e.g. from seed data), return as-is
+  // Full Cloudinary URL — inject transforms after /upload/
+  if (publicIdOrUrl.startsWith('https://res.cloudinary.com/')) {
+    const parts: string[] = []
+    if (transform.width) parts.push(`w_${transform.width}`)
+    if (transform.height) parts.push(`h_${transform.height}`)
+    if (transform.crop) parts.push(`c_${transform.crop}`)
+    if (transform.quality) parts.push(`q_${transform.quality}`)
+    if (transform.format) parts.push(`f_${transform.format}`)
+    if (transform.gravity) parts.push(`g_${transform.gravity}`)
+    if (transform.aspectRatio) parts.push(`ar_${transform.aspectRatio}`)
+    if (!transform.quality) parts.push('q_auto')
+    if (!transform.format) parts.push('f_auto')
+    const transformStr = parts.join(',')
+    return publicIdOrUrl.replace('/upload/', `/upload/${transformStr}/`)
+  }
+
+  // Non-Cloudinary full URL — return as-is
   if (publicIdOrUrl.startsWith('http://') || publicIdOrUrl.startsWith('https://')) {
     return publicIdOrUrl
   }
