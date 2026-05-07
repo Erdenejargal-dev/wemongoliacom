@@ -532,7 +532,7 @@ export default function TourDetailPage() {
       setLanguages(t.languages ?? [])
       setDestinationId(t.destination?.id ?? '')
       setMeetingPoint(t.meetingPoint ?? '')
-      setBasePrice(String(t.basePrice))
+      setBasePrice(t.basePrice != null ? String(t.basePrice) : '')
       setCurrency(t.currency ?? 'USD')
       setCancellationPolicy(t.cancellationPolicy ?? '')
       setStatus(t.status as 'draft' | 'active' | 'paused')
@@ -568,7 +568,7 @@ export default function TourDetailPage() {
         languages,
         destinationId:     destinationId || null,
         meetingPoint:      meetingPoint.trim() || null,
-        basePrice:         basePrice ? parseFloat(basePrice) : undefined,
+        basePrice:         basePrice !== '' ? parseFloat(basePrice) : undefined,
         currency,
         cancellationPolicy: cancellationPolicy.trim() || null,
         status,
