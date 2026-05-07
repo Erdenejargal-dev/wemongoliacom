@@ -113,7 +113,8 @@ export default function HeroInteractive() {
 
   useEffect(() => {
     if (!messagesRef.current) return;
-    messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
+    const el = messagesRef.current;
+    requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
   }, [messages, status]);
 
   const handleSearch = () => {

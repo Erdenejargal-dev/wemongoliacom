@@ -125,14 +125,7 @@ export default function MessagesPage() {
     setShowScrollBtn(distFromBottom > 120)
   }
 
-  function autoResizeTextarea() {
-    const el = textareaRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = Math.min(el.scrollHeight, 128) + 'px'
-  }
-
-  const loadConversations = useCallback(async (silent = false) => {
+const loadConversations = useCallback(async (silent = false) => {
     const ft = tokenRef.current ? await getFreshAccessToken() : null
     if (!ft) { if (!silent) setLoading(false); return }
     if (!silent) { setLoading(true); setError(null) }
@@ -208,7 +201,6 @@ export default function MessagesPage() {
     const ft = await getFreshAccessToken()
     if (!ft) { await signOut({ redirect: false }); router.push('/auth/login'); return }
     setSending(true); setSendError(null); setReplyText('')
-    if (textareaRef.current) { textareaRef.current.style.height = 'auto' }
     try {
       const newMsg = await sendConversationMessage(activeId, text.trim(), ft)
       if (newMsg) {
@@ -398,7 +390,7 @@ export default function MessagesPage() {
                     <textarea
                       ref={textareaRef}
                       value={replyText}
-                      onChange={e => { setReplyText(e.target.value); autoResizeTextarea() }}
+                      onChange={e => setReplyText(e.target.value)}
                       placeholder={mt.typeReply}
                       rows={1}
                       maxLength={2000}
@@ -410,7 +402,7 @@ export default function MessagesPage() {
                       }}
                       disabled={sending || messagesLoading}
                       className="flex-1 resize-none border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none overflow-y-auto min-h-[44px] disabled:opacity-60 bg-gray-50 focus:bg-white transition-colors"
-                      style={{ maxHeight: '128px' }}
+                      style={{ maxHeight: '128px', fieldSizing: 'content' } as React.CSSProperties}
                     />
                     <button
                       type="button"
