@@ -11,9 +11,10 @@ import Footer from '@/components/sections/Footer'
  */
 export function ConditionalShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const isAdmin  = pathname?.startsWith('/admin')
+  const isAdmin    = pathname?.startsWith('/admin')
+  const isPortal   = pathname?.startsWith('/dashboard/business')
 
-  if (isAdmin) {
+  if (isAdmin || isPortal) {
     return <>{children}</>
   }
 

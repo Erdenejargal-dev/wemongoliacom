@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
+import { Menu } from 'lucide-react'
 import { DashboardSidebar } from '@/components/provider-dashboard/DashboardSidebar'
-import { DashboardHeader } from '@/components/provider-dashboard/DashboardHeader'
 import { MobileBottomNav } from '@/components/provider-dashboard/MobileBottomNav'
 import { ProviderLocaleProvider } from '@/lib/i18n/provider/context'
 import { apiClient } from '@/lib/api/client'
@@ -54,9 +54,15 @@ export function DashboardShell({ children, initialProvider }: { children: React.
           pendingCount={pendingCount}
         />
         <MobileBottomNav pendingCount={pendingCount} />
+        <button
+          className="fixed top-4 left-4 z-50 md:hidden p-2 rounded-lg bg-white shadow border border-gray-100 hover:bg-gray-50 transition-colors"
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Open menu"
+        >
+          <Menu className="w-5 h-5 text-gray-600" />
+        </button>
         <div className="md:pl-60">
-          <DashboardHeader onMenuClick={() => setSidebarOpen(true)} />
-          {/* pb-20 reserves space above the mobile bottom nav */}
+          {/* pb-24 reserves space above the mobile bottom nav */}
           <main className="p-4 sm:p-6 pb-24 md:pb-6">
             {children}
           </main>
