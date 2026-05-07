@@ -556,12 +556,22 @@ export default function TourDetailPage() {
 
   async function handleSave() {
     setError(null); setSuccess(null)
+    if (!title.trim()) {
+      setError('Tour title is required.')
+      setActiveTab('info')
+      return
+    }
+    if (title.trim().length < 2) {
+      setError('Tour title must be at least 2 characters.')
+      setActiveTab('info')
+      return
+    }
     const freshToken = await getFreshAccessToken()
     if (!freshToken) return
     setSaving(true)
     try {
       const input: UpdateTourInput = {
-        title:             title.trim() || undefined,
+        title:             title.trim(),
         shortDescription:  shortDesc.trim() || undefined,
         description:       description.trim() || undefined,
         category:          category.trim() || undefined,
