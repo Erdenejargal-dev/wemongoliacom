@@ -149,6 +149,81 @@ export async function removeImage(req: Request, res: Response, next: NextFunctio
   } catch (err) { next(err) }
 }
 
+// ─── Availability schemas ──────────────────────────────────────────────────
+
+const dateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD')
+
+export const getAvailabilityQuerySchema = z.object({
+  startDate: dateString,
+  endDate:   dateString,
+})
+
+export const updateAvailabilityDaySchema = z.object({
+  status:               z.enum(['available', 'blocked']).optional(),
+  availableUnits:       z.number().int().positive().max(500).optional(),
+  baseOverrideAmount:   z.number().positive().nullable().optional(),
+  baseOverrideCurrency: z.enum(['MNT', 'USD']).nullable().optional(),
+})
+
+export const bulkUpdateAvailabilitySchema = z.object({
+  startDate:            dateString,
+  endDate:              dateString,
+  status:               z.enum(['available', 'blocked']).optional(),
+  availableUnits:       z.number().int().positive().max(500).optional(),
+  baseOverrideAmount:   z.number().positive().nullable().optional(),
+  baseOverrideCurrency: z.enum(['MNT', 'USD']).nullable().optional(),
+})
+
+// ─── Availability handlers ─────────────────────────────────────────────────
+
+export async function getAvailability(req: Request, res: Response, next: NextFunction) {
+  try {
+    const query  = getAvailabilityQuerySchema.parse(req.query)
+    const result = await accService.getRoomAvailability(
+      req.user!.userId,
+      String(req.params.accId),
+      String(req.params.roomId),
+      query.startDate,
+      query.endDate,
+    )
+    return ok(res, result)
+  } catch (err) { next(err) }
+}
+
+export async function updateAvailabilityDay(req: Request, res: Response, next: NextFunction) {
+  try {
+    const body   = updateAvailabilityDaySchema.parse(req.body)
+    const result = await accService.updateRoomAvailabilityDay(
+      req.user!.userId,
+      String(req.params.accId),
+      String(req.params.roomId),
+      String(req.params.date),
+      body,
+    )
+    return ok(res, result)
+  } catch (err) { next(err) }
+}
+
+export async function bulkUpdateAvailability(req: Request, res: Response, next: NextFunction) {
+  try {
+    const body   = bulkUpdateAvailabilitySchema.parse(req.body)
+    const result = await accService.bulkUpdateRoomAvailability(
+      req.user!.userId,
+      String(req.params.accId),
+      String(req.params.roomId),
+      body.startDate,
+      body.endDate,
+      {
+        status:               body.status,
+        availableUnits:       body.availableUnits,
+        baseOverrideAmount:   body.baseOverrideAmount,
+        baseOverrideCurrency: body.baseOverrideCurrency,
+      },
+    )
+    return ok(res, result)
+  } catch (err) { next(err) }
+}
+
 export async function listRooms(req: Request, res: Response, next: NextFunction) {
   try {
     const result = await accService.listRoomTypes(req.user!.userId, String(req.params.accId))

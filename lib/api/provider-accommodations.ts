@@ -229,3 +229,65 @@ export async function removeRoomTypeImage(
     token,
   )
 }
+
+// ── Room availability (calendar) ───────────────────────────────────────────
+
+export interface RoomAvailabilityRecord {
+  id:                   string | null
+  roomTypeId:           string
+  date:                 string   // YYYY-MM-DD UTC
+  availableUnits:       number
+  bookedUnits:          number
+  priceOverride:        number | null
+  baseOverrideAmount:   number | null
+  baseOverrideCurrency: string | null
+  status:               'available' | 'sold_out' | 'blocked'
+}
+
+export interface AvailabilityUpdate {
+  status?:               'available' | 'blocked'
+  availableUnits?:       number
+  baseOverrideAmount?:   number | null
+  baseOverrideCurrency?: string | null
+}
+
+export async function fetchRoomAvailability(
+  token:     string,
+  accId:     string,
+  roomId:    string,
+  startDate: string,
+  endDate:   string,
+): Promise<RoomAvailabilityRecord[]> {
+  const result = await apiClient.get<RoomAvailabilityRecord[]>(
+    `/provider/accommodations/${accId}/rooms/${roomId}/availability?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`,
+    token,
+  )
+  return Array.isArray(result) ? result : []
+}
+
+export async function updateRoomAvailabilityDay(
+  token:   string,
+  accId:   string,
+  roomId:  string,
+  date:    string,
+  updates: AvailabilityUpdate,
+): Promise<RoomAvailabilityRecord> {
+  return apiClient.patch<RoomAvailabilityRecord>(
+    `/provider/accommodations/${accId}/rooms/${roomId}/availability/${date}`,
+    updates,
+    token,
+  )
+}
+
+export async function bulkUpdateRoomAvailability(
+  token:  string,
+  accId:  string,
+  roomId: string,
+  payload: AvailabilityUpdate & { startDate: string; endDate: string },
+): Promise<{ updated: number }> {
+  return apiClient.patch<{ updated: number }>(
+    `/provider/accommodations/${accId}/rooms/${roomId}/availability/range`,
+    payload,
+    token,
+  )
+}

@@ -3,6 +3,7 @@ import { AppError } from '../middleware/error'
 import { uniqueSlug } from '../utils/slug'
 import { getListingLimit, type PlanType } from '../config/limits'
 import { resolveBasePricing } from '../utils/pricing'
+import { eachNight } from '../utils/booking'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Input types
@@ -630,4 +631,234 @@ function validateReadiness(input: ReadinessInput) {
   if (!result.ready) {
     throw new AppError(`Accommodation is not ready to publish: ${result.missing.join('; ')}`, 400)
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Room availability management (provider calendar)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface RoomAvailabilityRecord {
+  id:                   string | null
+  roomTypeId:           string
+  date:                 string   // YYYY-MM-DD, UTC
+  availableUnits:       number
+  bookedUnits:          number
+  priceOverride:        number | null
+  baseOverrideAmount:   number | null
+  baseOverrideCurrency: string | null
+  status:               'available' | 'sold_out' | 'blocked'
+}
+
+export interface UpdateAvailabilityInput {
+  status?:               'available' | 'blocked'
+  availableUnits?:       number
+  baseOverrideAmount?:   number | null
+  baseOverrideCurrency?: string | null
+}
+
+function parseDateUTC(s: string): Date {
+  const d = new Date(s + 'T00:00:00.000Z')
+  if (isNaN(d.getTime())) throw new AppError(`Invalid date: ${s}`, 400)
+  return d
+}
+
+function todayUTC(): Date {
+  const d = new Date()
+  d.setUTCHours(0, 0, 0, 0)
+  return d
+}
+
+async function assertRoomOwned(accId: string, roomId: string, ownerUserId: string) {
+  await getOwnedAccommodation(accId, ownerUserId)
+  const rt = await prisma.roomType.findUnique({
+    where: { id: roomId },
+    select: { id: true, accommodationId: true, quantity: true, baseCurrency: true, currency: true },
+  })
+  if (!rt || rt.accommodationId !== accId) throw new AppError('Room type not found.', 404)
+  return rt
+}
+
+async function checkBookingConflicts(roomTypeId: string, start: Date, end: Date): Promise<void> {
+  const conflict = await prisma.booking.findFirst({
+    where: {
+      roomTypeId,
+      bookingStatus: { in: ['pending', 'confirmed'] },
+      startDate:     { lt: end },
+      endDate:       { gt: start },
+    },
+    select: { bookingCode: true },
+  })
+  if (conflict) {
+    throw new AppError(
+      `Cannot block: active booking ${conflict.bookingCode} overlaps this period.`,
+      409,
+    )
+  }
+}
+
+function toRecord(r: {
+  id: string; roomTypeId: string; date: Date; availableUnits: number; bookedUnits: number
+  priceOverride: number | null; baseOverrideAmount: number | null; baseOverrideCurrency: string | null
+  status: string
+}): RoomAvailabilityRecord {
+  return {
+    id:                   r.id,
+    roomTypeId:           r.roomTypeId,
+    date:                 r.date.toISOString().split('T')[0],
+    availableUnits:       r.availableUnits,
+    bookedUnits:          r.bookedUnits,
+    priceOverride:        r.priceOverride,
+    baseOverrideAmount:   r.baseOverrideAmount,
+    baseOverrideCurrency: r.baseOverrideCurrency,
+    status:               r.status as 'available' | 'sold_out' | 'blocked',
+  }
+}
+
+export async function getRoomAvailability(
+  ownerUserId:  string,
+  accId:        string,
+  roomId:       string,
+  startDateStr: string,
+  endDateStr:   string,
+): Promise<RoomAvailabilityRecord[]> {
+  const rt    = await assertRoomOwned(accId, roomId, ownerUserId)
+  const start = parseDateUTC(startDateStr)
+  const end   = parseDateUTC(endDateStr)
+  if (end <= start) throw new AppError('endDate must be after startDate.', 400)
+
+  const diffDays = Math.ceil((end.getTime() - start.getTime()) / 86400000)
+  if (diffDays > 366) throw new AppError('Date range cannot exceed 366 days.', 400)
+
+  const dbRecords = await prisma.roomAvailability.findMany({
+    where: { roomTypeId: roomId, date: { gte: start, lt: end } },
+    orderBy: { date: 'asc' },
+  })
+
+  const dbMap = new Map<string, typeof dbRecords[0]>()
+  for (const r of dbRecords) {
+    dbMap.set(r.date.toISOString().split('T')[0], r)
+  }
+
+  const result: RoomAvailabilityRecord[] = []
+  for (const night of eachNight(start, end)) {
+    const key = night.toISOString().split('T')[0]
+    const db  = dbMap.get(key)
+    if (db) {
+      result.push(toRecord(db))
+    } else {
+      result.push({
+        id:                   null,
+        roomTypeId:           roomId,
+        date:                 key,
+        availableUnits:       rt.quantity,
+        bookedUnits:          0,
+        priceOverride:        null,
+        baseOverrideAmount:   null,
+        baseOverrideCurrency: null,
+        status:               'available',
+      })
+    }
+  }
+  return result
+}
+
+export async function updateRoomAvailabilityDay(
+  ownerUserId: string,
+  accId:       string,
+  roomId:      string,
+  dateStr:     string,
+  input:       UpdateAvailabilityInput,
+): Promise<RoomAvailabilityRecord> {
+  const rt   = await assertRoomOwned(accId, roomId, ownerUserId)
+  const date = parseDateUTC(dateStr)
+  if (date < todayUTC()) throw new AppError('Cannot modify availability for past dates.', 400)
+
+  if (input.status === 'blocked') {
+    const nextDay = new Date(date)
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1)
+    await checkBookingConflicts(roomId, date, nextDay)
+  }
+
+  const overrideCurrency = input.baseOverrideCurrency ?? rt.baseCurrency ?? rt.currency ?? 'USD'
+
+  const record = await prisma.roomAvailability.upsert({
+    where:  { roomTypeId_date: { roomTypeId: roomId, date } },
+    update: {
+      ...(input.status !== undefined           && { status: input.status }),
+      ...(input.availableUnits !== undefined   && { availableUnits: input.availableUnits }),
+      ...(input.baseOverrideAmount !== undefined && {
+        baseOverrideAmount:   input.baseOverrideAmount,
+        baseOverrideCurrency: input.baseOverrideAmount != null ? overrideCurrency : null,
+        priceOverride:        input.baseOverrideAmount,
+      }),
+    },
+    create: {
+      roomTypeId:           roomId,
+      date,
+      availableUnits:       input.availableUnits ?? rt.quantity,
+      bookedUnits:          0,
+      status:               input.status ?? 'available',
+      baseOverrideAmount:   input.baseOverrideAmount ?? null,
+      baseOverrideCurrency: input.baseOverrideAmount != null ? overrideCurrency : null,
+      priceOverride:        input.baseOverrideAmount ?? null,
+    },
+  })
+
+  return toRecord(record)
+}
+
+export async function bulkUpdateRoomAvailability(
+  ownerUserId:  string,
+  accId:        string,
+  roomId:       string,
+  startDateStr: string,
+  endDateStr:   string,
+  input:        UpdateAvailabilityInput,
+): Promise<{ updated: number }> {
+  const rt    = await assertRoomOwned(accId, roomId, ownerUserId)
+  const start = parseDateUTC(startDateStr)
+  const end   = parseDateUTC(endDateStr)
+  const today = todayUTC()
+
+  if (end <= start) throw new AppError('endDate must be after startDate.', 400)
+  if (start < today) throw new AppError('Cannot modify availability for past dates.', 400)
+
+  const diffDays = Math.ceil((end.getTime() - start.getTime()) / 86400000)
+  if (diffDays > 365) throw new AppError('Date range cannot exceed 365 days.', 400)
+
+  if (input.status === 'blocked') {
+    await checkBookingConflicts(roomId, start, end)
+  }
+
+  const nights         = eachNight(start, end)
+  const overrideCurrency = input.baseOverrideCurrency ?? rt.baseCurrency ?? rt.currency ?? 'USD'
+
+  await prisma.$transaction(
+    nights.map(night =>
+      prisma.roomAvailability.upsert({
+        where:  { roomTypeId_date: { roomTypeId: roomId, date: night } },
+        update: {
+          ...(input.status !== undefined           && { status: input.status }),
+          ...(input.availableUnits !== undefined   && { availableUnits: input.availableUnits }),
+          ...(input.baseOverrideAmount !== undefined && {
+            baseOverrideAmount:   input.baseOverrideAmount,
+            baseOverrideCurrency: input.baseOverrideAmount != null ? overrideCurrency : null,
+            priceOverride:        input.baseOverrideAmount,
+          }),
+        },
+        create: {
+          roomTypeId:           roomId,
+          date:                 night,
+          availableUnits:       input.availableUnits ?? rt.quantity,
+          bookedUnits:          0,
+          status:               input.status ?? 'available',
+          baseOverrideAmount:   input.baseOverrideAmount ?? null,
+          baseOverrideCurrency: input.baseOverrideAmount != null ? overrideCurrency : null,
+          priceOverride:        input.baseOverrideAmount ?? null,
+        },
+      }),
+    ),
+  )
+
+  return { updated: nights.length }
 }

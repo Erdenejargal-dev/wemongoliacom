@@ -22,10 +22,14 @@ import {
   deleteRoomType as apiDeleteRoom,
   addRoomTypeImages as apiAddRoomImages,
   removeRoomTypeImage as apiRemoveRoomImage,
+  fetchRoomAvailability,
+  updateRoomAvailabilityDay,
+  bulkUpdateRoomAvailability,
   type AccommodationDetail,
   type RoomTypeItem,
   type RoomTypeImage,
   type UpdateAccommodationInput,
+  type RoomAvailabilityRecord,
 } from '@/lib/api/provider-accommodations'
 import { fetchDestinations, type Destination } from '@/lib/api/provider'
 import { getFreshAccessToken } from '@/lib/auth-utils'
@@ -189,7 +193,7 @@ export default function AccommodationManagePage() {
       {/* Tab content */}
       {activeTab === 'overview' && <OverviewTab acc={acc} destinations={destinations} onUpdated={loadData} />}
       {activeTab === 'rooms' && <RoomTypesTab accId={accId} roomTypes={acc.roomTypes} token={token ?? ''} onUpdated={loadData} />}
-      {activeTab === 'calendar' && <CalendarTab />}
+      {activeTab === 'calendar' && <CalendarTab accId={accId} roomTypes={acc.roomTypes} />}
       {activeTab === 'images' && <ImagesTab accId={accId} images={acc.images} token={token ?? ''} onUpdated={loadData} />}
     </div>
   )
@@ -648,18 +652,320 @@ function RoomSlideOver({ room, isNew, accId, token, onSave, onClose }: {
   )
 }
 
-// ── Calendar tab (stub for Phase 2) ──────────────────────────────────────────
+// ── Calendar tab ─────────────────────────────────────────────────────────────
 
-function CalendarTab() {
-  return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
-      <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gray-50 flex items-center justify-center">
-        <CalendarDays className="w-6 h-6 text-gray-400" />
+function CalendarTab({ accId, roomTypes }: { accId: string; roomTypes: RoomTypeItem[] }) {
+  const router = useRouter()
+
+  const [selectedRoomId, setSelectedRoomId] = useState(roomTypes[0]?.id ?? '')
+  const [viewDate,       setViewDate]       = useState(() => { const d = new Date(); d.setUTCDate(1); return d })
+  const [availability,   setAvailability]   = useState<RoomAvailabilityRecord[]>([])
+  const [loading,        setLoading]        = useState(false)
+  const [error,          setError]          = useState<string | null>(null)
+  const [editDay,        setEditDay]        = useState<RoomAvailabilityRecord | null>(null)
+  const [rangeStart,     setRangeStart]     = useState<string | null>(null)
+  const [saving,         setSaving]         = useState(false)
+  const [saveError,      setSaveError]      = useState<string | null>(null)
+  // edit panel local state
+  const [editStatus,     setEditStatus]     = useState<'available' | 'blocked'>('available')
+  const [editPrice,      setEditPrice]      = useState('')
+
+  const selectedRoom = roomTypes.find(r => r.id === selectedRoomId)
+
+  function monthBounds(base: Date): { startDate: string; endDate: string } {
+    const start = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), 1))
+    const end   = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + 1, 1))
+    return {
+      startDate: start.toISOString().split('T')[0],
+      endDate:   end.toISOString().split('T')[0],
+    }
+  }
+
+  const loadAvailability = useCallback(async (roomId: string, base: Date) => {
+    const ft = await getFreshAccessToken()
+    if (!ft) { signOut({ redirect: false }); router.push('/auth/login'); return }
+    setLoading(true); setError(null)
+    try {
+      const { startDate, endDate } = monthBounds(base)
+      const data = await fetchRoomAvailability(ft, accId, roomId, startDate, endDate)
+      setAvailability(data)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load availability.')
+    } finally { setLoading(false) }
+  }, [accId])
+
+  useEffect(() => {
+    if (selectedRoomId) loadAvailability(selectedRoomId, viewDate)
+  }, [selectedRoomId, viewDate, loadAvailability])
+
+  function prevMonth() { setViewDate(d => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1))) }
+  function nextMonth() { setViewDate(d => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1))) }
+
+  function openDay(rec: RoomAvailabilityRecord) {
+    const todayStr = new Date().toISOString().split('T')[0]
+    if (rec.date < todayStr) return  // past — read-only
+    if (rangeStart) {
+      handleBulkBlock(rangeStart, rec.date)
+      setRangeStart(null)
+      return
+    }
+    setEditDay(rec)
+    setEditStatus(rec.status === 'blocked' ? 'blocked' : 'available')
+    setEditPrice(rec.baseOverrideAmount != null ? String(rec.baseOverrideAmount) : '')
+    setSaveError(null)
+  }
+
+  async function handleSaveDay() {
+    if (!editDay) return
+    const ft = await getFreshAccessToken()
+    if (!ft) return
+    setSaving(true); setSaveError(null)
+    try {
+      const priceVal = editPrice.trim() !== '' ? parseFloat(editPrice) : null
+      await updateRoomAvailabilityDay(ft, accId, selectedRoomId, editDay.date, {
+        status:             editStatus,
+        baseOverrideAmount: priceVal,
+        baseOverrideCurrency: selectedRoom?.currency as 'MNT' | 'USD' | undefined ?? 'USD',
+      })
+      setEditDay(null)
+      await loadAvailability(selectedRoomId, viewDate)
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Failed to save.')
+    } finally { setSaving(false) }
+  }
+
+  async function handleBulkBlock(start: string, end: string) {
+    const from = start <= end ? start : end
+    const to   = start <= end ? end   : start
+    // end is inclusive for UX, backend expects exclusive — add 1 day
+    const endExclusive = new Date(to + 'T00:00:00.000Z')
+    endExclusive.setUTCDate(endExclusive.getUTCDate() + 1)
+    const endStr = endExclusive.toISOString().split('T')[0]
+
+    const ft = await getFreshAccessToken()
+    if (!ft) return
+    setSaving(true); setSaveError(null)
+    try {
+      await bulkUpdateRoomAvailability(ft, accId, selectedRoomId, { startDate: from, endDate: endStr, status: 'blocked' })
+      await loadAvailability(selectedRoomId, viewDate)
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Failed to block range.')
+    } finally { setSaving(false) }
+  }
+
+  // Calendar grid helpers
+  const year  = viewDate.getUTCFullYear()
+  const month = viewDate.getUTCMonth()
+  const firstDow   = new Date(Date.UTC(year, month, 1)).getUTCDay()  // 0=Sun
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate()
+  const todayStr   = new Date().toISOString().split('T')[0]
+
+  const availMap = new Map(availability.map(r => [r.date, r]))
+
+  function dayClass(rec: RoomAvailabilityRecord | undefined, dateStr: string): string {
+    const isPast = dateStr < todayStr
+    const isSelected = editDay?.date === dateStr || rangeStart === dateStr
+    if (isSelected) return 'bg-brand-600 text-white'
+    if (isPast)     return 'bg-gray-50 text-gray-300 cursor-default'
+    if (!rec || rec.status === 'available') return 'bg-white border border-gray-200 hover:border-brand-400 hover:bg-brand-50 cursor-pointer'
+    if (rec.status === 'blocked')   return 'bg-red-50 border border-red-200 text-red-700 cursor-pointer'
+    if (rec.status === 'sold_out')  return 'bg-gray-100 border border-gray-200 text-gray-400 cursor-default'
+    return 'bg-white border border-gray-200 cursor-pointer'
+  }
+
+  const monthLabel = viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+
+  if (roomTypes.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
+        <CalendarDays className="w-8 h-8 text-gray-300 mx-auto mb-3" />
+        <p className="text-sm text-gray-500">Add at least one room type to manage availability.</p>
       </div>
-      <h3 className="text-base font-bold text-gray-900 mb-1">Calendar coming soon</h3>
-      <p className="text-sm text-gray-500 max-w-sm mx-auto">
-        Manage room availability, pricing overrides, and blocked dates from a visual calendar. This feature is being built in Phase 2.
-      </p>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Controls row */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <select
+          value={selectedRoomId}
+          onChange={e => { setSelectedRoomId(e.target.value); setEditDay(null); setRangeStart(null) }}
+          className="text-sm font-medium border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
+        >
+          {roomTypes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+        </select>
+
+        <div className="flex items-center gap-2">
+          {rangeStart ? (
+            <span className="text-xs font-medium text-brand-700 bg-brand-50 border border-brand-200 px-3 py-1.5 rounded-lg">
+              Click end date to block range (started {rangeStart})
+            </span>
+          ) : (
+            <button
+              onClick={() => { setEditDay(null); setRangeStart('pick') }}
+              className="text-xs font-semibold text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50"
+            >
+              Block range…
+            </button>
+          )}
+          {rangeStart && (
+            <button onClick={() => setRangeStart(null)} className="text-xs text-gray-500 hover:text-gray-800">Cancel</button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1">
+          <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+            <ArrowLeft className="w-4 h-4 text-gray-600" />
+          </button>
+          <span className="text-sm font-semibold text-gray-900 w-36 text-center">{monthLabel}</span>
+          <button onClick={nextMonth} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+            <ArrowLeft className="w-4 h-4 text-gray-600 rotate-180" />
+          </button>
+        </div>
+      </div>
+
+      {saveError && <p className="text-sm text-red-600 px-1">{saveError}</p>}
+
+      {/* Calendar grid */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        {/* Day-of-week header */}
+        <div className="grid grid-cols-7 border-b border-gray-100">
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+            <div key={d} className="py-2.5 text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{d}</div>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-16"><Loader2 className="w-5 h-5 text-brand-500 animate-spin" /></div>
+        ) : error ? (
+          <div className="py-10 text-center text-sm text-red-600">{error}</div>
+        ) : (
+          <div className="grid grid-cols-7">
+            {/* Leading blank cells */}
+            {Array.from({ length: firstDow }).map((_, i) => (
+              <div key={`blank-${i}`} className="min-h-[80px] border-b border-r border-gray-50" />
+            ))}
+            {/* Day cells */}
+            {Array.from({ length: daysInMonth }).map((_, i) => {
+              const day     = i + 1
+              const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+              const rec     = availMap.get(dateStr)
+              const isPast  = dateStr < todayStr
+              const col     = (firstDow + i) % 7
+              const isLastCol = col === 6
+
+              return (
+                <div
+                  key={dateStr}
+                  onClick={() => !isPast && openDay(rec ?? {
+                    id: null, roomTypeId: selectedRoomId, date: dateStr,
+                    availableUnits: selectedRoom?.quantity ?? 1, bookedUnits: 0,
+                    priceOverride: null, baseOverrideAmount: null, baseOverrideCurrency: null,
+                    status: 'available',
+                  })}
+                  className={`min-h-[80px] p-2 border-b border-r border-gray-50 flex flex-col gap-1 transition-colors ${isLastCol ? 'border-r-0' : ''} ${dayClass(rec, dateStr)}`}
+                >
+                  <span className="text-xs font-semibold">{day}</span>
+                  {!isPast && (
+                    <div className="mt-auto space-y-0.5">
+                      {rec?.status === 'blocked' && (
+                        <span className="block text-[10px] font-semibold">Blocked</span>
+                      )}
+                      {rec?.status === 'sold_out' && (
+                        <span className="block text-[10px]">Full</span>
+                      )}
+                      {(!rec || rec.status === 'available') && (
+                        <span className="block text-[10px] text-gray-400">
+                          {rec ? rec.availableUnits : (selectedRoom?.quantity ?? '—')} avail
+                        </span>
+                      )}
+                      {rec?.baseOverrideAmount != null && (
+                        <span className="block text-[10px] font-medium text-brand-600">
+                          {rec.baseOverrideAmount} {rec.baseOverrideCurrency}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 text-[11px] text-gray-500 px-1">
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded border border-gray-200 bg-white inline-block" />Available</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded border border-red-200 bg-red-50 inline-block" />Blocked</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded border border-gray-200 bg-gray-100 inline-block" />Sold out</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-gray-50 inline-block" />Past</span>
+      </div>
+
+      {/* Day edit panel */}
+      {editDay && (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-bold text-gray-900">
+              {new Date(editDay.date + 'T00:00:00.000Z').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' })}
+            </p>
+            <button onClick={() => setEditDay(null)} className="p-1 rounded-lg hover:bg-gray-100">
+              <X className="w-4 h-4 text-gray-500" />
+            </button>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => setEditStatus('available')}
+              className={`flex-1 py-2 text-xs font-semibold rounded-xl border transition-colors ${editStatus === 'available' ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
+            >
+              Available
+            </button>
+            <button
+              onClick={() => setEditStatus('blocked')}
+              className={`flex-1 py-2 text-xs font-semibold rounded-xl border transition-colors ${editStatus === 'blocked' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'}`}
+            >
+              Blocked
+            </button>
+          </div>
+
+          {editStatus === 'available' && (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                Price override / night <span className="text-gray-400 font-normal">(leave empty to use room default)</span>
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={editPrice}
+                  onChange={e => setEditPrice(e.target.value)}
+                  placeholder={selectedRoom?.basePricePerNight?.toString() ?? '—'}
+                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+                <span className="text-xs font-semibold text-gray-500">{selectedRoom?.currency ?? 'USD'}</span>
+              </div>
+            </div>
+          )}
+
+          {saveError && <p className="text-xs text-red-600">{saveError}</p>}
+
+          <div className="flex gap-2">
+            <button onClick={() => setEditDay(null)} className="flex-1 py-2 text-xs font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50">
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveDay}
+              disabled={saving}
+              className="flex-1 py-2 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-50 rounded-xl transition-colors flex items-center justify-center gap-1.5"
+            >
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+              Save
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,4 +1,4 @@
-.0import { Router } from 'express'
+import { Router } from 'express'
 import { validate } from '../middleware/validate'
 import {
   listAccommodations,
@@ -14,12 +14,17 @@ import {
   deleteRoom,
   addRoomImages,
   removeRoomImage,
+  getAvailability,
+  updateAvailabilityDay,
+  bulkUpdateAvailability,
   createAccommodationSchema,
   updateAccommodationSchema,
   addImagesSchema,
   createRoomTypeSchema,
   updateRoomTypeSchema,
   addRoomImagesSchema,
+  updateAvailabilityDaySchema,
+  bulkUpdateAvailabilitySchema,
 } from '../controllers/provider-accommodation.controller'
 
 const router = Router()
@@ -44,5 +49,10 @@ router.delete('/:accId/rooms/:roomId', deleteRoom)
 // Room type images (room-level, distinct from property gallery)
 router.post('/:accId/rooms/:roomId/images',           validate(addRoomImagesSchema), addRoomImages)
 router.delete('/:accId/rooms/:roomId/images/:imgId',  removeRoomImage)
+
+// Availability calendar — "range" must precede "/:date" so Express doesn't treat the literal "range" as a date param
+router.get('/:accId/rooms/:roomId/availability',         getAvailability)
+router.patch('/:accId/rooms/:roomId/availability/range', validate(bulkUpdateAvailabilitySchema), bulkUpdateAvailability)
+router.patch('/:accId/rooms/:roomId/availability/:date', validate(updateAvailabilityDaySchema),  updateAvailabilityDay)
 
 export default router
