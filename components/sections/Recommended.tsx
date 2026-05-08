@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Calendar,
@@ -109,99 +109,98 @@ function formatPrice(pricing: Pricing | null, displayCurrency: 'MNT' | 'USD'): s
   return formatPricing(pricing, displayCurrency);
 }
 
-function MetaPill({
-  icon,
-  children,
-}: {
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/14 px-3 py-1.5 text-[11px] font-medium text-white backdrop-blur">
-      {icon}
-      {children}
-    </span>
-  );
-}
 
 function TourCard({ tour }: { tour: RecommendedTourCardModel }) {
   const [imageError, setImageError] = useState(false);
   const { currency: displayCurrency } = usePreferences();
+  const price = formatPrice(tour.pricing, displayCurrency);
 
   return (
     <Link
       href={`/tours/${tour.slug}`}
-      className="group block h-full rounded-[24px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0489d1] focus-visible:ring-offset-4"
+      className="group block h-full rounded-[20px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0489d1] focus-visible:ring-offset-4"
     >
       <article
         className={cn(
-          "h-full overflow-hidden rounded-[24px] border border-zinc-200 bg-white shadow-sm",
-          "transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+          "flex h-full flex-col overflow-hidden rounded-[20px] border border-zinc-200/80 bg-white",
+          "shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-zinc-300 hover:shadow-lg"
         )}
       >
-        <div className="relative aspect-[3/4] overflow-hidden bg-zinc-100">
+        {/* Image */}
+        <div className="relative aspect-[4/3] shrink-0 overflow-hidden bg-zinc-100">
           <img
             src={imageError ? FALLBACK_IMAGE : tour.imageUrl}
             alt={tour.title}
             onError={() => setImageError(true)}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
           />
 
-          <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/35 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
-
-          <div className="absolute left-3 top-3 flex items-center gap-2">
-            <span className="rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-900 backdrop-blur">
+          <div className="absolute left-3 top-3 flex items-center gap-1.5">
+            <span className="rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-800 shadow-sm">
               {tour.category}
             </span>
-
             {tour.featured ? (
-              <span className="rounded-full bg-[#0489d1] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white">
+              <span className="rounded-full bg-[#0489d1] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm">
                 Featured
               </span>
             ) : null}
           </div>
 
           {tour.rating > 0 ? (
-            <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-black/35 px-2.5 py-1.5 text-white backdrop-blur">
-              <Star className="h-3.5 w-3.5 fill-current" />
+            <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-black/45 px-2.5 py-1 text-white backdrop-blur-sm">
+              <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
               <span className="text-xs font-semibold">{tour.rating.toFixed(1)}</span>
+              {tour.totalReviews > 0 ? (
+                <span className="text-[10px] text-white/65">({tour.totalReviews})</span>
+              ) : null}
             </div>
           ) : null}
+        </div>
 
-          <div className="absolute inset-x-0 bottom-0 p-3">
-            <div className="max-w-full">
-              <div className="flex items-start justify-between gap-2">
-                <h3 className="line-clamp-1 min-w-0 flex-1 text-sm font-semibold leading-tight text-white sm:text-base">
-                  {tour.title}
-                </h3>
+        {/* Content */}
+        <div className="flex flex-1 flex-col p-4">
+          <div className="mb-1.5 flex items-center gap-1 text-[11px] font-medium text-zinc-400">
+            <MapPin className="h-3 w-3 shrink-0" />
+            <span className="truncate">{tour.destinationName}</span>
+          </div>
 
-                <div className="shrink-0 text-right">
-                  <p className="text-base font-bold leading-none text-white sm:text-lg">
-                    {formatPrice(tour.pricing, displayCurrency)}
-                  </p>
-                </div>
-              </div>
+          <h3 className="mb-3 line-clamp-2 text-sm font-semibold leading-snug text-zinc-900 sm:text-[15px]">
+            {tour.title}
+          </h3>
 
-              <div className="mt-1.5 flex items-center justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-1 text-xs text-white/85">
-                  <MapPin className="h-3.5 w-3.5 shrink-0" />
-                  <span className="line-clamp-1">{tour.destinationName}</span>
-                </div>
+          <div className="mb-4 flex flex-wrap items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-600">
+              <Clock3 className="h-3 w-3" />
+              {tour.durationDays}D{tour.durationNights > 0 ? ` / ${tour.durationNights}N` : ""}
+            </span>
+            {tour.maxGuests ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-600">
+                <Users className="h-3 w-3" />
+                {tour.maxGuests}
+              </span>
+            ) : null}
+            <span
+              className={cn(
+                "rounded-full px-2.5 py-1 text-[11px] font-medium",
+                tour.difficulty === "Easy"
+                  ? "bg-emerald-50 text-emerald-700"
+                  : tour.difficulty === "Moderate"
+                    ? "bg-amber-50 text-amber-700"
+                    : "bg-red-50 text-red-700"
+              )}
+            >
+              {tour.difficulty}
+            </span>
+          </div>
 
-                <div className="flex shrink-0 flex-wrap items-center gap-1.5">
-                  <MetaPill icon={<Clock3 className="h-3 w-3" />}>
-                    {tour.durationDays}D
-                  </MetaPill>
-
-                  {tour.maxGuests ? (
-                    <MetaPill icon={<Users className="h-3 w-3" />}>
-                      {tour.maxGuests}
-                    </MetaPill>
-                  ) : null}
-                </div>
-              </div>
+          <div className="mt-auto flex items-end justify-between">
+            <div>
+              <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-400">From</p>
+              <p className="text-base font-bold text-zinc-900 sm:text-lg">{price}</p>
             </div>
+            <span className="rounded-full bg-[#0489d1] px-3.5 py-1.5 text-[11px] font-semibold text-white transition-colors group-hover:bg-[#037ab9]">
+              View Tour
+            </span>
           </div>
         </div>
       </article>
@@ -242,7 +241,7 @@ export default function Recommended() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [scrollSnaps, setScrollSnaps] = useState<number[]>([]);
   const [isHovered, setIsHovered] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
+  const [isPaused] = useState(false);
 
   const autoplayRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
@@ -378,10 +377,13 @@ export default function Recommended() {
     <section className="py-16 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-10 text-center sm:mb-12">
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#0489d1]">
+            Discover · Mongolia
+          </p>
           <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl lg:text-5xl">
             Recommended Tours
           </h2>
-          <div className="mx-auto mt-4 h-1.5 w-20 rounded-full bg-[#0489d1]" />
+          <div className="mx-auto mt-4 h-1 w-16 rounded-full bg-[#0489d1]/30" />
           <p className="mx-auto mt-5 max-w-2xl text-sm leading-6 text-zinc-600 sm:text-base">
             {subtitle}
           </p>
@@ -494,14 +496,6 @@ export default function Recommended() {
                 </div>
               ) : null}
 
-              <div className="mt-4 flex justify-center">
-                <button
-                  onClick={() => setIsPaused((prev) => !prev)}
-                  className="text-xs text-zinc-500 transition hover:text-zinc-700"
-                >
-                  {isPaused ? "Play carousel" : "Pause carousel"}
-                </button>
-              </div>
             </div>
 
             <div className="mt-10 text-center">
