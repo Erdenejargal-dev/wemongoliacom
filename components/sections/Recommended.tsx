@@ -10,6 +10,7 @@ import {
   MapPin,
 } from "lucide-react";
 import ImageSlider from "@/components/ui/ImageSlider";
+import { cloudinaryUrl } from "@/lib/cloudinary";
 import { fetchTours, type BackendTour } from "@/lib/api/tours";
 import { formatPricing, readPricing, type Pricing } from "@/lib/pricing";
 import { usePreferences } from "@/components/providers/PreferencesProvider";
@@ -80,7 +81,7 @@ function mapBackendTourToCard(t: BackendTour): RecommendedTourCardModel {
       currency: t.currency,
     }),
     imageUrls: (() => {
-      const urls = (t.images ?? []).map(i => i?.imageUrl).filter((u): u is string => Boolean(u)).slice(0, 5);
+      const urls = (t.images ?? []).map(i => i?.imageUrl).filter((u): u is string => Boolean(u)).slice(0, 5).map(u => cloudinaryUrl(u));
       return urls.length > 0 ? urls : [FALLBACK_IMAGE];
     })(),
     durationDays,

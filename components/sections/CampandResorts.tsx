@@ -10,6 +10,7 @@ import {
   Search,
 } from "lucide-react";
 import ImageSlider from "@/components/ui/ImageSlider";
+import { cloudinaryUrl } from "@/lib/cloudinary";
 import {
   fetchStays,
   type BackendStay,
@@ -100,7 +101,7 @@ function mapBackendStayToCard(stay: BackendStay): StayCardModel {
         ? stay.reviewsCount
         : 0,
     imageUrls: (() => {
-      const urls = (stay.images ?? []).map(i => i?.imageUrl).filter((u): u is string => Boolean(u)).slice(0, 5);
+      const urls = (stay.images ?? []).map(i => i?.imageUrl).filter((u): u is string => Boolean(u)).slice(0, 5).map(u => cloudinaryUrl(u));
       return urls.length > 0 ? urls : [FALLBACK_IMAGE];
     })(),
     pricing,
