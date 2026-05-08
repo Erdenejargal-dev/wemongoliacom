@@ -3,12 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
-  BedDouble,
   ChevronLeft,
   ChevronRight,
+  Heart,
   MapPin,
   Search,
-  Star,
 } from "lucide-react";
 import {
   fetchStays,
@@ -115,21 +114,25 @@ function formatPrice(pricing: Pricing | null, displayCurrency: 'MNT' | 'USD'): s
 
 function StayCard({ stay }: { stay: StayCardModel }) {
   const [imageError, setImageError] = useState(false);
+  const [saved, setSaved] = useState(false);
   const { currency: displayCurrency } = usePreferences();
   const badgeColor = TYPE_BADGE_STYLES[stay.accommodationType] ?? "bg-gray-700";
   const price = formatPrice(stay.pricing, displayCurrency);
+
+  const taglineParts = [
+    stay.ratingAverage > 0
+      ? `★ ${stay.ratingAverage.toFixed(1)}${stay.reviewsCount > 0 ? ` (${stay.reviewsCount})` : ""}`
+      : null,
+    stay.starRating && stay.starRating > 0 ? `${Math.min(stay.starRating, 5)}-star` : null,
+    stay.typeLabel,
+  ].filter(Boolean);
 
   return (
     <Link
       href={`/stays/${stay.slug}`}
       className="group block h-full rounded-[20px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0489d1] focus-visible:ring-offset-4"
     >
-      <article
-        className={cn(
-          "flex h-full flex-col overflow-hidden rounded-[20px] border border-zinc-200/80 bg-white",
-          "shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-zinc-300 hover:shadow-lg"
-        )}
-      >
+      <article className="flex h-full flex-col overflow-hidden rounded-[20px] bg-white shadow-[0_2px_16px_rgba(0,0,0,0.08)] transition-transform duration-300 hover:-translate-y-0.5">
         {/* Image */}
         <div className="relative aspect-[4/3] shrink-0 overflow-hidden bg-zinc-100">
           <img
@@ -138,60 +141,57 @@ function StayCard({ stay }: { stay: StayCardModel }) {
             onError={() => setImageError(true)}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
           />
+          <div className="absolute inset-x-0 bottom-0 h-[50px] bg-gradient-to-t from-black/20 to-transparent" />
 
           <div className="absolute left-3 top-3">
-            <span className={cn("rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm", badgeColor)}>
+            <span className={cn("rounded-full px-[9px] py-[4px] text-[9px] font-semibold uppercase tracking-[0.07em] text-white backdrop-blur-md", badgeColor)}>
               {stay.typeLabel}
             </span>
           </div>
 
-          {stay.ratingAverage > 0 ? (
-            <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-black/45 px-2.5 py-1 text-white backdrop-blur-sm">
-              <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-              <span className="text-xs font-semibold">{stay.ratingAverage.toFixed(1)}</span>
-              {stay.reviewsCount > 0 ? (
-                <span className="text-[10px] text-white/65">({stay.reviewsCount})</span>
-              ) : null}
-            </div>
-          ) : null}
+          <button
+            onClick={(e) => { e.preventDefault(); setSaved((s) => !s); }}
+            className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur-md transition-transform active:scale-90"
+            aria-label={saved ? "Remove from saved" : "Save stay"}
+          >
+            <Heart
+              className={cn(
+                "h-3.5 w-3.5 transition-all duration-[180ms]",
+                saved ? "fill-[#ff4d4d] text-[#ff4d4d]" : "text-zinc-500"
+              )}
+            />
+          </button>
         </div>
 
-        {/* Content */}
-        <div className="flex flex-1 flex-col p-4">
-          <div className="mb-1.5 flex items-center gap-1 text-[11px] font-medium text-zinc-400">
+        {/* Body */}
+        <div className="flex flex-1 flex-col px-[13px] pb-[14px] pt-[11px]">
+          <div className="mb-1 flex items-center gap-1 text-[10px] font-medium text-[#8e8e93]">
             <MapPin className="h-3 w-3 shrink-0" />
             <span className="truncate">{stay.destinationName}</span>
           </div>
 
-          <h3 className="mb-3 line-clamp-2 text-sm font-semibold leading-snug text-zinc-900 sm:text-[15px]">
+          <h3 className="mb-0.5 line-clamp-2 text-[14px] font-bold leading-snug tracking-[-0.02em] text-[#1c1c1e]">
             {stay.name}
           </h3>
 
-          <div className="mb-4 flex flex-wrap items-center gap-1.5">
-            {stay.starRating && stay.starRating > 0 ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">
-                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                {Math.min(stay.starRating, 5)}-star
-              </span>
-            ) : null}
-            <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-600">
-              <BedDouble className="h-3 w-3" />
-              {stay.typeLabel}
-            </span>
-          </div>
+          <p className="mb-3 truncate text-[10px] text-[#8e8e93]">
+            {taglineParts.join(" · ")}
+          </p>
 
-          <div className="mt-auto flex items-end justify-between">
+          <div className="mb-3 border-t border-black/10" />
+
+          <div className="mt-auto flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-400">From</p>
+              <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-[#aeaeb2]">From</p>
               <div className="flex items-baseline gap-1">
-                <p className="text-base font-bold text-zinc-900 sm:text-lg">{price}</p>
+                <p className="text-[15px] font-bold leading-none tracking-[-0.02em] text-[#1c1c1e]">{price}</p>
                 {stay.pricing ? (
-                  <span className="text-[11px] text-zinc-400">/night</span>
+                  <span className="text-[10px] text-[#8e8e93]">/night</span>
                 ) : null}
               </div>
             </div>
-            <span className="rounded-full bg-[#0489d1] px-3.5 py-1.5 text-[11px] font-semibold text-white transition-colors group-hover:bg-[#037ab9]">
-              View Stay
+            <span className="rounded-[10px] bg-[#1c1c1e] px-[13px] py-[8px] text-[11px] font-semibold text-white transition-transform active:scale-[0.97]">
+              Book Now
             </span>
           </div>
         </div>

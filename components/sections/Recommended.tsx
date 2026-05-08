@@ -6,10 +6,8 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
-  Clock3,
+  Heart,
   MapPin,
-  Star,
-  Users,
 } from "lucide-react";
 import { fetchTours, type BackendTour } from "@/lib/api/tours";
 import { formatPricing, readPricing, type Pricing } from "@/lib/pricing";
@@ -112,20 +110,24 @@ function formatPrice(pricing: Pricing | null, displayCurrency: 'MNT' | 'USD'): s
 
 function TourCard({ tour }: { tour: RecommendedTourCardModel }) {
   const [imageError, setImageError] = useState(false);
+  const [saved, setSaved] = useState(false);
   const { currency: displayCurrency } = usePreferences();
   const price = formatPrice(tour.pricing, displayCurrency);
+
+  const taglineParts = [
+    tour.rating > 0
+      ? `★ ${tour.rating.toFixed(1)}${tour.totalReviews > 0 ? ` (${tour.totalReviews})` : ""}`
+      : null,
+    tour.difficulty,
+    `${tour.durationDays}D${tour.durationNights > 0 ? ` / ${tour.durationNights}N` : ""}`,
+  ].filter(Boolean);
 
   return (
     <Link
       href={`/tours/${tour.slug}`}
       className="group block h-full rounded-[20px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0489d1] focus-visible:ring-offset-4"
     >
-      <article
-        className={cn(
-          "flex h-full flex-col overflow-hidden rounded-[20px] border border-zinc-200/80 bg-white",
-          "shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-zinc-300 hover:shadow-lg"
-        )}
-      >
+      <article className="flex h-full flex-col overflow-hidden rounded-[20px] bg-white shadow-[0_2px_16px_rgba(0,0,0,0.08)] transition-transform duration-300 hover:-translate-y-0.5">
         {/* Image */}
         <div className="relative aspect-[4/3] shrink-0 overflow-hidden bg-zinc-100">
           <img
@@ -134,72 +136,57 @@ function TourCard({ tour }: { tour: RecommendedTourCardModel }) {
             onError={() => setImageError(true)}
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
           />
+          <div className="absolute inset-x-0 bottom-0 h-[50px] bg-gradient-to-t from-black/20 to-transparent" />
 
           <div className="absolute left-3 top-3 flex items-center gap-1.5">
-            <span className="rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-800 shadow-sm">
+            <span className="rounded-full bg-white/90 px-[9px] py-[4px] text-[9px] font-semibold uppercase tracking-[0.07em] text-zinc-900 backdrop-blur-md">
               {tour.category}
             </span>
             {tour.featured ? (
-              <span className="rounded-full bg-[#0489d1] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm">
+              <span className="rounded-full bg-[#0489d1]/90 px-[9px] py-[4px] text-[9px] font-semibold uppercase tracking-[0.07em] text-white backdrop-blur-md">
                 Featured
               </span>
             ) : null}
           </div>
 
-          {tour.rating > 0 ? (
-            <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-black/45 px-2.5 py-1 text-white backdrop-blur-sm">
-              <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-              <span className="text-xs font-semibold">{tour.rating.toFixed(1)}</span>
-              {tour.totalReviews > 0 ? (
-                <span className="text-[10px] text-white/65">({tour.totalReviews})</span>
-              ) : null}
-            </div>
-          ) : null}
+          <button
+            onClick={(e) => { e.preventDefault(); setSaved((s) => !s); }}
+            className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur-md transition-transform active:scale-90"
+            aria-label={saved ? "Remove from saved" : "Save tour"}
+          >
+            <Heart
+              className={cn(
+                "h-3.5 w-3.5 transition-all duration-[180ms]",
+                saved ? "fill-[#ff4d4d] text-[#ff4d4d]" : "text-zinc-500"
+              )}
+            />
+          </button>
         </div>
 
-        {/* Content */}
-        <div className="flex flex-1 flex-col p-4">
-          <div className="mb-1.5 flex items-center gap-1 text-[11px] font-medium text-zinc-400">
+        {/* Body */}
+        <div className="flex flex-1 flex-col px-[13px] pb-[14px] pt-[11px]">
+          <div className="mb-1 flex items-center gap-1 text-[10px] font-medium text-[#8e8e93]">
             <MapPin className="h-3 w-3 shrink-0" />
             <span className="truncate">{tour.destinationName}</span>
           </div>
 
-          <h3 className="mb-3 line-clamp-2 text-sm font-semibold leading-snug text-zinc-900 sm:text-[15px]">
+          <h3 className="mb-0.5 line-clamp-2 text-[14px] font-bold leading-snug tracking-[-0.02em] text-[#1c1c1e]">
             {tour.title}
           </h3>
 
-          <div className="mb-4 flex flex-wrap items-center gap-1.5">
-            <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-600">
-              <Clock3 className="h-3 w-3" />
-              {tour.durationDays}D{tour.durationNights > 0 ? ` / ${tour.durationNights}N` : ""}
-            </span>
-            {tour.maxGuests ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-600">
-                <Users className="h-3 w-3" />
-                {tour.maxGuests}
-              </span>
-            ) : null}
-            <span
-              className={cn(
-                "rounded-full px-2.5 py-1 text-[11px] font-medium",
-                tour.difficulty === "Easy"
-                  ? "bg-emerald-50 text-emerald-700"
-                  : tour.difficulty === "Moderate"
-                    ? "bg-amber-50 text-amber-700"
-                    : "bg-red-50 text-red-700"
-              )}
-            >
-              {tour.difficulty}
-            </span>
-          </div>
+          <p className="mb-3 truncate text-[10px] text-[#8e8e93]">
+            {taglineParts.join(" · ")}
+          </p>
 
-          <div className="mt-auto flex items-end justify-between">
+          <div className="mb-3 border-t border-black/10" />
+
+          <div className="mt-auto flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-400">From</p>
-              <p className="text-base font-bold text-zinc-900 sm:text-lg">{price}</p>
+              <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-[#aeaeb2]">From</p>
+              <p className="text-[15px] font-bold leading-none tracking-[-0.02em] text-[#1c1c1e]">{price}</p>
             </div>
-            <span className="rounded-full bg-[#0489d1] px-3.5 py-1.5 text-[11px] font-semibold text-white transition-colors group-hover:bg-[#037ab9]">
-              View Tour
+            <span className="rounded-[10px] bg-[#1c1c1e] px-[13px] py-[8px] text-[11px] font-semibold text-white transition-transform active:scale-[0.97]">
+              Book Now
             </span>
           </div>
         </div>
