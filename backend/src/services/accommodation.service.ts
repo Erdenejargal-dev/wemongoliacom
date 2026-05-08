@@ -127,7 +127,7 @@ export async function listAccommodations(query: AccommodationListQuery = {}) {
         reviewsCount:      true,
         images: {
           orderBy: { sortOrder: 'asc' as const },
-          take:    1,
+          take:    5,
           select:  { imageUrl: true },
         },
         provider: {

@@ -69,7 +69,7 @@ const tourCardSelect = {
   featured:            true,
   images: {
     orderBy: { sortOrder: 'asc' as const },
-    take:    1,
+    take:    5,
     select:  { imageUrl: true },
   },
   provider: {
