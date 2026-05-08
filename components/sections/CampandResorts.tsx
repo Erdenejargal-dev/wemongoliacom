@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   BedDouble,
-  Calendar,
   ChevronLeft,
   ChevronRight,
   MapPin,
@@ -114,108 +113,87 @@ function formatPrice(pricing: Pricing | null, displayCurrency: 'MNT' | 'USD'): s
   return formatPricing(pricing, displayCurrency);
 }
 
-function MetaPill({
-  icon,
-  children,
-}: {
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/14 px-3 py-1.5 text-xs font-medium text-white backdrop-blur">
-      {icon}
-      {children}
-    </span>
-  );
-}
-
 function StayCard({ stay }: { stay: StayCardModel }) {
   const [imageError, setImageError] = useState(false);
   const { currency: displayCurrency } = usePreferences();
-  const badgeColor =
-    TYPE_BADGE_STYLES[stay.accommodationType] ?? "bg-gray-700";
+  const badgeColor = TYPE_BADGE_STYLES[stay.accommodationType] ?? "bg-gray-700";
+  const price = formatPrice(stay.pricing, displayCurrency);
 
   return (
     <Link
       href={`/stays/${stay.slug}`}
-      className="group block h-full rounded-[28px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0489d1] focus-visible:ring-offset-4"
+      className="group block h-full rounded-[20px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0489d1] focus-visible:ring-offset-4"
     >
       <article
         className={cn(
-          "h-full overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-sm",
-          "transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+          "flex h-full flex-col overflow-hidden rounded-[20px] border border-zinc-200/80 bg-white",
+          "shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-zinc-300 hover:shadow-lg"
         )}
       >
-        <div className="relative aspect-[3/4] overflow-hidden bg-zinc-100">
+        {/* Image */}
+        <div className="relative aspect-[4/3] shrink-0 overflow-hidden bg-zinc-100">
           <img
             src={imageError ? FALLBACK_IMAGE : stay.imageUrl}
             alt={stay.name}
             onError={() => setImageError(true)}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
           />
 
-          <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/35 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-
-          <div className="absolute left-4 top-4 flex items-center gap-2">
-            <span
-              className={cn(
-                "rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-white",
-                badgeColor
-              )}
-            >
+          <div className="absolute left-3 top-3">
+            <span className={cn("rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm", badgeColor)}>
               {stay.typeLabel}
             </span>
           </div>
 
           {stay.ratingAverage > 0 ? (
-            <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-black/35 px-3 py-1.5 text-white backdrop-blur">
-              <Star className="h-4 w-4 fill-current" />
-              <span className="text-sm font-semibold">
-                {stay.ratingAverage.toFixed(1)}
-              </span>
+            <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-black/45 px-2.5 py-1 text-white backdrop-blur-sm">
+              <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+              <span className="text-xs font-semibold">{stay.ratingAverage.toFixed(1)}</span>
+              {stay.reviewsCount > 0 ? (
+                <span className="text-[10px] text-white/65">({stay.reviewsCount})</span>
+              ) : null}
             </div>
           ) : null}
+        </div>
 
-          <div className="absolute inset-x-0 bottom-0 p-4">
-  <div className="max-w-full">
-    <div className="flex items-start justify-between gap-3">
-      <h3 className="line-clamp-1 min-w-0 flex-1 text-lg font-semibold leading-tight text-white md:text-xl">
-        {stay.name}
-      </h3>
+        {/* Content */}
+        <div className="flex flex-1 flex-col p-4">
+          <div className="mb-1.5 flex items-center gap-1 text-[11px] font-medium text-zinc-400">
+            <MapPin className="h-3 w-3 shrink-0" />
+            <span className="truncate">{stay.destinationName}</span>
+          </div>
 
-      <div className="shrink-0 text-right">
-        <p className="text-xl font-bold leading-none text-white">
-          {formatPrice(stay.pricing, displayCurrency)}
-        </p>
-        {stay.pricing ? (
-          <p className="mt-1 text-[11px] text-white/60">/night</p>
-        ) : null}
-      </div>
-    </div>
+          <h3 className="mb-3 line-clamp-2 text-sm font-semibold leading-snug text-zinc-900 sm:text-[15px]">
+            {stay.name}
+          </h3>
 
-    <div className="mt-2 flex items-center justify-between gap-3">
-      <div className="flex min-w-0 items-center gap-1.5 text-sm text-white/85">
-        <MapPin className="h-4 w-4 shrink-0" />
-        <span className="line-clamp-1">{stay.destinationName}</span>
-      </div>
+          <div className="mb-4 flex flex-wrap items-center gap-1.5">
+            {stay.starRating && stay.starRating > 0 ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">
+                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                {Math.min(stay.starRating, 5)}-star
+              </span>
+            ) : null}
+            <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-600">
+              <BedDouble className="h-3 w-3" />
+              {stay.typeLabel}
+            </span>
+          </div>
 
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
-        {stay.starRating && stay.starRating > 0 ? (
-          <MetaPill icon={<Star className="h-3.5 w-3.5 fill-current" />}>
-            {Math.min(stay.starRating, 5)}-star
-          </MetaPill>
-        ) : null}
-
-        {stay.reviewsCount > 0 ? (
-          <MetaPill icon={<BedDouble className="h-3.5 w-3.5" />}>
-            {stay.reviewsCount} review{stay.reviewsCount !== 1 ? "s" : ""}
-          </MetaPill>
-        ) : null}
-      </div>
-    </div>
-  </div>
-</div>
+          <div className="mt-auto flex items-end justify-between">
+            <div>
+              <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-400">From</p>
+              <div className="flex items-baseline gap-1">
+                <p className="text-base font-bold text-zinc-900 sm:text-lg">{price}</p>
+                {stay.pricing ? (
+                  <span className="text-[11px] text-zinc-400">/night</span>
+                ) : null}
+              </div>
+            </div>
+            <span className="rounded-full bg-[#0489d1] px-3.5 py-1.5 text-[11px] font-semibold text-white transition-colors group-hover:bg-[#037ab9]">
+              View Stay
+            </span>
+          </div>
         </div>
       </article>
     </Link>
@@ -332,10 +310,13 @@ export default function CampandResorts() {
     <section className="py-16 sm:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-10 text-center sm:mb-12">
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#0489d1]">
+            Stay · Mongolia
+          </p>
           <h2 className="text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl lg:text-5xl">
             Ger Camps & Resorts
           </h2>
-          <div className="mx-auto mt-4 h-1.5 w-20 rounded-full bg-[#0489d1]" />
+          <div className="mx-auto mt-4 h-1 w-16 rounded-full bg-[#0489d1]/30" />
           <p className="mx-auto mt-5 max-w-2xl text-sm leading-6 text-zinc-600 sm:text-base">
             {subtitle}
           </p>
