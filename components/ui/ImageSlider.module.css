@@ -1,0 +1,89 @@
+.root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.track {
+  display: flex;
+  height: 100%;
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.slide {
+  position: relative;
+  flex-shrink: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Arrow buttons */
+.arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.15s;
+  color: #1c1c1e;
+}
+
+.root:hover .arrow {
+  opacity: 1;
+}
+
+.arrow:hover {
+  transform: translateY(-50%) scale(1.08);
+}
+
+.arrow:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+.arrowPrev {
+  left: 8px;
+}
+
+.arrowNext {
+  right: 8px;
+}
+
+/* Dot indicators */
+.dots {
+  position: absolute;
+  bottom: 9px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  pointer-events: none;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  border: none;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 0.25s, transform 0.25s;
+  padding: 0;
+}
+
+.dotActive {
+  background: #ffffff;
+  transform: scale(1.25);
+}

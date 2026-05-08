@@ -9,6 +9,7 @@ import {
   Heart,
   MapPin,
 } from "lucide-react";
+import ImageSlider from "@/components/ui/ImageSlider";
 import { fetchTours, type BackendTour } from "@/lib/api/tours";
 import { formatPricing, readPricing, type Pricing } from "@/lib/pricing";
 import { usePreferences } from "@/components/providers/PreferencesProvider";
@@ -110,8 +111,6 @@ function formatPrice(pricing: Pricing | null, displayCurrency: 'MNT' | 'USD'): s
 
 
 function TourCard({ tour }: { tour: RecommendedTourCardModel }) {
-  const [currentImg, setCurrentImg] = useState(0);
-  const [imgErrors, setImgErrors] = useState<Set<number>>(new Set());
   const [saved, setSaved] = useState(false);
   const { currency: displayCurrency } = usePreferences();
   const price = formatPrice(tour.pricing, displayCurrency);
@@ -131,35 +130,9 @@ function TourCard({ tour }: { tour: RecommendedTourCardModel }) {
     >
       <article className="flex h-full flex-col overflow-hidden rounded-[20px] bg-white shadow-[0_2px_16px_rgba(0,0,0,0.08)] transition-transform duration-300 hover:-translate-y-0.5 select-none">
         {/* Image gallery */}
-        <div className="relative aspect-[4/3] shrink-0 overflow-hidden bg-zinc-100">
-          {tour.imageUrls.map((url, i) => (
-            <img
-              key={i}
-              src={imgErrors.has(i) ? FALLBACK_IMAGE : url}
-              alt={i === 0 ? tour.title : ""}
-              onError={() => setImgErrors(prev => new Set([...prev, i]))}
-              draggable={false}
-              className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover transition-[transform] duration-[400ms] ease-[cubic-bezier(0.25,0.46,0.45,0.94)]"
-              style={{ transform: `translateX(${(i - currentImg) * 100}%)` }}
-            />
-          ))}
+        <div className="relative aspect-[4/3] shrink-0 bg-zinc-100">
+          <ImageSlider images={tour.imageUrls} alt={tour.title} />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[50px] bg-gradient-to-t from-black/20 to-transparent" />
-
-          {tour.imageUrls.length > 1 ? (
-            <div className="absolute inset-x-0 bottom-[9px] flex justify-center gap-[4px]">
-              {tour.imageUrls.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentImg(i); }}
-                  className={cn(
-                    "h-[5px] w-[5px] rounded-full transition-all duration-[250ms]",
-                    i === currentImg ? "scale-[1.3] bg-white" : "bg-white/50"
-                  )}
-                  aria-label={`Image ${i + 1}`}
-                />
-              ))}
-            </div>
-          ) : null}
 
           <div className="absolute left-3 top-3 flex items-center gap-1.5">
             <span className="rounded-full bg-white/90 px-[9px] py-[4px] text-[9px] font-semibold uppercase tracking-[0.07em] text-zinc-900 backdrop-blur-md">
