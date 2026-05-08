@@ -213,7 +213,7 @@ function StayCard({ stay }: { stay: StayCardModel }) {
                 ) : null}
               </div>
             </div>
-            <span className="rounded-[10px] bg-[#1c1c1e] px-[13px] py-[8px] text-[11px] font-semibold text-white transition-transform active:scale-[0.97]">
+            <span className="rounded-[10px] bg-[#0489d1] px-[13px] py-[8px] text-[11px] font-semibold text-white transition-all active:scale-[0.97] group-hover:bg-[#037ab9]">
               Book Now
             </span>
           </div>

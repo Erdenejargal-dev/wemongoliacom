@@ -208,7 +208,7 @@ function TourCard({ tour }: { tour: RecommendedTourCardModel }) {
               <p className="text-[8px] font-semibold uppercase tracking-[0.08em] text-[#aeaeb2]">From</p>
               <p className="text-[15px] font-bold leading-none tracking-[-0.02em] text-[#1c1c1e]">{price}</p>
             </div>
-            <span className="rounded-[10px] bg-[#1c1c1e] px-[13px] py-[8px] text-[11px] font-semibold text-white transition-transform active:scale-[0.97]">
+            <span className="rounded-[10px] bg-[#0489d1] px-[13px] py-[8px] text-[11px] font-semibold text-white transition-all active:scale-[0.97] group-hover:bg-[#037ab9]">
               Book Now
             </span>
           </div>
