@@ -129,7 +129,7 @@ function TourCard({ tour }: { tour: RecommendedTourCardModel }) {
       href={`/tours/${tour.slug}`}
       className="group block h-full rounded-[20px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0489d1] focus-visible:ring-offset-4"
     >
-      <article className="flex h-full flex-col overflow-hidden rounded-[20px] bg-white shadow-[0_2px_16px_rgba(0,0,0,0.08)] transition-transform duration-300 hover:-translate-y-0.5">
+      <article className="flex h-full flex-col overflow-hidden rounded-[20px] bg-white shadow-[0_2px_16px_rgba(0,0,0,0.08)] transition-transform duration-300 hover:-translate-y-0.5 select-none">
         {/* Image gallery */}
         <div className="relative aspect-[4/3] shrink-0 overflow-hidden bg-zinc-100">
           {tour.imageUrls.map((url, i) => (
@@ -138,7 +138,8 @@ function TourCard({ tour }: { tour: RecommendedTourCardModel }) {
               src={imgErrors.has(i) ? FALLBACK_IMAGE : url}
               alt={i === 0 ? tour.title : ""}
               onError={() => setImgErrors(prev => new Set([...prev, i]))}
-              className="absolute inset-0 h-full w-full object-cover transition-[transform] duration-[400ms] ease-[cubic-bezier(0.25,0.46,0.45,0.94)]"
+              draggable={false}
+              className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover transition-[transform] duration-[400ms] ease-[cubic-bezier(0.25,0.46,0.45,0.94)]"
               style={{ transform: `translateX(${(i - currentImg) * 100}%)` }}
             />
           ))}
