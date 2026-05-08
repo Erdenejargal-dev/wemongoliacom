@@ -35,7 +35,7 @@ interface RecommendedTourCardModel {
    * for this tour; the card renders a "Custom" badge in that case.
    */
   pricing: Pricing | null;
-  imageUrl: string;
+  imageUrls: string[];
   durationDays: number;
   durationNights: number;
   difficulty: string;
@@ -78,9 +78,10 @@ function mapBackendTourToCard(t: BackendTour): RecommendedTourCardModel {
       basePrice: t.basePrice,
       currency: t.currency,
     }),
-    imageUrl:
-      t.images?.find((image) => Boolean(image?.imageUrl))?.imageUrl ??
-      FALLBACK_IMAGE,
+    imageUrls: (() => {
+      const urls = (t.images ?? []).map(i => i?.imageUrl).filter((u): u is string => Boolean(u)).slice(0, 5);
+      return urls.length > 0 ? urls : [FALLBACK_IMAGE];
+    })(),
     durationDays,
     durationNights: Math.max(0, durationDays - 1),
     difficulty: normalizeDifficulty(t.difficulty),
@@ -109,7 +110,8 @@ function formatPrice(pricing: Pricing | null, displayCurrency: 'MNT' | 'USD'): s
 
 
 function TourCard({ tour }: { tour: RecommendedTourCardModel }) {
-  const [imageError, setImageError] = useState(false);
+  const [currentImg, setCurrentImg] = useState(0);
+  const [imgErrors, setImgErrors] = useState<Set<number>>(new Set());
   const [saved, setSaved] = useState(false);
   const { currency: displayCurrency } = usePreferences();
   const price = formatPrice(tour.pricing, displayCurrency);
@@ -128,15 +130,35 @@ function TourCard({ tour }: { tour: RecommendedTourCardModel }) {
       className="group block h-full rounded-[20px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0489d1] focus-visible:ring-offset-4"
     >
       <article className="flex h-full flex-col overflow-hidden rounded-[20px] bg-white shadow-[0_2px_16px_rgba(0,0,0,0.08)] transition-transform duration-300 hover:-translate-y-0.5">
-        {/* Image */}
+        {/* Image gallery */}
         <div className="relative aspect-[4/3] shrink-0 overflow-hidden bg-zinc-100">
-          <img
-            src={imageError ? FALLBACK_IMAGE : tour.imageUrl}
-            alt={tour.title}
-            onError={() => setImageError(true)}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-          />
-          <div className="absolute inset-x-0 bottom-0 h-[50px] bg-gradient-to-t from-black/20 to-transparent" />
+          {tour.imageUrls.map((url, i) => (
+            <img
+              key={i}
+              src={imgErrors.has(i) ? FALLBACK_IMAGE : url}
+              alt={i === 0 ? tour.title : ""}
+              onError={() => setImgErrors(prev => new Set([...prev, i]))}
+              className="absolute inset-0 h-full w-full object-cover transition-[transform] duration-[400ms] ease-[cubic-bezier(0.25,0.46,0.45,0.94)]"
+              style={{ transform: `translateX(${(i - currentImg) * 100}%)` }}
+            />
+          ))}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[50px] bg-gradient-to-t from-black/20 to-transparent" />
+
+          {tour.imageUrls.length > 1 ? (
+            <div className="absolute inset-x-0 bottom-[9px] flex justify-center gap-[4px]">
+              {tour.imageUrls.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentImg(i); }}
+                  className={cn(
+                    "h-[5px] w-[5px] rounded-full transition-all duration-[250ms]",
+                    i === currentImg ? "scale-[1.3] bg-white" : "bg-white/50"
+                  )}
+                  aria-label={`Image ${i + 1}`}
+                />
+              ))}
+            </div>
+          ) : null}
 
           <div className="absolute left-3 top-3 flex items-center gap-1.5">
             <span className="rounded-full bg-white/90 px-[9px] py-[4px] text-[9px] font-semibold uppercase tracking-[0.07em] text-zinc-900 backdrop-blur-md">
@@ -453,11 +475,11 @@ export default function Recommended() {
                 }}
                 className="w-full"
               >
-                <CarouselContent className="-ml-3 sm:-ml-4">
+                <CarouselContent className="-ml-[10px]">
                   {tours.map((tour) => (
                     <CarouselItem
                       key={tour.id}
-                      className="pl-3 basis-1/2 sm:pl-4 lg:basis-1/3 xl:basis-1/4"
+                      className="pl-[10px] basis-[78%] sm:basis-1/2 lg:basis-1/3 xl:basis-1/4"
                     >
                       <TourCard tour={tour} />
                     </CarouselItem>

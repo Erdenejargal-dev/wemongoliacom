@@ -37,7 +37,7 @@ interface StayCardModel {
   starRating: number | null;
   ratingAverage: number;
   reviewsCount: number;
-  imageUrl: string;
+  imageUrls: string[];
   /**
    * Phase 6.2 — cheapest room's Pricing DTO. Null when the stay has
    * no seeded room prices yet (we render "Price on request" in that
@@ -98,9 +98,10 @@ function mapBackendStayToCard(stay: BackendStay): StayCardModel {
       typeof stay.reviewsCount === "number" && Number.isFinite(stay.reviewsCount)
         ? stay.reviewsCount
         : 0,
-    imageUrl:
-      stay.images?.find((image) => Boolean(image?.imageUrl))?.imageUrl ??
-      FALLBACK_IMAGE,
+    imageUrls: (() => {
+      const urls = (stay.images ?? []).map(i => i?.imageUrl).filter((u): u is string => Boolean(u)).slice(0, 5);
+      return urls.length > 0 ? urls : [FALLBACK_IMAGE];
+    })(),
     pricing,
   };
 }
@@ -113,7 +114,8 @@ function formatPrice(pricing: Pricing | null, displayCurrency: 'MNT' | 'USD'): s
 }
 
 function StayCard({ stay }: { stay: StayCardModel }) {
-  const [imageError, setImageError] = useState(false);
+  const [currentImg, setCurrentImg] = useState(0);
+  const [imgErrors, setImgErrors] = useState<Set<number>>(new Set());
   const [saved, setSaved] = useState(false);
   const { currency: displayCurrency } = usePreferences();
   const badgeColor = TYPE_BADGE_STYLES[stay.accommodationType] ?? "bg-gray-700";
@@ -133,15 +135,35 @@ function StayCard({ stay }: { stay: StayCardModel }) {
       className="group block h-full rounded-[20px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0489d1] focus-visible:ring-offset-4"
     >
       <article className="flex h-full flex-col overflow-hidden rounded-[20px] bg-white shadow-[0_2px_16px_rgba(0,0,0,0.08)] transition-transform duration-300 hover:-translate-y-0.5">
-        {/* Image */}
+        {/* Image gallery */}
         <div className="relative aspect-[4/3] shrink-0 overflow-hidden bg-zinc-100">
-          <img
-            src={imageError ? FALLBACK_IMAGE : stay.imageUrl}
-            alt={stay.name}
-            onError={() => setImageError(true)}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-          />
-          <div className="absolute inset-x-0 bottom-0 h-[50px] bg-gradient-to-t from-black/20 to-transparent" />
+          {stay.imageUrls.map((url, i) => (
+            <img
+              key={i}
+              src={imgErrors.has(i) ? FALLBACK_IMAGE : url}
+              alt={i === 0 ? stay.name : ""}
+              onError={() => setImgErrors(prev => new Set([...prev, i]))}
+              className="absolute inset-0 h-full w-full object-cover transition-[transform] duration-[400ms] ease-[cubic-bezier(0.25,0.46,0.45,0.94)]"
+              style={{ transform: `translateX(${(i - currentImg) * 100}%)` }}
+            />
+          ))}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[50px] bg-gradient-to-t from-black/20 to-transparent" />
+
+          {stay.imageUrls.length > 1 ? (
+            <div className="absolute inset-x-0 bottom-[9px] flex justify-center gap-[4px]">
+              {stay.imageUrls.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentImg(i); }}
+                  className={cn(
+                    "h-[5px] w-[5px] rounded-full transition-all duration-[250ms]",
+                    i === currentImg ? "scale-[1.3] bg-white" : "bg-white/50"
+                  )}
+                  aria-label={`Image ${i + 1}`}
+                />
+              ))}
+            </div>
+          ) : null}
 
           <div className="absolute left-3 top-3">
             <span className={cn("rounded-full px-[9px] py-[4px] text-[9px] font-semibold uppercase tracking-[0.07em] text-white backdrop-blur-md", badgeColor)}>
@@ -395,12 +417,11 @@ export default function CampandResorts() {
                 }}
                 className="w-full"
               >
-                <CarouselContent className="-ml-4">
+                <CarouselContent className="-ml-[10px]">
                   {stays.map((stay) => (
                     <CarouselItem
                       key={stay.id}
-                                            className="pl-3 basis-1/2 sm:pl-4 lg:basis-1/3 xl:basis-1/4"
-
+                      className="pl-[10px] basis-[78%] sm:basis-1/2 lg:basis-1/3 xl:basis-1/4"
                     >
                       <StayCard stay={stay} />
                     </CarouselItem>
