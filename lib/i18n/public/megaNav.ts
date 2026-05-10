@@ -39,7 +39,7 @@ export const megaNavEn: MegaNavBundle = {
 export const megaNavMn: MegaNavBundle = {
   rootDestinations: 'Чиглэлүүд',
   rootTours: 'Аяллууд',
-  rootStays: 'Буудал, камп',
+  rootStays: 'Буудал, кэмп',
   popularTitle: 'Алдартай чиглэлүүд',
   browseTitle: 'Үзэх',
   popular: [

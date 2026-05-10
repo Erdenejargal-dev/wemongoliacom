@@ -54,7 +54,7 @@ export const hostsBrowseMn: HostsBrowseMessages = {
   heroKicker: 'Баталгаажсан операторууд',
   heroTitleLine1: 'Аяллын хөтөч',
   heroTitleLine2: 'болон орон нутгийн түншүүд',
-  heroSubtitle: 'Степь, нуруу — Монголыг бодитоор мэдэрсэн итгэлт хөтөч, аяллын компанийн сонголт.',
+  heroSubtitle: 'Тал нутаг, Өндөр нурууд — Монголыг бодитоор мэдэрүүлэх итгэлт хөтөч, аяллын компанийн сонголт.',
   heroImageAlt: 'Аяллын хөтөч, операторууд',
   searchPlaceholder: 'Нэр, байршлаар хайх…',
   featuredSection: 'Онцлох операторууд',

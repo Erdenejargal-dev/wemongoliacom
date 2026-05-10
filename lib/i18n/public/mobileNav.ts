@@ -46,9 +46,9 @@ export const mobileNavEn: PublicMobileNavCopy = {
 export const mobileNavMn: PublicMobileNavCopy = {
   allDestinations: 'Бүх чиглэл',
   discover: 'Нээх',
-  account: 'Данс',
+  account: 'Аккаунт',
   settings: 'Тохиргоо',
-  myTrips: 'Аяллын захиалга',
+  myTrips: 'Миний захиалга',
   messages: 'Мессеж',
   places: 'Газар',
   exploreMongolia: 'Монгол орноор аялах',

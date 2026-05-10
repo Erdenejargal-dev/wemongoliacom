@@ -206,8 +206,8 @@ export const onboardingMn: OnboardingMessages = {
   },
   errors: {
     profileCheckFailed: 'Профайл шалгахад алдаа гарлаа.',
-    sessionExpired: 'Нэвтрэлт дууссан. Дахин нэвтэрнэ үү.',
-    invalidSelection: 'Буцаж очоод үйлчилгээний төрлөө сонгоно уу.',
+    sessionExpired: 'Нэвтрэх хугацаа дууссан. Дахин нэвтэрнэ үү.',
+    invalidSelection: 'Буцаад үйлчилгээний төрлөө сонгоно уу.',
     submitFailed: 'Алдаа гарлаа. Дахин оролдоно уу.',
   },
   layout: {

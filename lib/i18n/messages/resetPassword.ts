@@ -43,9 +43,9 @@ export const resetPasswordEn: ResetPasswordMessages = {
 }
 
 export const resetPasswordMn: ResetPasswordMessages = {
-  backToSignIn: 'Нэвтрэх руу буцах',
+  backToSignIn: 'Нэвтрэх рүү буцах',
   title: 'Шинэ нууц үг',
-  lead: 'Өмнө нь энд ашиглаагүй, хангалттай хүчтэй нууц үг сонгоно уу.',
+  lead: 'Өмнө нь энд ашиглаагүй, хүчтэй нууц үг сонгоно уу.',
   successMessage: 'Нууц үг шинэчлэгдлээ. Шинэ нууц үгээр нэвтрэнэ үү.',
   signInCta: 'Нэвтрэх',
   newPasswordLabel: 'Шинэ нууц үг',

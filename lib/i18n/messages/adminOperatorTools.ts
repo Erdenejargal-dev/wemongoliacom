@@ -174,20 +174,20 @@ export const pricingHealthMn: AdminPricingHealthMessages = {
     paymentBlocked: 'Төлбөр түгжигдсөн захиалга',
     nonMntNote: 'Bonum MNT-зөвхөн, MNT биш валютаар',
   },
-  sectionProcessors: 'Төлбөрийн процессорууд',
+  sectionProcessors: 'Төлбөрийн сонголтууд',
   sectionFxRates: 'FX ханш',
-  sectionCurrency: 'Валюта тархалт',
+  sectionCurrency: 'Валютийн сонголтууд',
   table: { pair: 'Хослол', rate: 'Ханш', source: 'Эх сурвалж', age: 'Нас', status: 'Төлөв' },
   fxBadge: { ok: 'ok', stale: 'хуучин', missing: 'дутуу', fresh: 'шинэ', veryStale: 'маш хуучин' },
   usdMnt: {
-    title: 'Идэвхтэй USD → MNT ханш',
+    title: 'USD → MNT ханш',
     noSource: 'эх сурвалжгүй',
     updated: (age) => `шинэчилсэн ${age}`,
     manage: 'Удирдах →',
   },
   processorStatus: { live: 'идэвхтэй', stub: 'туршилт', planned: 'төлөвлөгдсөн' },
-  currencyListings: 'Жагсаалт',
-  currencyBookings: 'Төлбөрийн валутаар захиалга',
+  currencyListings: 'Валютийн жагсаалт',
+  currencyBookings: 'Төлбөрийн захиалгууд валютаар',
   listingRow: (kind, cur) => {
     const k = kind === 'tour' ? 'Аялал' : kind === 'room' ? 'Өрөө' : 'Тээвэр'
     return `${k} (${cur})`
@@ -196,7 +196,7 @@ export const pricingHealthMn: AdminPricingHealthMessages = {
   payBlocked: {
     title: 'Төлбөр түгжигдсэн захиалга',
     open: (n) => `${n} нээгдсэн`,
-    empty: 'Байхгүй — нээлттэй бүх захиалгад төлбөр татах боломжтой.',
+    empty: 'Нээлттэй бүх захиалгууд төлбөр татах боломжтой.',
     colBooking: 'Захиалга',
     colCurrency: 'Валют',
     colAmount: 'Дүн',
@@ -205,18 +205,18 @@ export const pricingHealthMn: AdminPricingHealthMessages = {
   },
   reasonCode: {
     bonum_mnt_only: 'Төлбөрийн MNT-зөвхөн (MNT биш валют)',
-    unsupported_currency: 'Процессор дэмждэггүй валют',
+    unsupported_currency: 'Хүлээн авахгүй валют',
   },
   backfill: {
-    title: 'Шийдвэрлэгдээгүй backfill тасалбар',
-    allResolved: 'Бүх backfill тасалбар шийдсэн.',
-    confirmResolve: 'Тасалбарыг хаах уу? Зөвхөн "шийдсэн" гэж тэмдэглэнэ — мөрийг өөрчлөхгүй.',
+    title: 'Шийдвэрлэгдээгүй санал гомдолууд',
+    allResolved: 'Бүх санал гомдолуудыг шийдсэн.',
+    confirmResolve: 'Санал гомдолыг хаах уу? Зөвхөн "шийдсэн" гэж тэмдэглэнэ — мөрийг өөрчлөхгүй.',
     markResolved: 'Шийдсэн гэж тэмдэглэх',
     resolving: 'Шийдэж байна…',
-    closeTooltip: 'Зөвхөн тасалбар хаана. Мөрийг өөрчлөхгүй.',
+    closeTooltip: 'Зөвхөн санал гомдолыг хаана. Мөрийг өөрчлөхгүй.',
     category: {
       missing_fx_rate: 'FX ханш дутсан',
-      unknown_units: 'Нэгж тодорхойгүй',
+      unknown_units: 'Тодорхойгүй нэгж',
       legacy_currency: 'Өмнөх валют',
       other: 'Бусад',
     },
@@ -229,7 +229,7 @@ export const pricingHealthMn: AdminPricingHealthMessages = {
     hour: (n) => `${n}цаг`,
     day: (n) => `${n}хоног`,
   },
-  resolveFailed: 'Тасалбар шийдэж чадсангүй',
+  resolveFailed: 'Санал гомдолыг шийдэж чадсангүй',
 }
 
 export const fxRatesEn: AdminFxRatesMessages = {
@@ -287,7 +287,7 @@ export const fxRatesEn: AdminFxRatesMessages = {
 
 export const fxRatesMn: AdminFxRatesMessages = {
   title: 'FX ханш',
-  subtitle: 'Төлбөрийн хөрвүүлэлтэд ашиглах USD↔MNT ханш. Мөр нэмэгдлээр л өөрчлөгдөнө — засвар нь шинэ мөр.',
+  subtitle: 'Валютын хөрвүүлэлтэд ашиглах USD↔MNT ханш. Мөр нэмэгдлээр л өөрчлөгдөнө — засвар нь шинэ мөр.',
   linkPricingHealth: '← Үнэ/FX эрүүл мэдрэмж',
   errorLoad: 'FX ханш ачаалж чадсангүй',
   cardUsdMnt: 'USD → MNT (үндсэн)',

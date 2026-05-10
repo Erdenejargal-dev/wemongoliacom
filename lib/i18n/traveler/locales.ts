@@ -172,7 +172,7 @@ export const mn: TravelerTranslations = {
   langToggleLabel: 'EN',
 
   dashboard: {
-    title:    'Удирдлагын самбар',
+    title:    'Удирдах самбар',
     subtitle: 'Аялал, захиалга, бүртгэл хянах.',
     cards: {
       trips:          { label: 'Миний аялалууд', desc: 'Захиалгуудыг харах.' },
@@ -208,7 +208,7 @@ export const mn: TravelerTranslations = {
     navDesc: {
       profile:  'Хувийн мэдээлэл & зураг',
       settings: 'Нууц үг & мэдэгдэл',
-      trips:    'Захиалга & ирэх аялал',
+      trips:    'Захиалга & аялал',
       reviews:  'Бичсэн үнэлгээнүүд',
       messages: 'Чат',
     },

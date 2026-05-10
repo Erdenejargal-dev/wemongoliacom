@@ -249,7 +249,7 @@ export const mn: ProviderTranslations = {
     pendingBookings:     (n) => `${n} захиалга хянуулахыг хүлээж байна`,
     pendingBookingsDesc: 'Нээх Захиалгыг баталгаажуулах эсвэл цуцлах',
     completeProfile:     'Бүртгэлээ гүйцэд хийнэ үү',
-    completeProfileDesc: 'Тайлбар хэсгийг бөглөснөөр харилцагчийн итгэл нэмэгдэнэ шүү :)',
+    completeProfileDesc: 'Тайлбар хэсгийг бөглөснөөр харилцагчийн итгэлцэл нэмэгдэнэ шүү :)',
     allCaughtUp:         'Бүх захиалга шийдвэрлэгдсэн',
     readyToReceive:      'Захиалга хүлээн авахад бэлэн',
     stats: {
@@ -277,7 +277,7 @@ export const mn: ProviderTranslations = {
   verification: {
     unverified: {
       title: 'Бизнес баталгаажаагүй байна',
-      desc:  'Бүрэн эрхийг нээж, аялагчийн хайлтад гарахын тулд профайлаа хяналтанд илгээнэ үү.',
+      desc:  'Бүх эрхийг нээж, аялагчийн хайлтад гарахын тулд профайлаа хяналтанд илгээнэ үү.',
       btn:   'Хяналтанд илгээх',
     },
     pendingReview: {
@@ -403,7 +403,7 @@ export const mn: ProviderTranslations = {
     title:            'Үнэлгээнүүд',
     totalDescription: (n) => `Аялагчдын сэтгэгдэл — нийт ${n} үнэлгээ`,
     refresh:          'Шинэчлэх',
-    replyBtn:         'Энэ үнэлгээнд хариу бичих',
+    replyBtn:         'Энэ үнэлгээнд хариу өгөх',
     yourReply:        'Таны хариу',
     postReply:        'Хариу илгээх',
     replyPlaceholder: 'Зочинд хариу бичнэ үү...',

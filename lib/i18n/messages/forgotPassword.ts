@@ -28,9 +28,9 @@ export const forgotPasswordEn: ForgotPasswordMessages = {
 }
 
 export const forgotPasswordMn: ForgotPasswordMessages = {
-  backToSignIn: 'Нэвтрэх руу буцах',
+  backToSignIn: 'Нэвтрэх цэс рүү буцах',
   title: 'Нууц үг сэргээх',
-  lead: 'Имэйлээ оруулбал бүртгэл байвал нууц үг сэргээх холбоос илгээнэ.',
+  lead: 'Имэйлээ оруулбал бүртгэл байгаа тохиолдолд нууц үг сэргээх холбоос илгээнэ.',
   successMessage:
     'Тийм имэйлтэй бүртгэл байвал сэргээх заавар илгээгдлээ. Имэйл, спам хавтсыг шалгана уу.',
   emailLabel: 'Имэйл',

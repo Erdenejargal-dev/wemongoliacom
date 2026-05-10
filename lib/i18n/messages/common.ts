@@ -85,11 +85,11 @@ export const commonMn: CommonMessages = {
   page:          'Хуудас',
   of:            '/',
   paginationInfo: (from, to, total) => `${total}-аас ${from}–${to} харуулж байна`,
-  accountLoadFailed: 'Дансны мэдээлэл ачаалагдсангүй. Дахин оролдоно уу.',
+  accountLoadFailed: 'Дансны мэдээлэл уншигдсангүй. Дахин оролдоно уу.',
   close:    'Хаах',
   home:     'Нүүр',
   breadcrumb: 'Навигацийн зам',
   countryOther: 'Бусад',
-  dateToBeConfirmed: 'Огноо тодорхойгүй',
+  dateToBeConfirmed: 'Огноо шийдвэрлэгдээгүй',
   yesterday: 'Өчигдөр',
 }
