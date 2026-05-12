@@ -1,8 +1,6 @@
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  ActivityIndicator,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,7 +8,9 @@ import {
   View,
 } from 'react-native';
 import { Button } from '@/components/ui/Button';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { SkeletonDetail } from '@/components/ui/Skeleton';
 import { C } from '@/constants/Colors';
 import { S } from '@/constants/Spacing';
 import { useVehicle } from '@/hooks/useVehicles';
@@ -20,16 +20,14 @@ export default function VehicleDetailScreen() {
   const router = useRouter();
   const { data: vehicle, isLoading, isError } = useVehicle(slug);
 
-  if (isLoading) {
-    return <View style={styles.loading}><ActivityIndicator color={C.blue} size="large" /></View>;
-  }
-
+  if (isLoading) return <SkeletonDetail />;
   if (isError || !vehicle) {
     return (
-      <View style={styles.loading}>
-        <Text style={styles.errText}>Could not load vehicle.</Text>
-        <Pressable onPress={() => router.back()}><Text style={styles.backLink}>← Go back</Text></Pressable>
-      </View>
+      <ErrorState
+        title="Could not load vehicle"
+        message="Check your connection and try again."
+        onRetry={() => router.back()}
+      />
     );
   }
 

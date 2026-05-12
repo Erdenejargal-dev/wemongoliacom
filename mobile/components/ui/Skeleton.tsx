@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
-import { StyleSheet, View, ViewStyle } from 'react-native';
+import { Dimensions, StyleSheet, View, ViewStyle } from 'react-native';
 import Animated, {
   cancelAnimation,
+  Easing,
   SharedValue,
   useAnimatedStyle,
   useSharedValue,
@@ -9,20 +10,27 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-// React Compiler requires that mutations of a shared value stay inside
-// the hook that created it — so we own both creation and animation here.
-function useSkeletonOpacity(): SharedValue<number> {
-  const opacity = useSharedValue(1);
+const SCREEN_W = Dimensions.get('window').width;
+
+// React Compiler: mutation and creation of shared value must live in same hook.
+function useShimmerX(): SharedValue<number> {
+  const x = useSharedValue(-SCREEN_W);
   useEffect(() => {
-    opacity.value = withRepeat(withTiming(0.4, { duration: 600 }), -1, true);
-    return () => cancelAnimation(opacity);
+    x.value = withRepeat(
+      withTiming(SCREEN_W, { duration: 1200, easing: Easing.linear }),
+      -1,
+      false,
+    );
+    return () => cancelAnimation(x);
   }, []);
-  return opacity;
+  return x;
 }
 
 export function Skeleton({ style }: { style?: ViewStyle }) {
-  const opacity = useSkeletonOpacity();
-  const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  const x = useShimmerX();
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: x.value }],
+  }));
 
   return (
     <View style={[styles.base, style]}>
@@ -31,13 +39,49 @@ export function Skeleton({ style }: { style?: ViewStyle }) {
   );
 }
 
-// Preset shapes
+// ── Preset shapes ──────────────────────────────────────────────────────────
+
 export function SkeletonCard({ style }: { style?: ViewStyle }) {
   return <Skeleton style={[styles.card, style]} />;
 }
 
 export function SkeletonText({ width, style }: { width?: number | string; style?: ViewStyle }) {
   return <Skeleton style={[styles.text, width ? { width } : {}, style]} />;
+}
+
+// Full detail-screen skeleton: hero + content lines
+export function SkeletonDetail() {
+  return (
+    <View style={styles.detail}>
+      <Skeleton style={styles.detailHero} />
+      <View style={styles.detailBody}>
+        <Skeleton style={[styles.text, { width: '60%', height: 20, borderRadius: 8 }]} />
+        <Skeleton style={[styles.text, { width: '40%', marginTop: 10 }]} />
+        <View style={styles.detailRow}>
+          <Skeleton style={[styles.badge]} />
+          <Skeleton style={[styles.badge]} />
+          <Skeleton style={[styles.badge]} />
+        </View>
+        <Skeleton style={[styles.text, { width: '100%', marginTop: 20, height: 12 }]} />
+        <Skeleton style={[styles.text, { width: '90%', marginTop: 8, height: 12 }]} />
+        <Skeleton style={[styles.text, { width: '80%', marginTop: 8, height: 12 }]} />
+        <Skeleton style={[styles.text, { width: '70%', marginTop: 8, height: 12 }]} />
+      </View>
+    </View>
+  );
+}
+
+// Row skeleton for search/list results
+export function SkeletonRow() {
+  return (
+    <View style={styles.row}>
+      <Skeleton style={styles.rowThumb} />
+      <View style={styles.rowLines}>
+        <Skeleton style={[styles.text, { width: '65%', height: 13 }]} />
+        <Skeleton style={[styles.text, { width: '45%', marginTop: 6, height: 11 }]} />
+      </View>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -47,7 +91,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   shimmer: {
-    backgroundColor: '#EFF7FD',
+    backgroundColor: 'rgba(255,255,255,0.55)',
+    width: SCREEN_W,
   },
   card: {
     height: 160,
@@ -58,4 +103,20 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     width: '70%',
   },
+  // Detail
+  detail: { flex: 1, backgroundColor: '#EFF7FD' },
+  detailHero: { width: '100%', height: 320, borderRadius: 0 },
+  detailBody: { padding: 20, gap: 0 },
+  detailRow: { flexDirection: 'row', gap: 8, marginTop: 16 },
+  badge: { width: 72, height: 28, borderRadius: 100 },
+  // Row
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  rowThumb: { width: 48, height: 48, borderRadius: 10 },
+  rowLines: { flex: 1 },
 });

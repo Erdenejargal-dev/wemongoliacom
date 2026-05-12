@@ -1,4 +1,10 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { C } from '@/constants/Colors';
 
 export function FilterPill({
@@ -12,6 +18,9 @@ export function FilterPill({
   onPress: () => void;
   dark?: boolean;
 }) {
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
   const bg = dark
     ? active ? C.blue   : C.navy
     : active ? C.blue   : C.bgPage;
@@ -21,14 +30,19 @@ export function FilterPill({
     : active ? '#FFFFFF' : C.textMuted;
 
   return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.pill, { backgroundColor: bg }, !dark && !active && styles.lightBorder]}
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-    >
-      <Text style={[styles.text, { color }]}>{label}</Text>
-    </Pressable>
+    <Animated.View style={animStyle}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={() => { scale.value = withTiming(0.93, { duration: 100 }); }}
+        onPressOut={() => { scale.value = withSpring(1, { damping: 15, stiffness: 300 }); }}
+        style={[styles.pill, { backgroundColor: bg }, !dark && !active && styles.lightBorder]}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ selected: active }}
+      >
+        <Text style={[styles.text, { color }]}>{label}</Text>
+      </Pressable>
+    </Animated.View>
   );
 }
 

@@ -1,8 +1,6 @@
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  ActivityIndicator,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,6 +13,8 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { C } from '@/constants/Colors';
 import { S } from '@/constants/Spacing';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { SkeletonDetail } from '@/components/ui/Skeleton';
 import { useTour } from '@/hooks/useTours';
 
 export default function TourDetailScreen() {
@@ -22,22 +22,14 @@ export default function TourDetailScreen() {
   const router = useRouter();
   const { data: tour, isLoading, isError } = useTour(slug);
 
-  if (isLoading) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator color={C.blue} size="large" />
-      </View>
-    );
-  }
-
+  if (isLoading) return <SkeletonDetail />;
   if (isError || !tour) {
     return (
-      <View style={styles.loading}>
-        <Text style={styles.errText}>Could not load tour.</Text>
-        <Pressable onPress={() => router.back()}>
-          <Text style={styles.backLink}>← Go back</Text>
-        </Pressable>
-      </View>
+      <ErrorState
+        title="Could not load tour"
+        message="Check your connection and try again."
+        onRetry={() => router.back()}
+      />
     );
   }
 

@@ -1,12 +1,39 @@
-import { ReactNode, useEffect, useRef } from 'react';
-import {
-  Animated,
-  Modal,
-  Pressable,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { ReactNode, useEffect } from 'react';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import Animated, {
+  cancelAnimation,
+  SharedValue,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { C } from '@/constants/Colors';
+
+// React Compiler: keep creation + mutation of shared values inside one hook.
+function useSheetAnimation(visible: boolean): {
+  translateY: SharedValue<number>;
+  backdropOpacity: SharedValue<number>;
+} {
+  const translateY = useSharedValue(500);
+  const backdropOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    if (visible) {
+      translateY.value = withSpring(0, { damping: 28, stiffness: 180, overshootClamping: true });
+      backdropOpacity.value = withTiming(1, { duration: 220 });
+    } else {
+      translateY.value = withTiming(500, { duration: 260 });
+      backdropOpacity.value = withTiming(0, { duration: 200 });
+    }
+    return () => {
+      cancelAnimation(translateY);
+      cancelAnimation(backdropOpacity);
+    };
+  }, [visible]);
+
+  return { translateY, backdropOpacity };
+}
 
 export function BottomSheet({
   visible,
@@ -17,39 +44,14 @@ export function BottomSheet({
   onClose: () => void;
   children: ReactNode;
 }) {
-  const translateY = useRef(new Animated.Value(500)).current;
-  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const { translateY, backdropOpacity } = useSheetAnimation(visible);
 
-  useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.spring(translateY, {
-          toValue: 0,
-          useNativeDriver: true,
-          damping: 30,
-          stiffness: 200,
-        }),
-        Animated.timing(backdropOpacity, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(translateY, {
-          toValue: 500,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(backdropOpacity, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [visible]);
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+  const backdropStyle = useAnimatedStyle(() => ({
+    opacity: backdropOpacity.value,
+  }));
 
   return (
     <Modal
@@ -61,14 +63,18 @@ export function BottomSheet({
     >
       <View style={styles.container}>
         <Animated.View
-          style={[styles.backdrop, { opacity: backdropOpacity }]}
+          style={[styles.backdrop, backdropStyle]}
           pointerEvents={visible ? 'auto' : 'none'}
         >
-          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          />
         </Animated.View>
 
-        <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
-          {/* Handle bar */}
+        <Animated.View style={[styles.sheet, sheetStyle]}>
           <View style={styles.handle} />
           {children}
         </Animated.View>
@@ -88,16 +94,16 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingBottom: 40,
     paddingHorizontal: 20,
     paddingTop: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 12,
   },
   handle: {
     width: 32,

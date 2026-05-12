@@ -1,7 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   StyleSheet,
@@ -12,6 +11,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SkeletonRow } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/Button';
 import { FilterPill } from '@/components/ui/FilterPill';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -169,8 +169,8 @@ export default function SearchScreen() {
 
       {/* Results */}
       {isLoading && debouncedQuery.length > 1 ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={C.blue} />
+        <View style={styles.skeletonList}>
+          {Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)}
         </View>
       ) : debouncedQuery.length <= 1 ? (
         // Empty state — show category chips
@@ -197,7 +197,7 @@ export default function SearchScreen() {
         <>
           {isFetching && (
             <View style={styles.fetchingBar}>
-              <ActivityIndicator size="small" color={C.blue} />
+              <SkeletonRow />
             </View>
           )}
           <FlatList
@@ -364,7 +364,8 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope_600SemiBold',
   },
   noResultsSub: { fontSize: 13, color: C.textMuted, fontFamily: 'Manrope_400Regular' },
-  fetchingBar: { alignItems: 'center', paddingVertical: 8 },
+  fetchingBar: { paddingVertical: 4 },
+  skeletonList: { flex: 1, paddingTop: 8 },
   moreText: {
     fontSize: 12,
     color: C.textSubtle,

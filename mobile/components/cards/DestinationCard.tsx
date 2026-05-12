@@ -1,8 +1,15 @@
 // Design.md §7.2 — Destination Cards
 import { Image } from 'expo-image';
-import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { C } from '@/constants/Colors';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { C } from '@/constants/Colors';
 
 export type DestinationCardData = {
   id: string;
@@ -22,57 +29,58 @@ export function DestinationCard({
   onPress: () => void;
   style?: object;
 }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.card, style]}
-      accessibilityRole="button"
-      accessibilityLabel={`${item.name}${item.location ? ', ' + item.location : ''}`}
-    >
-      {/* Image */}
-      <View style={styles.imageWrap}>
-        <Image
-          source={item.image ? { uri: item.image } : require('@/assets/images/splash-icon.png')}
-          style={styles.image}
-          contentFit="cover"
-          transition={200}
-        />
-        {/* Arrow — top-right */}
-        <TouchableOpacity
-          onPress={onPress}
-          style={styles.arrowBtn}
-          accessibilityLabel={`Open ${item.name}`}
-          accessibilityRole="button"
-          hitSlop={8}
-        >
-          <IconSymbol name="arrow.up.right" size={12} color="#FFFFFF" />
-        </TouchableOpacity>
-        {/* Rating — bottom-left overlay */}
-        {item.rating != null && (
-          <View style={styles.ratingBadge}>
-            <Text style={styles.ratingText}>★ {item.rating.toFixed(1)}</Text>
-          </View>
-        )}
-      </View>
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
-      {/* Info */}
-      <View style={styles.info}>
-        <Text style={styles.title} numberOfLines={1}>{item.name}</Text>
-        {item.location && (
-          <Text style={styles.location} numberOfLines={1}>{item.location}</Text>
-        )}
-      </View>
-    </Pressable>
+  return (
+    <Animated.View style={[styles.card, style, animStyle]}>
+      <TouchableOpacity
+        onPress={onPress}
+        onPressIn={() => { scale.value = withTiming(0.97, { duration: 120 }); }}
+        onPressOut={() => { scale.value = withSpring(1, { damping: 15, stiffness: 300 }); }}
+        activeOpacity={1}
+        accessibilityRole="button"
+        accessibilityLabel={`${item.name}${item.location ? ', ' + item.location : ''}`}
+      >
+        {/* Image */}
+        <View style={styles.imageWrap}>
+          <Image
+            source={item.image ? { uri: item.image } : require('@/assets/images/splash-icon.png')}
+            style={styles.image}
+            contentFit="cover"
+            transition={200}
+          />
+          {/* Arrow — top-right */}
+          <View style={styles.arrowBtn} pointerEvents="none">
+            <IconSymbol name="arrow.up.right" size={12} color="#FFFFFF" />
+          </View>
+          {/* Rating — bottom-left overlay */}
+          {item.rating != null && (
+            <View style={styles.ratingBadge}>
+              <Text style={styles.ratingText}>★ {item.rating.toFixed(1)}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Info */}
+        <View style={styles.info}>
+          <Text style={styles.title} numberOfLines={1}>{item.name}</Text>
+          {item.location && (
+            <Text style={styles.location} numberOfLines={1}>{item.location}</Text>
+          )}
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
 export function DestinationCardSkeleton({ style }: { style?: object }) {
   return (
     <View style={[styles.card, style]}>
-      <View style={[styles.imageWrap, styles.skeletonImg]} />
+      <Skeleton style={styles.imageWrap} />
       <View style={styles.info}>
-        <View style={styles.skeletonTitle} />
-        <View style={styles.skeletonSub} />
+        <Skeleton style={{ height: 13, width: '75%', borderRadius: 6 }} />
+        <Skeleton style={{ height: 11, width: '50%', borderRadius: 5, marginTop: 6 }} />
       </View>
     </View>
   );
@@ -88,7 +96,6 @@ const styles = StyleSheet.create({
   },
   imageWrap: {
     height: 120,
-    position: 'relative',
   },
   image: {
     width: '100%',
@@ -123,6 +130,7 @@ const styles = StyleSheet.create({
   info: {
     padding: 10,
     paddingHorizontal: 12,
+    gap: 0,
   },
   title: {
     fontSize: 13,
@@ -135,20 +143,5 @@ const styles = StyleSheet.create({
     color: C.textMuted,
     marginTop: 2,
     fontFamily: 'Manrope_400Regular',
-  },
-  // skeleton
-  skeletonImg: { backgroundColor: '#D0ECFA' },
-  skeletonTitle: {
-    height: 12,
-    width: '75%',
-    backgroundColor: '#D0ECFA',
-    borderRadius: 6,
-    marginBottom: 6,
-  },
-  skeletonSub: {
-    height: 10,
-    width: '50%',
-    backgroundColor: '#EFF7FD',
-    borderRadius: 5,
   },
 });

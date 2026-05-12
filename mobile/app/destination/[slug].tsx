@@ -3,8 +3,6 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-  ActivityIndicator,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,6 +15,8 @@ import { FilterPill } from '@/components/ui/FilterPill';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { C } from '@/constants/Colors';
 import { S } from '@/constants/Spacing';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { SkeletonDetail } from '@/components/ui/Skeleton';
 import { useDestination } from '@/hooks/useDestinations';
 
 const TABS = ['Description', 'Tour Partners', 'Moments'];
@@ -27,22 +27,14 @@ export default function DestinationDetailScreen() {
   const { data: dest, isLoading, isError } = useDestination(slug);
   const [activeTab, setActiveTab] = useState('Description');
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingScreen}>
-        <ActivityIndicator color={C.blue} size="large" />
-      </View>
-    );
-  }
-
+  if (isLoading) return <SkeletonDetail />;
   if (isError || !dest) {
     return (
-      <View style={styles.loadingScreen}>
-        <Text style={styles.errorText}>Could not load destination.</Text>
-        <Pressable onPress={() => router.back()}>
-          <Text style={styles.backLink}>← Go back</Text>
-        </Pressable>
-      </View>
+      <ErrorState
+        title="Could not load destination"
+        message="Check your connection and try again."
+        onRetry={() => router.back()}
+      />
     );
   }
 
