@@ -83,7 +83,7 @@ export const registerAccountEn: RegisterAccountMessages = {
     errorMismatch: 'Passwords do not match.',
     errorGeneric: 'Failed to create account. Please try again.',
     panelBadge: 'Partner with WeMongolia',
-    panelHeading: 'Grow your Mongolian tourism business',
+    panelHeading: 'Grow your tourism business',
     panelSubtitle:
       'List tours and stays, reach global travelers, and manage bookings in one place.',
     trustItems: [

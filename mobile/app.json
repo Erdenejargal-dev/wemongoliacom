@@ -1,17 +1,24 @@
 {
   "expo": {
-    "name": "mobile",
+    "name": "WeMongolia",
     "slug": "wemongolia",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
-    "userInterfaceStyle": "automatic",
+    "scheme": "wemongolia",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.wemongolia.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "WeMongolia uses your location to show nearby destinations and tours.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "WeMongolia uses your location to show nearby destinations and tours."
+      }
     },
     "android": {
+      "package": "com.wemongolia.app",
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -40,7 +47,8 @@
         }
       ],
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      "expo-location"
     ],
     "experiments": {
       "typedRoutes": true,

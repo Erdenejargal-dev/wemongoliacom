@@ -14,10 +14,41 @@ type IconSymbolName = keyof typeof MAPPING;
  * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
  */
 const MAPPING = {
-  'house.fill': 'home',
-  'paperplane.fill': 'send',
-  'chevron.left.forwardslash.chevron.right': 'code',
-  'chevron.right': 'chevron-right',
+  // Nav
+  'house.fill':                             'home',
+  'sparkles':                               'auto-awesome',
+  'map.fill':                               'map',
+  'bookmark.fill':                          'bookmark',
+  'square.grid.2x2.fill':                   'apps',
+  // Common UI
+  'magnifyingglass':                        'search',
+  'bell':                                   'notifications-none',
+  'bell.fill':                              'notifications',
+  'person.fill':                            'person',
+  'heart.fill':                             'favorite',
+  'arrow.up.right':                         'open-in-new',
+  'star.fill':                              'star',
+  'location.fill':                          'place',
+  'xmark':                                  'close',
+  'checkmark':                              'check',
+  'chevron.left':                           'chevron-left',
+  'chevron.right':                          'chevron-right',
+  'chevron.down':                           'expand-more',
+  'slider.horizontal.3':                    'tune',
+  'calendar':                               'calendar-today',
+  'creditcard.fill':                        'credit-card',
+  'airplane':                               'flight',
+  'building.2.fill':                        'apartment',
+  'car.fill':                               'directions-car',
+  'paperplane.fill':                        'send',
+  'chevron.left.forwardslash.chevron.right':'code',
+  'globe':                                  'language',
+  'phone.fill':                             'phone',
+  'envelope.fill':                          'email',
+  'trash.fill':                             'delete',
+  'pencil':                                 'edit',
+  'square.and.arrow.up':                    'share',
+  'info.circle':                            'info',
 } as IconMapping;
 
 /**

@@ -1,24 +1,71 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import {
+  Manrope_400Regular,
+  Manrope_600SemiBold,
+  Manrope_700Bold,
+  useFonts,
+} from '@expo-google-fonts/manrope';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { Stack, useRouter, useSegments } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { useEffect } from 'react';
+import { useAuthStore } from '@/stores/auth.store';
+import { queryClient } from '@/lib/queryClient';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
+SplashScreen.preventAutoHideAsync();
 
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+function RouteGuard() {
+  const { user, isLoading } = useAuthStore();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoading) return;
+    const inAuth = segments[0] === '(auth)';
+    if (!user && !inAuth) router.replace('/(auth)/login');
+    if (user && inAuth) router.replace('/(tabs)');
+  }, [user, isLoading, segments]);
+
+  return null;
+}
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const hydrate = useAuthStore((s) => s.hydrate);
+  const [fontsLoaded] = useFonts({
+    Manrope_400Regular,
+    Manrope_600SemiBold,
+    Manrope_700Bold,
+  });
+
+  useEffect(() => { hydrate(); }, []);
+
+  useEffect(() => {
+    if (fontsLoaded) SplashScreen.hideAsync();
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) return null;
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+    <QueryClientProvider client={queryClient}>
+      <RouteGuard />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="search" options={{ animation: 'fade' }} />
+        <Stack.Screen name="destination/[slug]" />
+        <Stack.Screen name="tour/[slug]" />
+        <Stack.Screen name="stay/[slug]" />
+        <Stack.Screen name="vehicle/[slug]" />
+        <Stack.Screen name="booking/select-dates" />
+        <Stack.Screen name="booking/travelers" />
+        <Stack.Screen name="booking/confirm" />
+        <Stack.Screen name="booking/payment" />
+        <Stack.Screen name="notifications" />
+        <Stack.Screen name="wishlist" />
+        <Stack.Screen name="account" />
+        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+      <StatusBar style="dark" />
+    </QueryClientProvider>
   );
 }
