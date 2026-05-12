@@ -56,14 +56,11 @@ export default function RootLayout() {
         <Stack.Screen name="tour/[slug]" />
         <Stack.Screen name="stay/[slug]" />
         <Stack.Screen name="vehicle/[slug]" />
-        <Stack.Screen name="booking/select-dates" />
-        <Stack.Screen name="booking/travelers" />
-        <Stack.Screen name="booking/confirm" />
-        <Stack.Screen name="booking/payment" />
+        <Stack.Screen name="booking" />
+        <Stack.Screen name="conversation/[id]" />
         <Stack.Screen name="notifications" />
         <Stack.Screen name="wishlist" />
         <Stack.Screen name="account" />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
       <StatusBar style="dark" />
     </QueryClientProvider>

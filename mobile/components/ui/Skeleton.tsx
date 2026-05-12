@@ -1,23 +1,27 @@
 import { useEffect } from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
 import Animated, {
+  cancelAnimation,
+  SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
 
-export function Skeleton({ style }: { style?: ViewStyle }) {
+// React Compiler requires that mutations of a shared value stay inside
+// the hook that created it — so we own both creation and animation here.
+function useSkeletonOpacity(): SharedValue<number> {
   const opacity = useSharedValue(1);
-
   useEffect(() => {
-    opacity.value = withRepeat(
-      withTiming(0.4, { duration: 600 }),
-      -1,
-      true
-    );
+    opacity.value = withRepeat(withTiming(0.4, { duration: 600 }), -1, true);
+    return () => cancelAnimation(opacity);
   }, []);
+  return opacity;
+}
 
+export function Skeleton({ style }: { style?: ViewStyle }) {
+  const opacity = useSkeletonOpacity();
   const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
   return (
