@@ -32,7 +32,7 @@ export default function LoginScreen() {
     } catch (err: any) {
       Alert.alert(
         'Sign in failed',
-        err.response?.data?.message ?? 'Check your credentials and try again.'
+        err.response?.data?.error ?? 'Check your credentials and try again.'
       );
     } finally {
       setLoading(false);

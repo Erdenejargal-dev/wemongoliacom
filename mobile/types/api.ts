@@ -54,10 +54,13 @@ export type Stay = {
 
 export type User = {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   role: string;
-  avatar?: string;
+  avatarUrl?: string;
+  preferredLanguage?: string;
+  preferredCurrency?: string;
 };
 
 export type Booking = {

@@ -19,7 +19,7 @@ export default function MoreScreen() {
       <View style={styles.header}>
         <View style={styles.avatar} />
         <View>
-          <Text style={styles.name}>{user?.name ?? 'Traveler'}</Text>
+          <Text style={styles.name}>{user ? `${user.firstName} ${user.lastName}` : 'Traveler'}</Text>
           <Text style={styles.email}>{user?.email ?? ''}</Text>
         </View>
       </View>

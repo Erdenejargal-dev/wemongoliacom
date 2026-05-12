@@ -69,9 +69,9 @@ export default function HomeScreen() {
               accessibilityLabel="Profile"
               accessibilityRole="button"
             >
-              {user?.avatar ? null : (
+              {user?.avatarUrl ? null : (
                 <Text style={styles.avatarInitial}>
-                  {user?.name?.charAt(0).toUpperCase() ?? 'T'}
+                  {user?.firstName?.charAt(0).toUpperCase() ?? 'T'}
                 </Text>
               )}
             </TouchableOpacity>

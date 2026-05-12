@@ -18,13 +18,14 @@ import { api } from '@/lib/api';
 export default function RegisterScreen() {
   const router = useRouter();
   const login = useAuthStore((s) => s.login);
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function handleRegister() {
-    if (!name.trim() || !email.trim() || !password) return;
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password) return;
     if (password.length < 8) {
       Alert.alert('Weak password', 'Password must be at least 8 characters.');
       return;
@@ -32,13 +33,14 @@ export default function RegisterScreen() {
     setLoading(true);
     try {
       const { data } = await api.post('/auth/register', {
-        name: name.trim(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         email: email.trim(),
         password,
       });
       await login(data.user, data.accessToken, data.refreshToken);
     } catch (err: any) {
-      Alert.alert('Registration failed', err.response?.data?.message ?? 'Please try again.');
+      Alert.alert('Registration failed', err.response?.data?.error ?? 'Please try again.');
     } finally {
       setLoading(false);
     }
@@ -62,12 +64,21 @@ export default function RegisterScreen() {
         <Text style={styles.sub}>Join WeMongolia to book tours, stays & vehicles</Text>
 
         <Input
-          label="Full name"
-          placeholder="Your name"
-          value={name}
-          onChangeText={setName}
+          label="First name"
+          placeholder="First name"
+          value={firstName}
+          onChangeText={setFirstName}
           autoCapitalize="words"
-          autoComplete="name"
+          autoComplete="given-name"
+          containerStyle={styles.field}
+        />
+        <Input
+          label="Last name"
+          placeholder="Last name"
+          value={lastName}
+          onChangeText={setLastName}
+          autoCapitalize="words"
+          autoComplete="family-name"
           containerStyle={styles.field}
         />
         <Input

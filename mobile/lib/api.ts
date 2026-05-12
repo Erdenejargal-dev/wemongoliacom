@@ -15,7 +15,13 @@ let isRefreshing = false;
 let waitQueue: ((token: string) => void)[] = [];
 
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    // Unwrap standard { success: true, data: ... } envelope
+    if (res.data && typeof res.data === 'object' && 'success' in res.data && 'data' in res.data) {
+      res.data = res.data.data;
+    }
+    return res;
+  },
   async (error) => {
     const original = error.config;
     if (error.response?.status !== 401 || original._retry) return Promise.reject(error);
@@ -36,7 +42,7 @@ api.interceptors.response.use(
       if (!refreshToken) throw new Error('No refresh token');
 
       const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken });
-      const newToken: string = data.accessToken;
+      const newToken: string = (data.data ?? data).accessToken;
 
       await SecureStore.setItemAsync('accessToken', newToken);
       waitQueue.forEach((cb) => cb(newToken));
