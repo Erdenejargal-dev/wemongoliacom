@@ -32,9 +32,22 @@ function RouteGuard() {
 
   useEffect(() => {
     if (isLoading) return;
-    const inAuth = segments[0] === '(auth)';
-    if (!user && !inAuth) router.replace('/(auth)/login');
-    if (user && inAuth) router.replace('/(tabs)');
+    const inAuth     = segments[0] === '(auth)';
+    const inTabs     = segments[0] === '(tabs)';
+    const inProvider = segments[0] === '(provider)';
+    const isProvider = user?.role === 'provider_owner';
+
+    if (!user && !inAuth) {
+      router.replace('/(auth)/login');
+      return;
+    }
+    if (user && inAuth) {
+      router.replace(isProvider ? '/(provider)' : '/(tabs)');
+      return;
+    }
+    // Cross-role guard: provider landing in traveler tabs or vice-versa
+    if (user && isProvider && inTabs)     router.replace('/(provider)');
+    if (user && !isProvider && inProvider) router.replace('/(tabs)');
   }, [user, isLoading, segments]);
 
   return null;
@@ -68,8 +81,9 @@ function RootLayout() {
           contentStyle: { backgroundColor: '#EFF7FD' },
         }}
       >
-        <Stack.Screen name="(tabs)" options={{ animation: 'none' }} />
-        <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
+        <Stack.Screen name="(tabs)"     options={{ animation: 'none' }} />
+        <Stack.Screen name="(provider)" options={{ animation: 'none' }} />
+        <Stack.Screen name="(auth)"     options={{ animation: 'fade' }} />
         <Stack.Screen name="search" options={{ animation: 'fade' }} />
         <Stack.Screen name="destination/[slug]" />
         <Stack.Screen name="tour/[slug]" />
@@ -80,6 +94,10 @@ function RootLayout() {
         <Stack.Screen name="notifications" />
         <Stack.Screen name="wishlist" />
         <Stack.Screen name="account" />
+        <Stack.Screen name="provider/booking/[code]" />
+        <Stack.Screen name="provider/tour/[id]" />
+        <Stack.Screen name="provider/tour/create" options={{ animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="provider/accommodation/[id]" />
       </Stack>
       <StatusBar style="dark" />
     </QueryClientProvider>

@@ -46,6 +46,8 @@ const MAPPING = {
   'phone.fill':                             'phone',
   'envelope.fill':                          'email',
   'trash.fill':                             'delete',
+  'trash':                                  'delete',
+  'plus':                                   'add',
   'pencil':                                 'edit',
   'square.and.arrow.up':                    'share',
   'info.circle':                            'info',

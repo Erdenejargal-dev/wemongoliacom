@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -19,6 +20,7 @@ import { api } from '@/lib/api';
 export default function LoginScreen() {
   const router = useRouter();
   const login = useAuthStore((s) => s.login);
+  const [mode, setMode] = useState<'traveler' | 'provider'>('traveler');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -53,6 +55,23 @@ export default function LoginScreen() {
         <View style={styles.brand}>
           <Text style={styles.brandName}>WeMongolia</Text>
           <Text style={styles.brandTagline}>Discover Mongolia's wonders</Text>
+        </View>
+
+        {/* Mode toggle */}
+        <View style={styles.modeWrap}>
+          {(['traveler', 'provider'] as const).map((m) => (
+            <TouchableOpacity
+              key={m}
+              style={[styles.modeTab, mode === m && styles.modeTabActive]}
+              onPress={() => setMode(m)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: mode === m }}
+            >
+              <Text style={[styles.modeText, mode === m && styles.modeTextActive]}>
+                {m === 'traveler' ? 'Traveler' : 'Provider'}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         {/* Form */}
@@ -133,6 +152,34 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontFamily: 'Manrope_400Regular',
   },
+  modeWrap: {
+    flexDirection: 'row',
+    backgroundColor: '#E8F4FC',
+    borderRadius: 12,
+    padding: 3,
+    marginBottom: 28,
+  },
+  modeTab: {
+    flex: 1,
+    paddingVertical: 9,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  modeTabActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  modeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: C.textSubtle,
+    fontFamily: 'Manrope_600SemiBold',
+  },
+  modeTextActive: { color: C.textPrimary },
   form: {},
   field: { marginBottom: 16 },
   forgotRow: { alignItems: 'flex-end', marginBottom: 24 },
