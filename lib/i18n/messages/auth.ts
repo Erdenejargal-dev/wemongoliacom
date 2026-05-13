@@ -76,7 +76,7 @@ export const authEn: AuthMessages = {
     errorInvalid:     'Invalid email or password. Please try again.',
     errorGeneric:     'Something went wrong. Please try again.',
     panelBadge:       'Partner with WeMongolia',
-    panelHeading:     'Grow your Mongolian tourism business',
+    panelHeading:     'Grow your tourism business',
     panelSubtitle:
       'List tours and stays, reach global travelers, and manage bookings in one place.',
     trustItems: [
