@@ -7,6 +7,15 @@ import Animated, {
 } from 'react-native-reanimated';
 import { C } from '@/constants/Colors';
 
+function usePressScale() {
+  'use no memo';
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const onPressIn = () => { scale.value = withTiming(0.93, { duration: 100 }); };
+  const onPressOut = () => { scale.value = withSpring(1, { damping: 15, stiffness: 300 }); };
+  return { animStyle, onPressIn, onPressOut };
+}
+
 export function FilterPill({
   label,
   active,
@@ -18,8 +27,7 @@ export function FilterPill({
   onPress: () => void;
   dark?: boolean;
 }) {
-  const scale = useSharedValue(1);
-  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const { animStyle, onPressIn, onPressOut } = usePressScale();
 
   const bg = dark
     ? active ? C.blue   : C.navy
@@ -33,8 +41,8 @@ export function FilterPill({
     <Animated.View style={animStyle}>
       <Pressable
         onPress={onPress}
-        onPressIn={() => { scale.value = withTiming(0.93, { duration: 100 }); }}
-        onPressOut={() => { scale.value = withSpring(1, { damping: 15, stiffness: 300 }); }}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
         style={[styles.pill, { backgroundColor: bg }, !dark && !active && styles.lightBorder]}
         accessibilityRole="button"
         accessibilityLabel={label}

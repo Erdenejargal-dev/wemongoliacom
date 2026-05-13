@@ -12,8 +12,8 @@ import Animated, {
 
 const SCREEN_W = Dimensions.get('window').width;
 
-// React Compiler: mutation and creation of shared value must live in same hook.
 function useShimmerX(): SharedValue<number> {
+  'use no memo';
   const x = useSharedValue(-SCREEN_W);
   useEffect(() => {
     x.value = withRepeat(

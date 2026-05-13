@@ -2,18 +2,15 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-  FlatList,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { useQuery } from '@tanstack/react-query';
-import { Badge } from '@/components/ui/Badge';
 import { FilterPill } from '@/components/ui/FilterPill';
-import { SkeletonCard, SkeletonText } from '@/components/ui/Skeleton';
+import { TripCard, TripCardSkeleton } from '@/components/cards/TripCard';
 import { ScreenLayout } from '@/components/layout/ScreenLayout';
 import { C } from '@/constants/Colors';
 import { S } from '@/constants/Spacing';
@@ -31,55 +28,6 @@ function useBookings() {
   });
 }
 
-function TripCard({ booking }: { booking: Booking }) {
-  const router = useRouter();
-  return (
-    <TouchableOpacity
-      style={styles.tripCard}
-      onPress={() => {}}
-      accessibilityRole="button"
-      accessibilityLabel={booking.listingName}
-    >
-      <View style={styles.tripImg}>
-        <Image
-          source={booking.listingImage ? { uri: booking.listingImage } : require('@/assets/images/splash-icon.png')}
-          style={{ width: '100%', height: '100%' }}
-          contentFit="cover"
-        />
-        <View style={styles.tripOverlay} />
-        {/* Confirmed badge */}
-        <View style={styles.tripBadge}>
-          <Badge
-            label={booking.status === 'confirmed' ? 'Confirmed' : booking.status}
-            variant={booking.status === 'confirmed' ? 'confirmed' : 'inProgress'}
-          />
-        </View>
-      </View>
-      <View style={styles.tripInfo}>
-        <Text style={styles.tripName} numberOfLines={1}>{booking.listingName}</Text>
-        <Text style={styles.tripDate}>{booking.startDate}{booking.endDate ? ` – ${booking.endDate}` : ''}</Text>
-        <View style={styles.tripFooter}>
-          <Text style={styles.tripPrice}>${booking.totalPrice} {booking.currency}</Text>
-          <TouchableOpacity style={styles.viewBtn} accessibilityRole="button">
-            <Text style={styles.viewBtnText}>View itinerary</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-function TripCardSkeleton() {
-  return (
-    <View style={[styles.tripCard, { overflow: 'hidden' }]}>
-      <SkeletonCard style={{ height: 160, borderRadius: 0 }} />
-      <View style={{ padding: 14, gap: 8 }}>
-        <SkeletonText width="70%" />
-        <SkeletonText width="45%" />
-      </View>
-    </View>
-  );
-}
 
 export default function TripsScreen() {
   const router = useRouter();
@@ -200,31 +148,6 @@ const styles = StyleSheet.create({
 
   tabRow: { flexDirection: 'row', gap: S[2], marginBottom: S[3] },
   subRow: { gap: S[2], marginBottom: S[4] },
-
-  // Trip card
-  tripCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 0.5,
-    borderColor: '#D5E8F5',
-    overflow: 'hidden',
-    marginBottom: S[3],
-  },
-  tripImg: { height: 160, position: 'relative' },
-  tripOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,32,48,0.3)' },
-  tripBadge: { position: 'absolute', top: 12, left: 12 },
-  tripInfo: { padding: 14 },
-  tripName: { fontSize: 15, fontWeight: '600', color: C.textPrimary, fontFamily: 'Manrope_600SemiBold', marginBottom: 4 },
-  tripDate: { fontSize: 12, color: C.textMuted, fontFamily: 'Manrope_400Regular', marginBottom: 10 },
-  tripFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  tripPrice: { fontSize: 14, fontWeight: '700', color: C.textPrimary, fontFamily: 'Manrope_700Bold' },
-  viewBtn: {
-    backgroundColor: C.blue,
-    borderRadius: 100,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-  },
-  viewBtnText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600', fontFamily: 'Manrope_600SemiBold' },
 
   // Empty
   emptyState: { alignItems: 'center', paddingVertical: 40, gap: 8 },
