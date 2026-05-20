@@ -99,7 +99,7 @@ export default function TravelSectionNew() {
             className="relative h-32 rounded-2xl overflow-hidden group"
           >
             <img
-              src="https://images.unsplash.com/photo-1564399579883-451a5d44ec08?q=80&w=2000"
+              src="https://res.cloudinary.com/drpexegxg/image/upload/q_auto/f_auto/v1779267441/naraa-in-ub-Hb0bl_gYorU-unsplash_1_zt52q5.jpg" 
               alt="Know Before You Go"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
@@ -122,7 +122,7 @@ export default function TravelSectionNew() {
             className="relative h-32 rounded-2xl overflow-hidden group"
           >
             <img
-              src="https://images.unsplash.com/photo-1584646098378-0874589d76b1?q=80&w=2000"
+              src="https://res.cloudinary.com/drpexegxg/image/upload/q_auto/f_auto/v1779267365/bolatbek-gabiden-ogoOCZ9SdYw-unsplash_vhxj0g.jpg"
               alt="Experience Mongolia"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
@@ -149,7 +149,7 @@ export default function TravelSectionNew() {
         >
           {/* Travel Packages */}
           <a
-            href="https://hk.trip.com/sale/w/15542/mongolia.html"
+            href="#"
             target="_blank"
             rel="noopener noreferrer"
             className="bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-shadow group"
@@ -174,7 +174,7 @@ export default function TravelSectionNew() {
 
           {/* Get Your Visa */}
           <a
-            href="https://www.evisa.mn/en"
+            href="#"
             target="_blank"
             rel="noopener noreferrer"
             className="bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-lg transition-shadow group"
