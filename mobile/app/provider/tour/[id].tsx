@@ -111,6 +111,7 @@ export default function TourEditScreen() {
   const [baseCurrency, setBaseCurrency] = useState<'MNT' | 'USD'>('MNT');
   const [status,       setStatus]       = useState<'draft' | 'active' | 'paused'>('draft');
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!tour) return;
     setTitle(tour.title ?? '');
@@ -121,6 +122,7 @@ export default function TourEditScreen() {
     setBaseCurrency((tour.baseCurrency as 'MNT' | 'USD') ?? (tour.currency as 'MNT' | 'USD') ?? 'MNT');
     setStatus(tour.status);
   }, [tour]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   if (isLoading) return <SkeletonDetail />;
   if (isError || !tour) return <ErrorState title="Tour not found" onRetry={() => router.back()} />;

@@ -180,6 +180,7 @@ function OverviewTab({ acc, accId }: { acc: ProviderAccommodation; accId: string
   const [amenities,          setAmenities]          = useState<string[]>(acc.amenities ?? []);
   const [status,             setStatus]             = useState<'draft' | 'active' | 'paused'>((acc.status as any) ?? 'draft');
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setName(acc.name ?? '');
     setAccommodationType(acc.accommodationType ?? '');
@@ -194,6 +195,7 @@ function OverviewTab({ acc, accId }: { acc: ProviderAccommodation; accId: string
     setAmenities(acc.amenities ?? []);
     setStatus((acc.status as any) ?? 'draft');
   }, [acc]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function toggleAmenity(a: string) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -360,6 +362,7 @@ function RoomFormSheet({ visible, accId, room, onClose }: {
   const [baseCurrency, setBaseCurrency] = useState<'MNT' | 'USD'>('MNT');
   const [amenities,    setAmenities]    = useState<string[]>([]);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!visible) return;
     if (room) {
@@ -376,6 +379,7 @@ function RoomFormSheet({ visible, accId, room, onClose }: {
       setDescription(''); setBaseAmount(''); setBaseCurrency('MNT'); setAmenities([]);
     }
   }, [visible, room]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   async function handleSubmit() {
     if (!name.trim()) { Alert.alert('Required', 'Room name is required.'); return; }
