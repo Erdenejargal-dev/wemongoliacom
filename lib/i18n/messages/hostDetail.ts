@@ -131,6 +131,7 @@ export const hostDetailMn: HostDetailMessages = {
   factGuestsServed: 'Үйлчлэсэн зочин',
   atAGlance: 'Товчоор',
   statYears: 'Үйл ажилгаа явуулж буй хугацаа',
+  statToursOffered: 'Санал болгосон аяллууд',
   statGuestsHosted: 'Зочилсон',
   statReviews: 'Сэтгэгдэл',
   reviewsTitle: 'Зочдын сэтгэгдэл',
