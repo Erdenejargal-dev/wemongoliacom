@@ -120,21 +120,21 @@ function TourCard({ tour }: { tour: ProviderTour }) {
 
 // ─── Stay card ────────────────────────────────────────────────────────────────
 
+function Stars({ n }: { n: number }) {
+  return (
+    <View style={{ flexDirection: 'row', gap: 1 }}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <Text key={i} style={{ fontSize: 9, color: i <= n ? '#F59E0B' : '#D5E8F5' }}>★</Text>
+      ))}
+    </View>
+  );
+}
+
 function StayCard({ acc }: { acc: ProviderAccommodation }) {
   const router = useRouter();
   const thumb  = acc.images?.[0]?.imageUrl;
   const status = acc.status as string;
   const rooms  = acc._count?.roomTypes ?? 0;
-
-  function Stars({ n }: { n: number }) {
-    return (
-      <View style={{ flexDirection: 'row', gap: 1 }}>
-        {[1, 2, 3, 4, 5].map((i) => (
-          <Text key={i} style={{ fontSize: 9, color: i <= n ? '#F59E0B' : '#D5E8F5' }}>★</Text>
-        ))}
-      </View>
-    );
-  }
 
   return (
     <TouchableOpacity

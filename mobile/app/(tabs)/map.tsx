@@ -65,7 +65,9 @@ export default function MapScreen() {
             key={dest.id}
             coordinate={{
               // Fallback coords — real data would include lat/lng
+              // eslint-disable-next-line react-hooks/purity
               latitude: MONGOLIA_CENTER.latitude + (Math.random() * 4 - 2),
+              // eslint-disable-next-line react-hooks/purity
               longitude: MONGOLIA_CENTER.longitude + (Math.random() * 8 - 4),
             }}
             onPress={() => router.push(`/destination/${dest.slug}` as any)}

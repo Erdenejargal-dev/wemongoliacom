@@ -98,7 +98,7 @@ export default function BookingRequestScreen() {
         <View style={styles.infoCard}>
           <IconSymbol name="info.circle" size={16} color={C.blue} />
           <Text style={styles.infoText}>
-            This sends a message to the provider. You won't be charged until they confirm.
+            This sends a message to the provider. You won&apos;t be charged until they confirm.
           </Text>
         </View>
 

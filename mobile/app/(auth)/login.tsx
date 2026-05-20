@@ -54,7 +54,7 @@ export default function LoginScreen() {
         {/* Brand header */}
         <View style={styles.brand}>
           <Text style={styles.brandName}>WeMongolia</Text>
-          <Text style={styles.brandTagline}>Discover Mongolia's wonders</Text>
+          <Text style={styles.brandTagline}>Discover Mongolia&apos;s wonders</Text>
         </View>
 
         {/* Mode toggle */}

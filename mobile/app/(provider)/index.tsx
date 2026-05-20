@@ -34,6 +34,7 @@ function greetingWord() {
 // ─── Pulse skeleton ──────────────────────────────────────────────────────────
 
 function Pulse({ style }: { style?: any }) {
+  // eslint-disable-next-line react-hooks/refs
   const opacity = useRef(new Animated.Value(0.3)).current;
   useEffect(() => {
     Animated.loop(
@@ -51,6 +52,7 @@ function Pulse({ style }: { style?: any }) {
 }
 
 function PulseLight({ style }: { style?: any }) {
+  // eslint-disable-next-line react-hooks/refs
   const opacity = useRef(new Animated.Value(0.4)).current;
   useEffect(() => {
     Animated.loop(

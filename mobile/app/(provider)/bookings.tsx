@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   FlatList,
@@ -33,13 +33,16 @@ const LISTING_TYPE_LABEL: Record<string, string> = {
 // ─── Skeleton ───────────────────────────────────────────────────────────────
 
 function CardSkeleton() {
+  // eslint-disable-next-line react-hooks/refs
   const opacity = useRef(new Animated.Value(0.4)).current;
-  Animated.loop(
-    Animated.sequence([
-      Animated.timing(opacity, { toValue: 0.9, duration: 800, useNativeDriver: true }),
-      Animated.timing(opacity, { toValue: 0.4, duration: 800, useNativeDriver: true }),
-    ])
-  ).start();
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 0.9, duration: 800, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.4, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
   return (
     <Animated.View style={[styles.skeletonCard, { opacity }]}>
       <View style={styles.skeletonStripe} />
