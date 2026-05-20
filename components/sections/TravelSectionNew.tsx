@@ -34,8 +34,8 @@ export default function TravelSectionNew() {
           {/* Left - Image */}
           <div className="relative h-[500px] rounded-2xl overflow-hidden">
             <img
-              src="https://res.cloudinary.com/drpexegxg/image/upload/q_auto/f_auto/v1779267141/Hovsgol_Lake_Irmuun_Agency_ohqigo.jpg
-              alt="Mongolian Yurt"
+              src="https://res.cloudinary.com/drpexegxg/image/upload/q_auto/f_auto/v1779267141/Hovsgol_Lake_Irmuun_Agency_ohqigo.jpg"
+              alt="Mongolia"
               className="w-full h-full object-cover"
             />
           </div>
@@ -200,7 +200,7 @@ export default function TravelSectionNew() {
           {/* Athletes Image */}
           <div className="relative rounded-2xl overflow-hidden h-48">
             <img
-              src="https://images.unsplash.com/photo-1590735213920-68192a487bc2?q=80&w=2000"
+              src="https://res.cloudinary.com/drpexegxg/image/upload/q_auto/f_auto/v1775471805/usukhbayar-gankhuyag-fjCihZthrAo-unsplash_ggpu7u.jpg"
               alt="Mongolian Athletes"
               className="w-full h-full object-cover"
             />
