@@ -11,7 +11,9 @@ function usePressScale() {
   'use no memo';
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  // eslint-disable-next-line react-hooks/immutability
   const onPressIn = () => { scale.value = withTiming(0.93, { duration: 100 }); };
+  // eslint-disable-next-line react-hooks/immutability
   const onPressOut = () => { scale.value = withSpring(1, { damping: 15, stiffness: 300 }); };
   return { animStyle, onPressIn, onPressOut };
 }

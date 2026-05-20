@@ -16,6 +16,7 @@ function useShimmerX(): SharedValue<number> {
   'use no memo';
   const x = useSharedValue(-SCREEN_W);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/immutability
     x.value = withRepeat(
       withTiming(SCREEN_W, { duration: 1200, easing: Easing.linear }),
       -1,

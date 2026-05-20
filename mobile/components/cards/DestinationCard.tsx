@@ -36,7 +36,9 @@ export function DestinationCard({
     <Animated.View style={[styles.card, style, animStyle]}>
       <TouchableOpacity
         onPress={onPress}
+        // eslint-disable-next-line react-hooks/immutability
         onPressIn={() => { scale.value = withTiming(0.97, { duration: 120 }); }}
+        // eslint-disable-next-line react-hooks/immutability
         onPressOut={() => { scale.value = withSpring(1, { damping: 15, stiffness: 300 }); }}
         activeOpacity={1}
         accessibilityRole="button"
