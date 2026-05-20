@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import splashIcon from '@/assets/images/splash-icon.png';
 import {
   FlatList,
   StyleSheet,
@@ -76,7 +77,7 @@ export default function WishlistScreen() {
             >
               <View style={styles.cardImg}>
                 <Image
-                  source={item.listingImage ? { uri: item.listingImage } : require('@/assets/images/splash-icon.png')}
+                  source={item.listingImage ? { uri: item.listingImage } : splashIcon}
                   style={{ width: '100%', height: '100%' }}
                   contentFit="cover"
                 />

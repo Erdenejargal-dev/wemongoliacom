@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import splashIcon from '@/assets/images/splash-icon.png';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Badge } from '@/components/ui/Badge';
 import { SkeletonCard, SkeletonText } from '@/components/ui/Skeleton';
@@ -24,7 +25,7 @@ export function TripCard({ booking, onPress }: Props) {
           source={
             booking.listingImage
               ? { uri: booking.listingImage }
-              : require('@/assets/images/splash-icon.png')
+              : splashIcon
           }
           style={{ width: '100%', height: '100%' }}
           contentFit="cover"

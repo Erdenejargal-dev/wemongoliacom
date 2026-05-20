@@ -1,5 +1,6 @@
 // Design.md §7.2 — Destination Cards
 import { Image } from 'expo-image';
+import splashIcon from '@/assets/images/splash-icon.png';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -47,7 +48,7 @@ export function DestinationCard({
         {/* Image */}
         <View style={styles.imageWrap}>
           <Image
-            source={item.image ? { uri: item.image } : require('@/assets/images/splash-icon.png')}
+            source={item.image ? { uri: item.image } : splashIcon}
             style={styles.image}
             contentFit="cover"
             transition={200}

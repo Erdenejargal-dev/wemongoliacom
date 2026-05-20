@@ -1,5 +1,6 @@
 // Design.md §8.5 — Destination Detail
 import { Image } from 'expo-image';
+import splashIcon from '@/assets/images/splash-icon.png';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -44,7 +45,7 @@ export default function DestinationDetailScreen() {
         {/* Hero */}
         <View style={styles.hero}>
           <Image
-            source={dest.image ? { uri: dest.image } : require('@/assets/images/splash-icon.png')}
+            source={dest.image ? { uri: dest.image } : splashIcon}
             style={styles.heroImg}
             contentFit="cover"
           />

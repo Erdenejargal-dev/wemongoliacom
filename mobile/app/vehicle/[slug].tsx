@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import splashIcon from '@/assets/images/splash-icon.png';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ScrollView,
@@ -37,7 +38,7 @@ export default function VehicleDetailScreen() {
         {/* Hero */}
         <View style={styles.hero}>
           <Image
-            source={vehicle.image ? { uri: vehicle.image } : require('@/assets/images/splash-icon.png')}
+            source={vehicle.image ? { uri: vehicle.image } : splashIcon}
             style={styles.heroImg}
             contentFit="cover"
           />

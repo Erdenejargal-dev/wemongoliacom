@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import splashIcon from '@/assets/images/splash-icon.png';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ScrollView,
@@ -39,7 +40,7 @@ export default function TourDetailScreen() {
         {/* Hero */}
         <View style={styles.hero}>
           <Image
-            source={tour.image ? { uri: tour.image } : require('@/assets/images/splash-icon.png')}
+            source={tour.image ? { uri: tour.image } : splashIcon}
             style={styles.heroImg}
             contentFit="cover"
           />

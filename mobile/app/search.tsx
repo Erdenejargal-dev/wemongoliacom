@@ -190,7 +190,7 @@ export default function SearchScreen() {
         </View>
       ) : results.length === 0 && !isFetching ? (
         <View style={styles.center}>
-          <Text style={styles.noResults}>No results for "{debouncedQuery}"</Text>
+          <Text style={styles.noResults}>No results for &quot;{debouncedQuery}&quot;</Text>
           <Text style={styles.noResultsSub}>Try a different search term</Text>
         </View>
       ) : (

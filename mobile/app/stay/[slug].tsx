@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import splashIcon from '@/assets/images/splash-icon.png';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ScrollView,
@@ -38,7 +39,7 @@ export default function StayDetailScreen() {
         {/* Hero */}
         <View style={styles.hero}>
           <Image
-            source={stay.image ? { uri: stay.image } : require('@/assets/images/splash-icon.png')}
+            source={stay.image ? { uri: stay.image } : splashIcon}
             style={styles.heroImg}
             contentFit="cover"
           />
