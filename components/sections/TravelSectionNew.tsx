@@ -34,7 +34,7 @@ export default function TravelSectionNew() {
           {/* Left - Image */}
           <div className="relative h-[500px] rounded-2xl overflow-hidden">
             <img
-              src="https://images.unsplash.com/photo-1609137144813-7d9921338f24?q=80&w=2000"
+              src="https://res.cloudinary.com/drpexegxg/image/upload/q_auto/f_auto/v1779267141/Hovsgol_Lake_Irmuun_Agency_ohqigo.jpg
               alt="Mongolian Yurt"
               className="w-full h-full object-cover"
             />
