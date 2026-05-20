@@ -193,10 +193,10 @@ export const mn: TravelerTranslations = {
     loadingProfile: 'Профайл уншиж байна…',
     profileUnavailable: 'Профайл байхгүй байна.',
     sections: {
-      profile:  { title: 'Миний профайл',    desc: 'Хувийн мэдээлэл, профайл зурагаа шинэчлэх' },
+      profile:  { title: 'Миний профайл',    desc: 'Хувийн мэдээлэллээ шинэчлэх' },
       settings: { title: 'Тохиргоо',          desc: 'Нууц үг, аюулгүй байдал, мэдэгдлийн тохиргоо' },
       trips:    { title: 'Миний аялалууд',    desc: 'Ирэх болон өнгөрсөн захиалгуудыг харах' },
-      reviews:  { title: 'Миний үнэлгээнүүд', desc: 'Аяллуудад бичсэн үнэлгээнүүд' },
+      reviews:  { title: 'Миний үнэлгээнүүд', desc: 'Таны бичсэн үнэлгээнүүд' },
     },
     nav: {
       profile:  'Профайл',
@@ -206,18 +206,18 @@ export const mn: TravelerTranslations = {
       messages: 'Мессеж',
     },
     navDesc: {
-      profile:  'Хувийн мэдээлэл & зураг',
+      profile:  'Хувийн мэдээлэл',
       settings: 'Нууц үг & мэдэгдэл',
       trips:    'Захиалга & аялал',
       reviews:  'Бичсэн үнэлгээнүүд',
       messages: 'Чат',
     },
-    memberSince: (date) => `Гишүүн болсон: ${date}`,
+    memberSince: (date) => `Бүртгүүлсэн: ${date}`,
   },
 
   trips: {
     pageTitle:    'Миний аялалууд',
-    pageSubtitle: 'Ирэх болон өнгөрсөн аяллуудаа харах.',
+    pageSubtitle: 'Захиалгаа хянах',
     upcoming:     'Ирэх аялалууд',
     completed:    'Дууссан аялалууд',
     cancelled:    'Цуцлагдсан аялалууд',
