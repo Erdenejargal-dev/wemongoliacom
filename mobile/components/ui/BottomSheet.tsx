@@ -20,10 +20,14 @@ function useSheetAnimation(visible: boolean): {
 
   useEffect(() => {
     if (visible) {
+      // eslint-disable-next-line react-hooks/immutability
       translateY.value = withSpring(0, { damping: 28, stiffness: 180, overshootClamping: true });
+      // eslint-disable-next-line react-hooks/immutability
       backdropOpacity.value = withTiming(1, { duration: 220 });
     } else {
+      // eslint-disable-next-line react-hooks/immutability
       translateY.value = withTiming(500, { duration: 260 });
+      // eslint-disable-next-line react-hooks/immutability
       backdropOpacity.value = withTiming(0, { duration: 200 });
     }
     return () => {
