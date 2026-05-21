@@ -168,7 +168,7 @@ export const onboardingMn: OnboardingMessages = {
     },
     guide: {
       title: 'Хувийн хөтөч',
-      subtitle: 'Лицензтэй хувь хөтөч болон бүртгүүлэх',
+      subtitle: '',
       linkLabel: 'Хөтөч болон бүртгүүлэх →',
     },
   },
@@ -216,8 +216,8 @@ export const onboardingMn: OnboardingMessages = {
     exit: 'Гарах',
     heroTitle: 'Захиалга хүлээн авч эхлэх',
     heroLead:
-      'Цөөн алхамаар бизнесийнхээ профайлыг бүртгээрэй. Бид танд аялагчидтай холбогдоход тусална.',
-    timeBadge: '2 минутаас бага хугацаа шаардана',
+      'Бид танд аялагчидтай холбогдоход тусална.',
+    timeBadge: '2 минутаас бага хугацаанд бизнесээ бүртгүүлээрэй',
     step1Label: 'Үйлчилгээ',
     step2Label: 'Бизнесийн мэдээлэл',
     step3Label: 'Бэлэн боллоо',
