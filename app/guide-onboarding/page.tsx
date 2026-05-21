@@ -137,8 +137,8 @@ export default function GuideOnboardingPage() {
   if (submitted || (existing && existing.status === 'pending')) return (
     <StatusScreen
       icon={<Clock className="w-12 h-12 text-amber-500" />}
-      title="Application under review"
-      body="Your application is being reviewed. We'll notify you when a decision is made — usually within 3 business days."
+      title="Application амжилттай илгээгдлээ"
+      body="Таны өргөдөл амжилттай илгээгдлээ. Бид таньд ажлын 3 хоногийн дотор бүртгэлтэй и-майл хаягаар нь мэдэгдэх болно. — Баярлалаа"
     />
   )
 

@@ -42,11 +42,16 @@ export default function AdminGuideApplicationsPage() {
 
   useEffect(() => {
     let alive = true
-    setLoading(true)
-    if (!token) { setLoading(false); return }
-    fetchAdminGuideApplications(token, { status: filterStatus })
-      .then(r => { if (alive) { setApps(r.applications); setLoading(false) } })
-      .catch(() => { if (alive) setLoading(false) })
+    async function load() {
+      setLoading(true)
+      if (!token) { setLoading(false); return }
+      try {
+        const r = await fetchAdminGuideApplications(token, { status: filterStatus })
+        if (alive) setApps(r.applications)
+      } catch { /* non-fatal */ }
+      finally { if (alive) setLoading(false) }
+    }
+    load()
     return () => { alive = false }
   }, [token, filterStatus])
 
