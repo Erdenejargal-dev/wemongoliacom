@@ -253,7 +253,7 @@ const mn: PublicTranslations = {
     visaComingSoon:    'Олон улсын картаар төлөх сонголт удахгүй нэмэгдэнэ',
     freeCancellation:  'Аяллаас 7 хоногийн өмнө үнэгүй цуцлах боломжтой',
     confirmationNotice:'Байгууллагын баталгаажуулалт шаардлагатай байна',
-    notChargedYet:     'Одоогоор төлбөр зөвшөөрөхгүй',
+    notChargedYet:     '',
     serviceFeeAtCheckout: 'Үйлчилгээний хураамж, эцсийн дүн баталгаажуулахад харагдана',
     pricePerPerson:    (money, guests) =>
       `${money} / хүн \u00B7 ${guests} зочин`,
