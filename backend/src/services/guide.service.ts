@@ -91,7 +91,7 @@ export async function getGuideBySlug(slug: string) {
   })
 
   if (!guide || guide.status === 'archived') {
-    throw new AppError(404, 'Guide not found')
+    throw new AppError('Guide not found', 404)
   }
 
   return guide

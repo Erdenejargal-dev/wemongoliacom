@@ -226,7 +226,7 @@ export default function GuidesPage() {
         <section className="bg-gradient-to-r from-brand-500 to-brand-600 rounded-2xl p-8 text-center">
           <h3 className="text-xl font-bold text-white mb-2">{g.ctaTitle}</h3>
           <p className="text-white/80 text-sm mb-5">{g.ctaSub}</p>
-          <Link href="/onboarding"
+          <Link href="/guide-onboarding"
             className="inline-flex items-center gap-2 bg-white text-brand-700 font-bold text-sm px-6 py-3 rounded-xl hover:bg-brand-50 transition-colors shadow-lg">
             <Users className="w-4 h-4" aria-hidden />
             {g.ctaButton}

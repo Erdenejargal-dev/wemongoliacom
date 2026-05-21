@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import {
   LogOut, ChevronDown, ShieldCheck, Building2, MessageSquare,
-  CalendarCheck, Settings, CircleUserRound, Sparkles,
+  CalendarCheck, Settings, CircleUserRound, Sparkles, Award, Inbox, User,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import Link from 'next/link'
@@ -14,7 +14,7 @@ import { getUserNavItems, showBecomeAHost } from '@/lib/navigation'
 // Maps iconName strings (from navigation.ts) → Lucide component references
 
 const ICON_MAP: Record<string, LucideIcon> = {
-  ShieldCheck, Building2, MessageSquare, CalendarCheck, Settings, CircleUserRound,
+  ShieldCheck, Building2, MessageSquare, CalendarCheck, Settings, CircleUserRound, Award, Inbox, User,
 }
 
 function NavIcon({ name, className }: { name: string; className?: string }) {
@@ -45,6 +45,7 @@ export function UserMenu({ name, email, role }: UserMenuProps) {
 
   const isAdmin    = role === 'admin'
   const isProvider = role === 'provider_owner'
+  const isGuide    = role === 'guide_owner'
 
   const initials = name
     ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -89,6 +90,11 @@ export function UserMenu({ name, email, role }: UserMenuProps) {
               {isProvider && (
                 <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-brand-50 text-brand-700 border border-brand-200 shrink-0">
                   HOST
+                </span>
+              )}
+              {isGuide && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                  GUIDE
                 </span>
               )}
             </div>

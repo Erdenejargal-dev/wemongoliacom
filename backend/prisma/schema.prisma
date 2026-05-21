@@ -15,6 +15,7 @@ datasource db {
 enum UserRole {
   traveler
   provider_owner
+  guide_owner
   admin
 }
 
@@ -202,6 +203,8 @@ model User {
   notifications       Notification[]
   passwordResetTokens PasswordResetToken[]
   payments            Payment[]
+  guideProfile        Guide?               @relation("GuideOwner")
+  guideApplication    GuideApplication?
 
   @@index([email])
   @@map("users")
@@ -1254,22 +1257,89 @@ model Guide {
   status          GuideStatus     @default(draft)
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
+  ownerUserId     String?         @unique
+  ownerUser       User?           @relation("GuideOwner", fields: [ownerUserId], references: [id])
   reviews         GuideReview[]
+  inquiries       GuideInquiry[]
 
   @@map("guides")
 }
 
 model GuideReview {
-  id       String   @id @default(cuid())
-  guideId  String
-  guide    Guide    @relation(fields: [guideId], references: [id], onDelete: Cascade)
-  author   String
-  country  String
-  rating   Int
-  comment  String   @db.Text
-  tourName String?
-  date     DateTime @default(now())
+  id          String    @id @default(cuid())
+  guideId     String
+  guide       Guide     @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  author      String
+  country     String
+  rating      Int
+  comment     String    @db.Text
+  tourName    String?
+  date        DateTime  @default(now())
+  guideReply  String?   @db.Text
+  repliedAt   DateTime?
 
   @@index([guideId])
   @@map("guide_reviews")
+}
+
+enum GuideInquiryStatus {
+  new
+  replied
+  accepted
+  declined
+}
+
+model GuideInquiry {
+  id              String             @id @default(cuid())
+  guideId         String
+  guide           Guide              @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  travelerName    String
+  travelerEmail   String
+  travelerCountry String?
+  message         String             @db.Text
+  tripType        String?
+  daysRequested   Int?
+  preferredStart  DateTime?
+  status          GuideInquiryStatus @default(new)
+  guideReply      String?            @db.Text
+  repliedAt       DateTime?
+  createdAt       DateTime           @default(now())
+
+  @@index([guideId])
+  @@map("guide_inquiries")
+}
+
+enum GuideApplicationStatus {
+  pending
+  approved
+  rejected
+}
+
+model GuideApplication {
+  id              String                 @id @default(cuid())
+  userId          String                 @unique
+  user            User                   @relation(fields: [userId], references: [id])
+
+  name            String
+  bio             String
+  about           String                 @db.Text
+  location        String
+  specialties     GuideSpecialty[]
+  languages       String[]
+  yearsExperience Int
+  dailyRate       Float?
+  dailyCurrency   String?                @default("USD")
+  contactEmail    String
+  contactPhone    String?
+  idPhotoUrl      String
+  photoUrl        String?
+
+  status          GuideApplicationStatus @default(pending)
+  rejectionReason String?
+  reviewedAt      DateTime?
+
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@map("guide_applications")
 }

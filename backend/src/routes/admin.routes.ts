@@ -3,6 +3,12 @@ import { authenticate } from '../middleware/auth'
 import { requireRole } from '../middleware/role'
 import { validate } from '../middleware/validate'
 import {
+  listApplicationsHandler,
+  getApplicationByIdHandler,
+  approveApplicationHandler,
+  rejectApplicationHandler,
+} from '../controllers/guide-application.controller'
+import {
   listUsers,
   getUser,
   setUserRole,
@@ -96,5 +102,11 @@ router.get('/pricing-health/backfill-reports/:reportId',   adminGetBackfillRepor
 // Explicit, guarded write: closes the report only. Does NOT mutate the flagged entity.
 router.post('/pricing-health/backfill-reports/:reportId/resolve', adminResolveBackfillReport)
 router.get('/pricing-health/payment-blocked-bookings',     adminGetPaymentBlockedBookings)
+
+// ── Guide Applications ─────────────────────────────────────────────────────
+router.get('/guide-applications',                listApplicationsHandler)
+router.get('/guide-applications/:id',            getApplicationByIdHandler)
+router.post('/guide-applications/:id/approve',   approveApplicationHandler)
+router.post('/guide-applications/:id/reject',    rejectApplicationHandler)
 
 export default router

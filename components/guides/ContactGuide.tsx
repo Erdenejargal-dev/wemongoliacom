@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Mail, Phone, MessageSquare, X, Send, CheckCircle2, DollarSign } from 'lucide-react'
+import { Mail, Phone, MessageSquare, X, Send, CheckCircle2, DollarSign, Loader2 } from 'lucide-react'
 import type { Guide } from '@/lib/api/guides'
+import { createInquiry } from '@/lib/api/guides'
 import { useTranslations } from '@/lib/i18n'
 
 interface ContactGuideProps {
@@ -12,18 +13,26 @@ interface ContactGuideProps {
 export function ContactGuide({ guide }: ContactGuideProps) {
   const { t } = useTranslations()
   const g = t.guideDetail
-  const [open, setOpen]   = useState(false)
-  const [sent, setSent]   = useState(false)
-  const [form, setForm]   = useState({ name: '', email: '', message: '' })
+  const [open,     setOpen]     = useState(false)
+  const [sent,     setSent]     = useState(false)
+  const [sending,  setSending]  = useState(false)
+  const [formErr,  setFormErr]  = useState<string | null>(null)
+  const [form, setForm] = useState({ name: '', email: '', message: '' })
 
-  function handleSend(e: React.FormEvent) {
+  async function handleSend(e: React.FormEvent) {
     e.preventDefault()
-    setSent(true)
-    setTimeout(() => {
-      setOpen(false)
-      setSent(false)
-      setForm({ name: '', email: '', message: '' })
-    }, 2500)
+    setSending(true); setFormErr(null)
+    try {
+      await createInquiry(guide.slug, {
+        travelerName:  form.name.trim(),
+        travelerEmail: form.email.trim(),
+        message:       form.message.trim(),
+      })
+      setSent(true)
+      setTimeout(() => { setOpen(false); setSent(false); setForm({ name: '', email: '', message: '' }) }, 2500)
+    } catch (err: unknown) {
+      setFormErr(err instanceof Error ? err.message : 'Failed to send message')
+    } finally { setSending(false) }
   }
 
   return (
@@ -108,6 +117,7 @@ export function ContactGuide({ guide }: ContactGuideProps) {
               </div>
             ) : (
               <form onSubmit={handleSend} className="p-5 space-y-4">
+                {formErr && <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">{formErr}</div>}
                 <div>
                   <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide block mb-1.5">{g.formYourName}</label>
                   <input
@@ -143,8 +153,9 @@ export function ContactGuide({ guide }: ContactGuideProps) {
                 </div>
                 <button
                   type="submit"
-                  className="w-full py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm rounded-xl transition-colors flex items-center justify-center gap-2">
-                  <Send className="w-4 h-4" />
+                  disabled={sending}
+                  className="w-full py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold text-sm rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+                  {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   {g.contactSend}
                 </button>
               </form>

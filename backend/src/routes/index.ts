@@ -20,7 +20,9 @@ import internalRoutes      from './internal.routes'
 import mediaRoutes         from './media.routes'
 import geoRoutes           from './geo.routes'
 import fxRoutes            from './fx.routes'
-import guideRoutes         from './guide.routes'
+import guideRoutes              from './guide.routes'
+import guideApplicationRoutes  from './guide-application.routes'
+import guidePortalRoutes       from './guide-portal.routes'
 
 const router = Router()
 
@@ -32,7 +34,9 @@ router.use('/destinations', destinationRoutes)
 router.use('/tours',        tourRoutes)
 router.use('/vehicles',     vehicleRoutes)
 router.use('/stays',        accommodationRoutes)
-router.use('/guides',       guideRoutes)
+router.use('/guides',               guideRoutes)
+router.use('/guide-applications',   guideApplicationRoutes)
+router.use('/guide-portal',         guidePortalRoutes)
 
 // ── Part 3: Hosts + Bookings ───────────────────────────────────────────────
 router.use('/hosts',    hostRoutes)

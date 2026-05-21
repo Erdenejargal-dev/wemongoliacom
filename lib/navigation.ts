@@ -71,6 +71,15 @@ export function getUserNavItems(role: string | null | undefined): UserNavItem[] 
     ]
   }
 
+  if (role === 'guide_owner') {
+    return [
+      { href: '/dashboard/guide',              label: 'Guide Portal',     iconName: 'Award'         },
+      { href: '/dashboard/guide/inquiries',    label: 'Inquiries',        iconName: 'Inbox'         },
+      { href: '/dashboard/guide/profile',      label: 'My Profile',       iconName: 'User'          },
+      { href: '/dashboard/guide/settings',     label: 'Settings',         iconName: 'Settings'      },
+    ]
+  }
+
   // Traveler (default)
   return [
     { href: '/account',          label: 'My Account', iconName: 'CircleUserRound' },
