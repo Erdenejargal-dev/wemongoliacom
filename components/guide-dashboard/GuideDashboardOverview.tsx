@@ -16,10 +16,15 @@ export function GuideDashboardOverview() {
 
   useEffect(() => {
     let alive = true
-    if (!token) { setLoading(false); return }
-    fetchGuidePortalAnalytics(token)
-      .then(a => { if (alive) { setAnalytics(a); setLoading(false) } })
-      .catch(() => { if (alive) setLoading(false) })
+    async function load() {
+      if (!token) { setLoading(false); return }
+      try {
+        const a = await fetchGuidePortalAnalytics(token)
+        if (alive) setAnalytics(a)
+      } catch { /* non-fatal */ }
+      finally { if (alive) setLoading(false) }
+    }
+    load()
     return () => { alive = false }
   }, [token])
 

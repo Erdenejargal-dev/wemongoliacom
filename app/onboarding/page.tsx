@@ -125,7 +125,7 @@ function StepBusinessType({ data, onNext }: { data: OnboardingState; onNext: (p:
 
         {/* Guide link-out — separate registration flow */}
         <Link
-          href="/guides"
+          href="/guide-onboarding"
           className="w-full text-left p-5 rounded-2xl border-2 border-dashed border-gray-200 bg-white hover:border-brand-300 hover:bg-brand-50/30 transition-all duration-200 flex items-start gap-4 group"
         >
           <span className="text-2xl shrink-0">🧭</span>
