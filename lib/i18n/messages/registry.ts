@@ -20,6 +20,8 @@ import { tourDetailEn, tourDetailMn, type TourDetailMessages } from './tourDetai
 import { stayDetailEn, stayDetailMn, type StayDetailMessages } from './stayDetail'
 import { hostDetailEn, hostDetailMn, type HostDetailMessages } from './hostDetail'
 import { hostsBrowseEn, hostsBrowseMn, type HostsBrowseMessages } from './hostsBrowse'
+import { guidesBrowseEn, guidesBrowseMn, type GuidesBrowseMessages } from './guidesBrowse'
+import { guideDetailEn, guideDetailMn, type GuideDetailMessages } from './guideDetail'
 import { assertMessageParity } from './parity'
 import { mergeLocaleWithEnglish } from './merge-fallback'
 import { withDevI18nGuard } from '../dev-guard'
@@ -48,6 +50,10 @@ export type AppMessages = {
   hostDetail:      HostDetailMessages
   /** Public /hosts directory listing */
   hostsBrowse:     HostsBrowseMessages
+  /** Public /guides directory listing */
+  guidesBrowse:    GuidesBrowseMessages
+  /** Public /guides/[slug] detail page */
+  guideDetail:     GuideDetailMessages
 }
 
 const en: AppMessages = {
@@ -69,6 +75,8 @@ const en: AppMessages = {
   stayDetail:    stayDetailEn,
   hostDetail:    hostDetailEn,
   hostsBrowse:   hostsBrowseEn,
+  guidesBrowse:  guidesBrowseEn,
+  guideDetail:   guideDetailEn,
 }
 
 const mn: AppMessages = {
@@ -90,6 +98,8 @@ const mn: AppMessages = {
   stayDetail:    stayDetailMn,
   hostDetail:    hostDetailMn,
   hostsBrowse:   hostsBrowseMn,
+  guidesBrowse:  guidesBrowseMn,
+  guideDetail:   guideDetailMn,
 }
 
 const byLang: Record<AppLang, AppMessages> = { en, mn }
@@ -110,6 +120,8 @@ if (process.env.NODE_ENV === 'development') {
     assertMessageParity(en.stayDetail, mn.stayDetail, 'stayDetail')
     assertMessageParity(en.hostDetail, mn.hostDetail, 'hostDetail')
     assertMessageParity(en.hostsBrowse, mn.hostsBrowse, 'hostsBrowse')
+    assertMessageParity(en.guidesBrowse, mn.guidesBrowse, 'guidesBrowse')
+    assertMessageParity(en.guideDetail, mn.guideDetail, 'guideDetail')
   } catch (e) {
     console.error('[i18n]', e)
   }

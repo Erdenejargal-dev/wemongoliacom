@@ -1,4 +1,4 @@
-export type ProviderType = 'tour_operator' | 'car_rental' | 'accommodation'
+export type ProviderType = 'tour_operator' | 'accommodation'
 
 export interface MenuItem {
   id: string
@@ -10,7 +10,6 @@ export interface MenuItem {
 
 export const SECTION_LABELS: Record<ProviderType, string> = {
   tour_operator: 'Tours & Experiences',
-  car_rental:    'Car Rentals',
   accommodation: 'Accommodation',
 }
 

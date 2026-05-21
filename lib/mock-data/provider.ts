@@ -1,4 +1,4 @@
-export type ProviderType = 'tour_operator' | 'car_rental' | 'accommodation'
+export type ProviderType = 'tour_operator' | 'accommodation'
 
 export interface Provider {
   id: string
@@ -51,20 +51,6 @@ export const PROVIDER_TYPE_META: Record<ProviderType, {
       { label: 'Bookings',     href: '/host/bookings',            icon: 'CalendarCheck' },
       { label: 'Reviews',      href: '/host/reviews',             icon: 'Star' },
       { label: 'Messages',     href: '/host/messages',            icon: 'MessageSquare' },
-    ],
-  },
-  car_rental: {
-    label: 'Car Rentals / Drivers',
-    description: 'Rent vehicles, offer driver services, or provide transport for travelers.',
-    icon: '🚐',
-    color: 'blue',
-    menuItems: [
-      { label: 'Dashboard',          href: '/host/dashboard',           icon: 'LayoutDashboard' },
-      { label: 'Add Vehicle',        href: '/host/vehicles/create',     icon: 'Plus' },
-      { label: 'Manage Vehicles',    href: '/host/vehicles',            icon: 'Car' },
-      { label: 'Reservations',       href: '/host/reservations',        icon: 'CalendarCheck' },
-      { label: 'Availability',       href: '/host/availability',        icon: 'CalendarDays' },
-      { label: 'Messages',           href: '/host/messages',            icon: 'MessageSquare' },
     ],
   },
   accommodation: {

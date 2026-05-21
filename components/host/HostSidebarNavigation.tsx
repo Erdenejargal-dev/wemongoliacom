@@ -25,7 +25,6 @@ const ICON_MAP: Record<string, React.ReactNode> = {
 
 const TYPE_SECTION_LABEL: Record<ProviderType, string> = {
   tour_operator: 'Tours & Experiences',
-  car_rental:    'Car Rentals',
   accommodation: 'Accommodation',
 }
 

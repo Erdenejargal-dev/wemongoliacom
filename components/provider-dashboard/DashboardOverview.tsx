@@ -116,7 +116,7 @@ export function DashboardOverview({
           <div className="flex flex-wrap items-center gap-2 mb-3">
             {providerTypes.map(pt => (
               <span key={pt} className="text-[10px] font-semibold text-brand-300 bg-brand-500/15 border border-brand-500/20 px-2.5 py-1 rounded-full">
-                {pt === 'tour_operator' ? '🗺️' : pt === 'car_rental' ? '🚐' : '🏕️'}{' '}
+                {pt === 'tour_operator' ? '🗺️' : '🏕️'}{' '}
                 {t.providerTypes[pt] ?? pt}
               </span>
             ))}

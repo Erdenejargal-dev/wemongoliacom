@@ -138,7 +138,7 @@ export default function AdminPricingHealthPage() {
         ? 'warn'
         : 'ok'
   const anyListingMissing =
-    data.missingNormalization.tours + data.missingNormalization.rooms + data.missingNormalization.vehicles
+    data.missingNormalization.tours + data.missingNormalization.rooms
 
   const atStr = new Date(data.generatedAt).toLocaleString(t.dateLocale, { dateStyle: 'medium', timeStyle: 'short' })
   const procStatusLabel = (s: string) =>
@@ -173,7 +173,6 @@ export default function AdminPricingHealthPage() {
             {ph.kpi.tourRoomVeh(
               data.missingNormalization.tours,
               data.missingNormalization.rooms,
-              data.missingNormalization.vehicles,
             )}
           </p>
         </div>
@@ -278,9 +277,6 @@ export default function AdminPricingHealthPage() {
               ))}
               {Object.entries(data.currencyDistribution.listings.rooms).map(([cur, n]) => (
                 <li key={`r-${cur}`} className="flex justify-between"><span>{ph.listingRow('room', cur)}</span><span>{n}</span></li>
-              ))}
-              {Object.entries(data.currencyDistribution.listings.vehicles).map(([cur, n]) => (
-                <li key={`v-${cur}`} className="flex justify-between"><span>{ph.listingRow('vehicle', cur)}</span><span>{n}</span></li>
               ))}
             </ul>
           </div>

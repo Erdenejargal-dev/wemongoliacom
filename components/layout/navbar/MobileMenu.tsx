@@ -23,7 +23,7 @@ import {
   ChevronDown, LogOut, Sparkles,
   ShieldCheck, Building2, MessageSquare, CalendarCheck,
   Settings, CircleUserRound, Compass, BedDouble, MapPin,
-  ArrowRight, BarChart2,
+  ArrowRight, BarChart2, Award,
 } from 'lucide-react'
 import Link from 'next/link'
 import { signOut } from 'next-auth/react'
@@ -242,9 +242,10 @@ export function MobileMenu({ session, onClose }: MobileMenuProps) {
               </div>
 
               <SectionLabel>{m.discover}</SectionLabel>
-              <div className="px-4 pb-2 grid grid-cols-3 gap-2">
+              <div className="px-4 pb-2 grid grid-cols-4 gap-2">
                 <DiscoveryTile href="/tours" label={mega.rootTours} icon={Compass} onClick={onClose} />
                 <DiscoveryTile href="/stays" label={mega.rootStays} icon={BedDouble} onClick={onClose} />
+                <DiscoveryTile href="/guides" label={mega.rootGuides} icon={Award} onClick={onClose} />
                 <DiscoveryTile href="/destinations" label={m.places} icon={MapPin} onClick={onClose} />
               </div>
               <DestinationsAccordion onClose={onClose} t={t} />
@@ -328,10 +329,11 @@ export function MobileMenu({ session, onClose }: MobileMenuProps) {
         <>
           {/* Discovery tiles */}
           <SectionLabel>{m.exploreMongolia}</SectionLabel>
-          <div className="px-4 pb-4 grid grid-cols-3 gap-2">
+          <div className="px-4 pb-4 grid grid-cols-4 gap-2">
             <DiscoveryTile href="/tours"        label={mega.rootTours}        icon={Compass}  onClick={onClose} />
             <DiscoveryTile href="/stays"        label={mega.rootStays}        icon={BedDouble} onClick={onClose} />
-            <DiscoveryTile href="/destinations" label={mega.rootDestinations} icon={MapPin}    onClick={onClose} />
+            <DiscoveryTile href="/guides"       label={mega.rootGuides}       icon={Award}    onClick={onClose} />
+            <DiscoveryTile href="/destinations" label={mega.rootDestinations} icon={MapPin}   onClick={onClose} />
           </div>
 
           {/* Auth CTAs

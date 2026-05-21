@@ -137,7 +137,7 @@ export function DashboardSidebar({ open, onClose, initialProvider, pendingCount 
             <div className="flex flex-wrap gap-1 mt-1">
               {providerTypes.map(pt => (
                 <span key={pt} className="text-[9px] font-semibold text-gray-500 bg-white border border-gray-200 px-1.5 py-0.5 rounded-full">
-                  {pt === 'tour_operator' ? '🗺️' : pt === 'car_rental' ? '🚐' : '🏕️'}{' '}
+                  {pt === 'tour_operator' ? '🗺️' : '🏕️'}{' '}
                   {t.providerTypes[pt] ?? pt}
                 </span>
               ))}

@@ -9,6 +9,7 @@ export type MegaNavBundle = {
   rootDestinations: string
   rootTours: string
   rootStays: string
+  rootGuides: string
   popularTitle: string
   browseTitle: string
   popular: MegaNavItemCopy[]
@@ -19,6 +20,7 @@ export const megaNavEn: MegaNavBundle = {
   rootDestinations: 'Destinations',
   rootTours: 'Tours',
   rootStays: 'Stays',
+  rootGuides: 'Guides',
   popularTitle: 'Popular Destinations',
   browseTitle: 'Browse',
   popular: [
@@ -40,6 +42,7 @@ export const megaNavMn: MegaNavBundle = {
   rootDestinations: 'Чиглэлүүд',
   rootTours: 'Аяллууд',
   rootStays: 'Буудал, кэмп',
+  rootGuides: 'Хөтчүүд',
   popularTitle: 'Алдартай чиглэлүүд',
   browseTitle: 'Үзэх',
   popular: [

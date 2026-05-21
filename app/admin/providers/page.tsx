@@ -177,10 +177,9 @@ function ProviderDetailPanel({
             <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
               {tp.detail.listings}
             </p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {[
                 { label: tp.detail.tours,          val: provider._count.tours },
-                { label: tp.detail.vehicles,        val: provider._count.vehicles },
                 { label: tp.detail.accommodations,  val: provider._count.accommodations },
               ].map(item => (
                 <div key={item.label} className="bg-gray-50 rounded-lg p-2.5 text-center">

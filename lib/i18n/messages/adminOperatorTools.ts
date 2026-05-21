@@ -10,7 +10,7 @@ export type AdminPricingHealthMessages = {
     fxIssues: string
     staleMissing: (stale: number, missing: number) => string
     listingsNorm: string
-    tourRoomVeh: (tours: number, rooms: number, veh: number) => string
+    tourRoomVeh: (tours: number, rooms: number) => string
     paymentBlocked: string
     nonMntNote: string
   }
@@ -30,7 +30,7 @@ export type AdminPricingHealthMessages = {
   processorStatus: { live: string; stub: string; planned: string }
   currencyListings: string
   currencyBookings: string
-  listingRow: (kind: 'tour' | 'room' | 'vehicle', cur: string) => string
+  listingRow: (kind: 'tour' | 'room', cur: string) => string
   /** Right column: "N bookings · formatted amount" */
   bookingStats: (count: number, amountFmt: string) => string
   payBlocked: {
@@ -101,7 +101,7 @@ export const pricingHealthEn: AdminPricingHealthMessages = {
     fxIssues: 'FX rate issues',
     staleMissing: (stale, missing) => `${stale} stale · ${missing} missing`,
     listingsNorm: 'Listings missing normalization',
-    tourRoomVeh: (tours, rooms, veh) => `${tours} tours · ${rooms} rooms · ${veh} vehicles`,
+    tourRoomVeh: (tours, rooms) => `${tours} tours · ${rooms} rooms`,
     paymentBlocked: 'Payment-blocked bookings',
     nonMntNote: 'Non-MNT totals; live gateway settles in MNT only.',
   },
@@ -120,7 +120,7 @@ export const pricingHealthEn: AdminPricingHealthMessages = {
   currencyListings: 'Listings',
   currencyBookings: 'Bookings by charge currency',
   listingRow: (kind, cur) => {
-    const k = kind === 'tour' ? 'Tours' : kind === 'room' ? 'Rooms' : 'Vehicles'
+    const k = kind === 'tour' ? 'Tours' : 'Rooms'
     return `${k} (${cur})`
   },
   bookingStats: (count, amountFmt) => `${count} bookings · ${amountFmt}`,
@@ -170,7 +170,7 @@ export const pricingHealthMn: AdminPricingHealthMessages = {
     fxIssues: 'FX ханшийн асуудал',
     staleMissing: (stale, missing) => `${stale} хуучин · ${missing} дутуу`,
     listingsNorm: 'Нормчлол дутсан жагсаалт',
-    tourRoomVeh: (tours, rooms, veh) => `${tours} аялал · ${rooms} өрөө · ${veh} тээвэр`,
+    tourRoomVeh: (tours, rooms) => `${tours} аялал · ${rooms} өрөө`,
     paymentBlocked: 'Төлбөр түгжигдсөн захиалга',
     nonMntNote: 'Bonum MNT-зөвхөн, MNT биш валютаар',
   },
@@ -189,7 +189,7 @@ export const pricingHealthMn: AdminPricingHealthMessages = {
   currencyListings: 'Валютийн жагсаалт',
   currencyBookings: 'Төлбөрийн захиалгууд валютаар',
   listingRow: (kind, cur) => {
-    const k = kind === 'tour' ? 'Аялал' : kind === 'room' ? 'Өрөө' : 'Тээвэр'
+    const k = kind === 'tour' ? 'Аялал' : 'Өрөө'
     return `${k} (${cur})`
   },
   bookingStats: (count, amountFmt) => `${count} захиалга · ${amountFmt}`,

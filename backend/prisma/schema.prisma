@@ -1203,3 +1203,73 @@ model FxBackfillReport {
   @@index([resolvedAt])
   @@map("fx_backfill_reports")
 }
+
+// ─────────────────────────────────────────────
+// GUIDES
+// ─────────────────────────────────────────────
+
+enum GuideSpecialty {
+  Wildlife
+  Trekking
+  Cultural
+  Photography
+  BirdWatching
+  Winter
+  Fishing
+  History
+  Adventure
+}
+
+enum GuideStatus {
+  draft
+  active
+  paused
+  archived
+}
+
+model Guide {
+  id              String          @id @default(cuid())
+  slug            String          @unique
+  name            String
+  bio             String
+  about           String          @db.Text
+  photo           String
+  coverImage      String
+  location        String
+  region          String?
+  specialties     GuideSpecialty[]
+  languages       String[]
+  certified       Boolean         @default(false)
+  licenseNumber   String?
+  yearsExperience Int             @default(0)
+  totalGuests     Int             @default(0)
+  dailyRate       Float?
+  dailyCurrency   String?         @default("USD")
+  contactEmail    String
+  contactPhone    String?
+  website         String?
+  ratingAverage   Float           @default(0)
+  reviewsCount    Int             @default(0)
+  verified        Boolean         @default(false)
+  status          GuideStatus     @default(draft)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  reviews         GuideReview[]
+
+  @@map("guides")
+}
+
+model GuideReview {
+  id       String   @id @default(cuid())
+  guideId  String
+  guide    Guide    @relation(fields: [guideId], references: [id], onDelete: Cascade)
+  author   String
+  country  String
+  rating   Int
+  comment  String   @db.Text
+  tourName String?
+  date     DateTime @default(now())
+
+  @@index([guideId])
+  @@map("guide_reviews")
+}

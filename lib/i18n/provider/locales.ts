@@ -239,7 +239,6 @@ export const mn: ProviderTranslations = {
 
   providerTypes: {
     tour_operator: 'Аялалын оператор',
-    car_rental:    'Машин түрээс',
     accommodation: 'Буудал',
   },
 
@@ -487,7 +486,6 @@ export const en: ProviderTranslations = {
 
   providerTypes: {
     tour_operator: 'Tours & Experiences',
-    car_rental:    'Car Rentals',
     accommodation: 'Accommodation',
   },
 

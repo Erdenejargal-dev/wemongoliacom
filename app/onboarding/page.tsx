@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, ArrowLeft, Loader2, Check } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowRight, ArrowLeft, Loader2, Check, ExternalLink } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { OnboardingLayout } from '@/components/onboarding/OnboardingLayout'
 import { DEFAULT_ONBOARDING, type OnboardingState, type ProviderType } from '@/lib/mock-data/provider'
@@ -30,14 +31,13 @@ const INPUT =
 function StepBusinessType({ data, onNext }: { data: OnboardingState; onNext: (p: Partial<OnboardingState>) => void }) {
   const { t: appT } = useTranslations()
   const o = appT.onboarding
-  type ProviderCombo = 'hotel' | 'tour_operator' | 'car_rental' | 'multiple'
+  type ProviderCombo = 'hotel' | 'tour_operator' | 'multiple'
 
   const comboFromProviderTypes = (providerTypes: ProviderType[]): ProviderCombo | null => {
     const sorted = [...providerTypes].sort().join(',')
     if (sorted === ['accommodation'].sort().join(',')) return 'hotel'
     if (sorted === ['tour_operator'].sort().join(',')) return 'tour_operator'
-    if (sorted === ['car_rental'].sort().join(',')) return 'car_rental'
-    if (sorted === ['accommodation', 'car_rental', 'tour_operator'].sort().join(',')) return 'multiple'
+    if (sorted === ['accommodation', 'tour_operator'].sort().join(',')) return 'multiple'
     return null
   }
 
@@ -47,10 +47,8 @@ function StepBusinessType({ data, onNext }: { data: OnboardingState; onNext: (p:
         return ['accommodation']
       case 'tour_operator':
         return ['tour_operator']
-      case 'car_rental':
-        return ['car_rental']
       case 'multiple':
-        return ['accommodation', 'tour_operator', 'car_rental']
+        return ['accommodation', 'tour_operator']
     }
   }
 
@@ -118,19 +116,28 @@ function StepBusinessType({ data, onNext }: { data: OnboardingState; onNext: (p:
           colorClass: 'border-blue-400 bg-blue-50/50',
         })}
         {renderCard({
-          value: 'car_rental',
-          title: o.serviceCards.carRental.title,
-          subtitle: o.serviceCards.carRental.subtitle,
-          badge: '🚐',
-          colorClass: 'border-orange-400 bg-orange-50/50',
-        })}
-        {renderCard({
           value: 'multiple',
           title: o.serviceCards.all.title,
           subtitle: o.serviceCards.all.subtitle,
           badge: '✨',
           colorClass: 'border-gray-800 bg-gray-50',
         })}
+
+        {/* Guide link-out — separate registration flow */}
+        <Link
+          href="/guides"
+          className="w-full text-left p-5 rounded-2xl border-2 border-dashed border-gray-200 bg-white hover:border-brand-300 hover:bg-brand-50/30 transition-all duration-200 flex items-start gap-4 group"
+        >
+          <span className="text-2xl shrink-0">🧭</span>
+          <div className="min-w-0 pt-0.5 flex-1">
+            <p className="font-semibold text-gray-900 mb-0.5">{o.serviceCards.guide.title}</p>
+            <p className="text-sm text-gray-600 leading-relaxed">{o.serviceCards.guide.subtitle}</p>
+            <p className="text-xs font-semibold text-brand-600 mt-2 flex items-center gap-1 group-hover:text-brand-700">
+              {o.serviceCards.guide.linkLabel}
+              <ExternalLink className="w-3 h-3" aria-hidden />
+            </p>
+          </div>
+        </Link>
       </div>
 
       <div className="pt-2">

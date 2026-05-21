@@ -16,6 +16,7 @@ const content = {
           { label: 'Destinations', href: '/destinations', description: 'Browse Mongolia by region' },
           { label: 'Tours & Experiences', href: '/tours', description: 'Find unique local tours' },
           { label: 'Stays', href: '/stays', description: 'Book camps, gers, and lodges' },
+          { label: 'Guides', href: '/guides', description: 'Browse individual licensed guides' },
         ],
       },
       {
@@ -76,6 +77,7 @@ const content = {
           { label: 'Газар нутаг', href: '/destinations', description: 'Монголыг бүс нутгаар хайх' },
           { label: 'Аялал & Туршлага', href: '/tours', description: 'Орон нутгийн аялал олох' },
           { label: 'Байрлах газар', href: '/stays', description: 'Гэр, майхан, зочид буудал захиалах' },
+          { label: 'Хөтчүүд', href: '/guides', description: 'Лицензтэй хувь хөтчүүдийг үзэх' },
         ],
       },
       {

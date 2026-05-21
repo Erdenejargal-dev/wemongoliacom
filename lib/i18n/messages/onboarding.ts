@@ -13,8 +13,8 @@ export type OnboardingMessages = {
   serviceCards: {
     tour: { title: string; subtitle: string }
     hotel: { title: string; subtitle: string }
-    carRental: { title: string; subtitle: string }
     all: { title: string; subtitle: string }
+    guide: { title: string; subtitle: string; linkLabel: string }
   }
   step2: {
     title: string
@@ -83,13 +83,14 @@ export const onboardingEn: OnboardingMessages = {
       title: 'Stays & lodging',
       subtitle: 'Hotels, ger camps, and lodges',
     },
-    carRental: {
-      title: 'Transport & drivers',
-      subtitle: 'Car rental and driver services',
-    },
     all: {
       title: 'All of the above',
-      subtitle: 'Tours, stays, and transport',
+      subtitle: 'Tours and stays',
+    },
+    guide: {
+      title: 'Private Guide',
+      subtitle: 'List yourself as an individual licensed guide',
+      linkLabel: 'Register as a Guide →',
     },
   },
   step2: {
@@ -117,12 +118,12 @@ export const onboardingEn: OnboardingMessages = {
     sectionBusiness: 'Business',
     sectionLocation: 'Location',
     sectionContact: 'Contact',
-    typeAll: 'Tours, stays & transport',
+    typeAll: 'Tours & stays',
     typeTour: 'Tours & experiences',
     typeHotel: 'Stays & lodging',
-    typeCar: 'Transport & drivers',
+    typeCar: '',
     helpParagraph:
-      "We'll help you get your first bookings. After signup you can add tours, rooms, and vehicles from your dashboard.",
+      "We'll help you get your first bookings. After signup you can add tours and rooms from your dashboard.",
     cta: 'Start receiving bookings',
     saving: 'Saving…',
   },
@@ -161,13 +162,14 @@ export const onboardingMn: OnboardingMessages = {
       title: 'Байршил, буудал',
       subtitle: 'Зочид буудал, гэр буудал, лодж',
     },
-    carRental: {
-      title: 'Тээвэр, жолооч',
-      subtitle: 'Автомашин түрээс, жолоочийн үйлчилгээ',
-    },
     all: {
       title: 'Бүгд',
-      subtitle: 'Аялал, байршил, тээвэр',
+      subtitle: 'Аялал, байршил',
+    },
+    guide: {
+      title: 'Хувийн хөтөч',
+      subtitle: 'Лицензтэй хувь хөтөч болон бүртгүүлэх',
+      linkLabel: 'Хөтөч болон бүртгүүлэх →',
     },
   },
   step2: {
@@ -195,12 +197,12 @@ export const onboardingMn: OnboardingMessages = {
     sectionBusiness: 'Бизнес',
     sectionLocation: 'Байршил',
     sectionContact: 'Холбоо барих',
-    typeAll: 'Аялал, байршил, тээвэр',
+    typeAll: 'Аялал, байршил',
     typeTour: 'Аялал, тур',
     typeHotel: 'Байршил, буудал',
-    typeCar: 'Тээвэр, жолооч',
+    typeCar: '',
     helpParagraph:
-      'Бид танд эхний үйлчлүүлэгчийг олоход тусална. Бүртгүүлсний дараа хяналтын самбараас тур, өрөө, тээврийн хэрэгсэл нэмж болно.',
+      'Бид танд эхний үйлчлүүлэгчийг олоход тусална. Бүртгүүлсний дараа хяналтын самбараас тур, өрөө нэмж болно.',
     cta: 'Захиалга хүлээн авч эхлэх',
     saving: 'Бүртгэж байна…',
   },

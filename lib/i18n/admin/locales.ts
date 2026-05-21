@@ -165,7 +165,6 @@ export interface AdminTranslations {
       listings:            string
       activity:            string
       tours:               string
-      vehicles:            string
       accommodations:      string
       bookings:            string
       reviews:             string
@@ -199,7 +198,6 @@ export interface AdminTranslations {
     typeFilter: {
       all:           string
       tour:          string
-      vehicle:       string
       accommodation: string
     }
     table: {
@@ -226,7 +224,6 @@ export interface AdminTranslations {
     }
     listingTypeLabels: {
       tour:          string
-      vehicle:       string
       accommodation: string
     }
     detail: {
@@ -395,7 +392,6 @@ export const mn: AdminTranslations = {
       listings:            'Жагсаалтууд',
       activity:            'Үйл ажиллагаа',
       tours:               'Аялалууд',
-      vehicles:            'Тээврийн хэрэгсэл',
       accommodations:      'Зочид буудлууд',
       bookings:            'Захиалгууд',
       reviews:             'Үнэлгээнүүд',
@@ -430,7 +426,6 @@ export const mn: AdminTranslations = {
     typeFilter: {
       all:           'Бүх төрөл',
       tour:          'Аялал',
-      vehicle:       'Тээврийн хэрэгсэл',
       accommodation: 'Буудал',
     },
     table: {
@@ -457,7 +452,6 @@ export const mn: AdminTranslations = {
     },
     listingTypeLabels: {
       tour:          'Аялал',
-      vehicle:       'Тээврийн хэрэгсэл',
       accommodation: 'Зочид буудал',
     },
     detail: {
@@ -624,7 +618,6 @@ export const en: AdminTranslations = {
       listings:            'Listings',
       activity:            'Activity',
       tours:               'Tours',
-      vehicles:            'Vehicles',
       accommodations:      'Accommodations',
       bookings:            'Bookings',
       reviews:             'Reviews',
@@ -659,7 +652,6 @@ export const en: AdminTranslations = {
     typeFilter: {
       all:           'All types',
       tour:          'Tour',
-      vehicle:       'Vehicle',
       accommodation: 'Stay',
     },
     table: {
@@ -686,7 +678,6 @@ export const en: AdminTranslations = {
     },
     listingTypeLabels: {
       tour:          'Tour',
-      vehicle:       'Vehicle',
       accommodation: 'Stay',
     },
     detail: {

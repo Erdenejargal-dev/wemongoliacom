@@ -304,7 +304,6 @@ export default function AdminBookingsPage() {
         >
           <option value="">{tb.typeFilter.all}</option>
           <option value="tour">{tb.typeFilter.tour}</option>
-          <option value="vehicle">{tb.typeFilter.vehicle}</option>
           <option value="accommodation">{tb.typeFilter.accommodation}</option>
         </select>
       </div>

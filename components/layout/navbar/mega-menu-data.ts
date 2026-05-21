@@ -48,6 +48,7 @@ export function buildNavItems(m: MegaNavBundle) {
     },
     { key: 'tours' as const, label: m.rootTours, href: '/tours' },
     { key: 'stays' as const, label: m.rootStays, href: '/stays' },
+    { key: 'guides' as const, label: m.rootGuides, href: '/guides' },
   ]
 }
 
