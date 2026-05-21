@@ -9,6 +9,7 @@ import {
   rejectApplication,
 } from '../services/guide-application.service'
 import { GuideSpecialty } from '@prisma/client'
+import { ok, created } from '../utils/response'
 
 const specialtyEnum = z.nativeEnum(GuideSpecialty)
 
@@ -42,7 +43,7 @@ export async function submitApplicationHandler(req: Request, res: Response, next
   try {
     const data = submitSchema.parse(req.body)
     const app  = await submitApplication(req.user!.userId, data)
-    res.status(201).json(app)
+    return created(res, app)
   } catch (err) {
     next(err)
   }
@@ -51,7 +52,7 @@ export async function submitApplicationHandler(req: Request, res: Response, next
 export async function getMyApplicationHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const app = await getMyApplication(req.user!.userId)
-    res.json(app ?? null)
+    return ok(res, app ?? null)
   } catch (err) {
     next(err)
   }
@@ -61,7 +62,7 @@ export async function listApplicationsHandler(req: Request, res: Response, next:
   try {
     const params = listQuerySchema.parse(req.query)
     const result = await listApplications(params)
-    res.json(result)
+    return ok(res, result)
   } catch (err) {
     next(err)
   }
@@ -70,7 +71,7 @@ export async function listApplicationsHandler(req: Request, res: Response, next:
 export async function getApplicationByIdHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const app = await getApplicationById(req.params.id as string)
-    res.json(app)
+    return ok(res, app)
   } catch (err) {
     next(err)
   }
@@ -79,7 +80,7 @@ export async function getApplicationByIdHandler(req: Request, res: Response, nex
 export async function approveApplicationHandler(req: Request, res: Response, next: NextFunction) {
   try {
     await approveApplication(req.params.id as string)
-    res.json({ success: true })
+    return ok(res, { success: true })
   } catch (err) {
     next(err)
   }
@@ -89,7 +90,7 @@ export async function rejectApplicationHandler(req: Request, res: Response, next
   try {
     const { reason } = rejectSchema.parse(req.body)
     const app = await rejectApplication(req.params.id as string, reason)
-    res.json(app)
+    return ok(res, app)
   } catch (err) {
     next(err)
   }
